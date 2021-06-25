@@ -1,0 +1,26 @@
+[package]
+name = "pallet-tasking-runtime-api"
+version = '3.0.0'
+authors = [""]
+edition = "2018"
+description = 'Runtime API for pallet tasking'
+license = "Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+# alias "parity-scale-code" to "codec"
+[dependencies.codec]
+default-features = false
+features = ['derive']
+package = 'parity-scale-codec'
+version = '2.0.0'
+
+[dependencies]
+sp-api = { version = '3.0.0', default-features = false}
+
+[features]
+default = ["std"]
+std = [
+    'codec/std',
+    "sp-api/std",
+]
