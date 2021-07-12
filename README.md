@@ -6,8 +6,7 @@
 [https://polkadot.network](https://polkadot.network/)
 [https://kusama.network](https://kusama.network/)
 
-### **Overview**
-# 📄
+### **Overview** 📄
 
 Dot Marketplace is a general purpose decentralised marketplace. It can be used by all decentralised projects to float any kind of tasks in a marketplace and invite their community members to execute them for a reward. Its roadmap includes integration with wallets and a decentralised court for dispute resolution.
 
@@ -15,9 +14,22 @@ The inspiration for Dot Marketplace emerged from our own needs while building Yo
 
 Dot Marketplace is being built on Substrate. It would include boilerplate code that teams can customize as per their own requirements. We believe this project has the potential to transform community participation, engagement and governance in decentralized projects.
 
+### **Repository Hierarchy**
+```
+├── Dot Marketplace Network Node [link](https://github.com/WowLabz/tasking_backend)
+│   ├── ./node ["Chainspecs for Node"]
+│   ├── ./scripts [Packaging & Deployment Scripts]
+│   ├── ./pallets/pallet-tasking [Pallets]
+│   │	    └── ./pallet-tasking 
+│   │    	        └── ./src/lib.rs [Tasking Pallet (implemented)]
+│   └── ./runtime [Runtime Module]
+│    	    └── Included custom Tasking Pallet
+
+```
+
 The current focus is to enhance the existing Substrate pallet and allied code base to get a basic yet functional Marketplace up and running:
 
-1. Wallet integration - Polkawallet, Metamask
+1. Wallet integration - Polkawallet
 2. Register/ Signup through PolkaJS
 3. Conventional interfaces for Web2 users
   1. Conventional Registration/ Signup
@@ -48,8 +60,7 @@ List of competitors:
 4. [https://market.oceanprotocol.com/](https://market.oceanprotocol.com/)
 5. [https://streamr.network/](https://streamr.network/)
 
-## **Team**
-# 👥
+## **Team** 👥
 
 ### **Team members**
 
@@ -99,8 +110,7 @@ A list of centralised apps published can be found [here](https://www.wowlabz.com
 - [https://www.linkedin.com/in/siddharthteli/](https://www.linkedin.com/in/siddharthteli/) (Siddharth Teli)
 - [https://www.linkedin.com/in/loakesh-indiran-8a2282140](https://www.linkedin.com/in/loakesh-indiran-8a2282140) (Loakesh Indiran)
 
-## **Development Roadmap**
-# 🔩
+## **Development Roadmap**🔩
 
 ![dotmarketplacegif](https://user-images.githubusercontent.com/11945179/124598936-c9f01000-de82-11eb-91d5-b2e37f1791df.gif)
 
@@ -110,7 +120,7 @@ All the below mentioned Milestones are going to be an RFP response and this appl
 
 ### **Milestone 1** -
 
-We will be building a substrate based services marketplace, where a user gets registered via a registration form and linking their respective wallets, which will be linked to Polkawallet and Metamask.
+We will be building a substrate based services marketplace, where a user gets registered via a registration form and linking their respective wallets, which will be linked to Polkawallet.
 
 - Marketplace Initialization
   - User Registration
@@ -121,6 +131,13 @@ We will be building a substrate based services marketplace, where a user gets re
   - Forgot Password
   - Sign Up/Sign In with Google
   - Illustration for home screen.
+
+| Number        | Deliverable   | Specification  |
+| :-------------|:-------------:| :--------------|
+| 1      | Documentation | We will provide both inline documentation of the code and a tutorial that explains how a user can use DOT Marketplace and understand the flow of tasking pallet.         |
+| 2      | User Registeration | Form based user registeration and linking their respective wallets.         |
+| 3      | Wallet Linking | Support for most Substrate/Polkadot based wallet applications. Smart Contract transfer function allows for the directly wallet-signed transfer of assets from one application/user address to the other.         |
+| 4      | Profile based Screens | Support for role based screens to ease the usability for users  |
 
 ### **Milestone 2 -**
 
@@ -140,6 +157,13 @@ In continuation to the previous work, we will be working on the rating system ov
   - Toggle switch for on/off Blockchain Notifications (Events)
   - Logout
 
+| Number        | Deliverable   | Specification  |
+| :-------------|:-------------:| :--------------|
+| 1      | User Rating | Support for most Substrate/Polkadot based wallet applications. Smart Contract transfer function allows for the directly wallet-signed transfer of assets from one application/user address to the other.         |
+| 2      | Wallet Linking | Smart Contract transfer function allows for the programmatic/automated transfer of tokens from one application/user via smart contract to the other.         |
+| 3      | Asset Restrictions | Support for the locking of assets by time or by issuer permission, support for expirations and potentially invalidations.         |
+| 4      | Testing | The Smart Contract implementation will include unit tests, we will be using the off-chain test environment that ink! provides.         |
+
 ### **Milestone 3 -**
 
 - Multi User scenarios
@@ -152,6 +176,13 @@ In continuation to the previous work, we will be working on the rating system ov
   - Integrating Azure storage services
   - Mongo connection \&lt;objectId\&gt;
   - Async file Upload/download.
+
+| Number        | Deliverable   | Specification  |
+| :-------------|:-------------:| :--------------|
+| 1      | Scalability | Support for multiple Substrate seed users to test the functionality and make the task based transactions as per the Status mentioned. Substrate based Lockable currency for reserving user funds and allowing the escrow unlock after the approved status.         |
+| 2      | Wallet Linking | Smart Contract transfer function allows for the programmatic/automated transfer of tokens from one application/user via smart contract to the other.         |
+| 3      | Asset Restrictions | Support for the locking of assets by time or by issuer permission, support for expirations and potentially invalidations.         |
+| 4      | Testing | The Smart Contract implementation will include unit tests, we will be using the off-chain test environment that ink! provides.         |
 
 <img src = "https://user-images.githubusercontent.com/11945179/124599088-e8560b80-de82-11eb-8ece-1f9f8e76a235.png" width = 700 height = 500>
 
