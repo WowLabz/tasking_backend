@@ -134,7 +134,7 @@ We will be building a substrate based services marketplace, where a user gets re
 
 | Number        | Deliverable   | Specification  |
 | :-------------|:-------------:| :--------------|
-| 1      | Documentation | We will provide both inline documentation of the code and a tutorial that explains how a user can use DOT Marketplace and understand the flow of tasking pallet.         |
+| 1      | [Documentation](https://github.com/WowLabz/tasking_backend) | We will provide both inline documentation of the code and a tutorial that explains how a user can use DOT Marketplace and understand the flow of tasking pallet.         |
 | 2      | User Registeration | Form based user registeration and linking their respective wallets.         |
 | 3      | Wallet Linking | Support for most Substrate/Polkadot based wallet applications. Smart Contract transfer function allows for the directly wallet-signed transfer of assets from one application/user address to the other.         |
 | 4      | Profile based Screens | Support for role based screens to ease the usability for users  |
