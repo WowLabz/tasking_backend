@@ -217,4 +217,29 @@ Every milestone will be documented and dockerized.
   - [https://youtu.be/xQNOkXQdDnQ](https://youtu.be/xQNOkXQdDnQ) (Dot Marketplace Video)
   - [http://65.2.26.225:8001/](http://65.2.26.225:8001/) (Dot Marketplace)
 
+
+### **Future Plans**
+Future releases of the Dot Marketplace include:
+
+| Version 2 | Project Milestones |  |  |
+| --- | --- | --- | --- |
+||| Only 3 milestones ||
+|||| Tasks view for milestones |
+||| % Completion ||
+||| Approval per milestone ||
+||| Payment per milestone ||
+|| Chat |||
+||| Built with a 3rd party tool ||
+|||||
+| Version 3 | Contest Submissions |||
+|| Decentralised Court |||
+||| Conflict Management ||
+|||||
+| Version 4 | Integration with EPNS (Ethereum Push Notification Service) |||
+||| Decentralised Chat using Push Notification Services ||
+|||||
+|| Integration with IPFS |||
+||| Decentralised file storage ||
+|||||
+
 ###
