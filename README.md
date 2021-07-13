@@ -2,7 +2,7 @@
 
 - Status: Open
 - Proposer: Wow Labz
-- Projects you think this work could be useful for:
+- Projects you think this work could be useful for: All Polkadot projects, 
 [https://polkadot.network](https://polkadot.network/)
 [https://kusama.network](https://kusama.network/)
 
@@ -29,27 +29,10 @@ Dot Marketplace is being built on Substrate. It would include boilerplate code t
 
 The current focus is to enhance the existing Substrate pallet and allied code base to get a basic yet functional Marketplace up and running:
 
-1. Wallet integration - Polkawallet
-2. Register/ Signup through PolkaJS
-3. Conventional interfaces for Web2 users
-  1. Conventional Registration/ Signup
-  2. Removing token/ blockchain specific language
-  3. Settings for enabling transaction notifications. By default they would be disabled
-  4.
-4. Publish a task
-  1. Define the specifics of the task
-  2. Lock money in escrow
-  3. Publish the task
-5. Bid for a task by staking tokens
-  1. Lock tokens in escrow
-  2. Submit the proof of the task being completed
-  3. Integration with centralised storage (for now)
-6. Ratings
-  1. For the task publisher by worker
-  2. For the worker by task publisher
 
 ### **Ecosystem Fit**
 
+Needs to be updated
 Yes there are a few similar projects. But, what differentiates us from them is that our project bridges the gap and provides an entire ecosystem of Services, Data and Tools Marketplace. We can confidently say that, there is something for everyone and there is everything for someone.
 
 List of competitors:
@@ -77,10 +60,10 @@ List of competitors:
 - [http://www.wowlabz.com](https://www.yoda.to/)
 
 ### **Project Website**
-
+- Dot marketplace web
 - [https://www.yoda.to/](https://www.yoda.to/)
 
-### **Legal Structure**
+### **Legal Structure** <Needs to be updated>
 
 Wow Labz
 
@@ -188,7 +171,7 @@ Every milestone will be documented and dockerized.
   - [http://65.2.26.225:8001/](http://65.2.26.225:8001/) (Dot Marketplace)
 
 
-### **Future Plans**
+### **Future Plans** 
 Future releases of the Dot Marketplace include:
 
 | Version 2 | Project Milestones |  |  |
