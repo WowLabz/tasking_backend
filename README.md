@@ -116,6 +116,8 @@ A list of centralised apps published can be found [here](https://www.wowlabz.com
 
 Based on our past experience from building Dot Marketplace for the Polkadot Buildathon India (2021) and the expertise we gained while building this PoC Pallet-Tasking Runtime, we think that there are a number of tasks that will contribute to the success of Dot Marketplace.
 
+For our custom pallet (tasking) we used various substrate provided traits like - Currency, ExistenceRequirement, LockIdentifier, LockableCurrency, ReservableCurrency and few more. Used the pre-existing pallets like assets, balances and staking. Implemented our custom struct like Task Details, Transfer Details. These in return are used for various functionalities like publish task, bid for task, complete task, approve task. A special transfer money function is only initiated once the task cycle gets completed and the escrow funds are released to the worker. 
+
 All the below mentioned Milestones are going to be an RFP response and this application is going to be fully public.
 
 ### **Milestone 1** -
