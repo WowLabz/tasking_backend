@@ -159,10 +159,10 @@ In continuation to the previous work, we will be working on the rating system ov
 
 | Number        | Deliverable   | Specification  |
 | :-------------|:-------------:| :--------------|
-| 1      | User Rating | Support for most Substrate/Polkadot based wallet applications. Smart Contract transfer function allows for the directly wallet-signed transfer of assets from one application/user address to the other.         |
-| 2      | Wallet Linking | Smart Contract transfer function allows for the programmatic/automated transfer of tokens from one application/user via smart contract to the other.         |
+| 1      | User Rating Workflows | Support for profile based rating using substrate balances, treasury and staking pallets to be integrated with our custom tasking pallet to weigh the user's performance and rewards based rating system.          |
+| 2      | Programmatic Wallet Transfer | Substrate based Smart Contract transfer function allows for the programmatic/automated transfer of tokens from one application/user via smart contract to the other.         |
 | 3      | Asset Restrictions | Support for the locking of assets by time or by issuer permission, support for expirations and potentially invalidations.         |
-| 4      | Testing | The Smart Contract implementation will include unit tests, we will be using the off-chain test environment that ink! provides.         |
+| 4      | Settings View | UI enhancements for event notifications to be customized as per the user profile.         |
 
 ### **Milestone 3 -**
 
@@ -173,18 +173,18 @@ In continuation to the previous work, we will be working on the rating system ov
   - Align workers to tag based track/domain.
 - Project Pagination.
 - Storage APIs and DB Connection
-  - Integrating Azure storage services
+  - Integrating S3/Azure storage services
   - Mongo connection \&lt;objectId\&gt;
   - Async file Upload/download.
 
 | Number        | Deliverable   | Specification  |
 | :-------------|:-------------:| :--------------|
 | 1      | Scalability | Support for multiple Substrate seed users to test the functionality and make the task based transactions as per the Status mentioned. Substrate based Lockable currency for reserving user funds and allowing the escrow unlock after the approved status.         |
-| 2      | Wallet Linking | Smart Contract transfer function allows for the programmatic/automated transfer of tokens from one application/user via smart contract to the other.         |
-| 3      | Asset Restrictions | Support for the locking of assets by time or by issuer permission, support for expirations and potentially invalidations.         |
-| 4      | Testing | The Smart Contract implementation will include unit tests, we will be using the off-chain test environment that ink! provides.         |
+| 2      | Profile Tagging | Support for smart tags with the user profiles for programmatic track/domain alignment         |
+| 3      | Storage APIs  | API connections to cloud storage and backend database for async upload/download of multipart data using actix web         |
+| 4      | Testing | Repositories including the deployment and test sections for instructions and scripts to help contributors to package, deploy, run, test.        |
 
-<img src = "https://user-images.githubusercontent.com/11945179/124599088-e8560b80-de82-11eb-8ece-1f9f8e76a235.png" width = 700 height = 500>
+<img src = "https://user-images.githubusercontent.com/11945179/124599088-e8560b80-de82-11eb-8ece-1f9f8e76a235.png" width = 1000 height = 600>
 
 
 ### **Development team:**
@@ -208,7 +208,7 @@ Every milestone will be documented and dockerized.
 - Mockups/designs
   - [http://yoda.to/](http://yoda.to/) (Yoda UI)
 - Technology stack to be used
-  - Rust, Substrate, React, Python, MongoDB, Azure Storage, AMQP, Celery
+  - Rust, Substrate, React, Python, MongoDB, Azure Storage, AMQP, Celery, Actix web
 - Documentation of components, protocols, architecture etc.
   - [https://drive.google.com/drive/folders/173Wup7oxr7IywHFpfrhaTdZtNlkZfFL5?usp=sharing](https://drive.google.com/drive/folders/173Wup7oxr7IywHFpfrhaTdZtNlkZfFL5?usp=sharing)
 - PoC/MVP
