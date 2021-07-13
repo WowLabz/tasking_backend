@@ -184,6 +184,8 @@ In continuation to the previous work, we will be working on the rating system ov
 | 3      | Storage APIs  | API connections to cloud storage and backend database for async upload/download of multipart data using actix web         |
 | 4      | Testing | Repositories including the deployment and test sections for instructions and scripts to help contributors to package, deploy, run, test.        |
 
+### **Architecture Overview:**
+
 <img src = "https://user-images.githubusercontent.com/11945179/124599088-e8560b80-de82-11eb-8ece-1f9f8e76a235.png" width = 1000 height = 600>
 
 
