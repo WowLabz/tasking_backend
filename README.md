@@ -120,17 +120,8 @@ All the below mentioned Milestones are going to be an RFP response and this appl
 
 ### **Milestone 1** -
 
-We will be building a substrate based services marketplace, where a user gets registered via a registration form and linking their respective wallets, which will be linked to Polkawallet.
+The main deliverable for this milestone is that we will be building a substrate based services marketplace, where a user gets registered via a registration form and linking their respective wallets, which will be linked to Polkawallet.
 
-- Marketplace Initialization
-  - User Registration
-  - Forms
-  - Wallets
-- User Dashboard
-  - Custom screens
-  - Forgot Password
-  - Sign Up/Sign In with Google
-  - Illustration for home screen.
 
 | Number        | Deliverable   | Specification  |
 | :-------------|:-------------:| :--------------|
@@ -143,19 +134,6 @@ We will be building a substrate based services marketplace, where a user gets re
 
 In continuation to the previous work, we will be working on the rating system over here, which will help the platform provide the distribution of network rewards based on the user&#39;s performance and credible work submitted in the past. This rating will eventually be the motivating factor for performance in the network to be incentivized for quality work. :
 
-- Ratings
-  - Customer Rating Workflow
-  - Worker Rating workflow
-
-- User Account
-  - Profile
-  - Rating
-  - Earnings
-
-- Settings
-  - Switch to customer/worker view
-  - Toggle switch for on/off Blockchain Notifications (Events)
-  - Logout
 
 | Number        | Deliverable   | Specification  |
 | :-------------|:-------------:| :--------------|
@@ -165,17 +143,7 @@ In continuation to the previous work, we will be working on the rating system ov
 | 4      | Settings View | UI enhancements for event notifications to be customized as per the user profile.         |
 
 ### **Milestone 3 -**
-
-- Multi User scenarios
-  - Scaling and testing the usability for multiple users.
-- UI upgrades and form tags
-  - Registration form fields \&lt;tags\&gt;
-  - Align workers to tag based track/domain.
-- Project Pagination.
-- Storage APIs and DB Connection
-  - Integrating S3/Azure storage services
-  - Mongo connection \&lt;objectId\&gt;
-  - Async file Upload/download.
+The deliverable for this milestone is that we will be providing a multi user scenario to test the functionality and integrate with storage and backend APIs for multipart data to be uploaded and downloaded.
 
 | Number        | Deliverable   | Specification  |
 | :-------------|:-------------:| :--------------|
