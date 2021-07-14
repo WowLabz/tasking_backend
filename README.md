@@ -10,21 +10,16 @@ Dot Marketplace is a general purpose decentralised marketplace created as a Subs
 
 The current scope of work involves two user types: **Customer** and **Service Provider (or Worker)**
 
-The Customer can post a task and invite bids from Service Providers to fulfill it.
-
-The Customer needs to deposit the budgeted amount in an escrow for the task to be published. 
-
-The Service Provider needs to deposit some token to participate in a bid. If not shortlisted, this bid amount is returned. 
-
-The Service Provider completes the task and submits it. 
-
-The Customer accepts the work and the escrowed amount is credited to the Service Providers wallet.
-
-The Customer rates the Service Provider and visa versa 
+- The Customer can post a task and invite bids from Service Providers to fulfill it. 
+- The Customer needs to deposit the budgeted amount in an escrow for the task to be published. 
+- The Service Provider needs to deposit some token to participate in a bid. If not shortlisted, this bid amount is returned. 
+- The Service Provider completes the task and submits it. 
+- The Customer accepts the work and the escrowed amount is credited to the Service Providers wallet.
+- The Customer rates the Service Provider and visa versa 
 
 NOTE: If the Customer doesn't accept the work, a dispute is raised and it gets resolved in a decentralised court (out of current scope) which will be implemented in the next phase. 
 
-Here is a user workflow diagram linked to the pallet tasking of the same. 
+The following diagrams highlight the workflow:
 
 
 Customer                   
@@ -175,19 +170,13 @@ The deliverable for this milestone is that we will be providing a multi user sce
 
 ### **Development team:**
 
-1 product manager (part time) 
-
-1 lead backend developer
-  
-1 full stack developer
-
-1 junior backend developer
-
-1 Designer (part time)
-
-1 Devops engineer (part time)
- 
-1 Technical Writer (part time)
+- 1 product manager (part time) 
+- 1 lead backend developer
+- 1 full stack developer
+- 1 junior backend developer
+- 1 Designer (part time)
+- 1 Devops engineer (part time)
+- 1 Technical Writer (part time)
 
 Total man-hours: 620
 
@@ -214,8 +203,8 @@ Future releases of the Dot Marketplace include:
 | Phase        | Deliverable   | Specification  |
 | :-------------|:-------------:| :--------------|
 | 2      | Decentralised Court | A fully decentralised dispute resolution mechanism along with configurible rules for slashing and reputation.          |
-| 3      | Milestone based submissions | Making provisions to breakdown a task into multiple units beign fulfilled in parallel. Also make provisions to allow creation of multiple milestones per project, and approve each before proceeding        |
-| 4     | Decentralised Storage | Integration with IPFS or other decentralised storage platforms         |
+| 3      | Milestone based submissions | Making provisions to breakdown a project into multiple configurable milestones to allow parallel or sequential execution        |
+| 4     | Decentralised Storage | Integration with IPFS or another decentralised storage platform        |
 
 
 
