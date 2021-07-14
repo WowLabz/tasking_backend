@@ -45,7 +45,7 @@ Dot Marketplace is being built as a Substrate pallet. It would include boilerpla
 
 ```
 
-The current focus is to enhance the existing Substrate pallet and allied code base to get a basic yet functional Marketplace up and running:
+The current focus is to enhance the existing Substrate pallet and allied code base to get a basic yet functional marketplace up and running:
 
 
 ### **Ecosystem Fit**
@@ -56,7 +56,7 @@ The inspiration for Dot Marketplace emerged from our own needs while building Yo
 
 ![dotmarketplacegif](https://user-images.githubusercontent.com/11945179/124598936-c9f01000-de82-11eb-91d5-b2e37f1791df.gif)
 
-List of competitors:
+### **List of Competitors**
 
 Any product or services marketplace would qualify, here are some examples from outside the Polkadot ecosystem. 
 1. [Human Protocol](https://data.iota.org/#/)
@@ -72,6 +72,8 @@ Any product or services marketplace would qualify, here are some examples from o
 - Varun Gyanchandani
 - Loakesh Indiran
 - Siddharth Teli
+- Vinayak Bhandare // New addition 
+
 
 ### **Team Website**
 
@@ -98,7 +100,7 @@ A list of awards won by the organisation can be found [here](https://www.wowlabz
 
 ### **Team Code Repos**
 
-- [https://github.com/WowLabz](https://github.com/WowLabz) // Do we need this? 
+- [https://github.com/WowLabz](https://github.com/WowLabz) // We don't need this 
 - [https://github.com/orgs/WowLabz/projects](https://github.com/orgs/WowLabz/projects) // Create a sub folder Blockchain and put the tasking pallet there
 - [https://github.com/WowLabz/tasking\_backend](https://github.com/WowLabz/tasking_backend)
 - [https://github.com/WowLabz/tasking\_frontend](https://github.com/WowLabz/tasking_frontend)
@@ -110,6 +112,7 @@ Profiles of the people working actively on Dot Marketplace
 - [https://www.linkedin.com/in/varunsays/](https://www.linkedin.com/in/varunsays/) (Varun Gyanchandani)
 - [https://www.linkedin.com/in/siddharthteli/](https://www.linkedin.com/in/siddharthteli/) (Siddharth Teli) 
 - [https://www.linkedin.com/in/loakesh-indiran-8a2282140](https://www.linkedin.com/in/loakesh-indiran-8a2282140) (Loakesh Indiran)
+- [https://www.linkedin.com/in/vinayak-bhandare-3799892a/](https://www.linkedin.com/in/vinayak-bhandare-3799892a/) (Vinayak Bhandare)
 
 ## **Development Roadmap**🔩
 
@@ -123,7 +126,7 @@ All the below mentioned Milestones are going to be an RFP response and this appl
   
 NOTE: A barebones UI would also be provided as a part of this submission to help the developer experience the functionality
 
-### **Milestone 1** -
+### **Milestone 1**
 
 The main deliverable for this milestone will be to allow a user to register via a registration form and link her Polkawallet account along with role based switching from Service Provider view to Customer view and visa versa.
 
@@ -137,7 +140,7 @@ The main deliverable for this milestone will be to allow a user to register via 
 | 5      | Containerisation | Docker image creation of the first milestone along with a script to run unit tests | 
 | 6      | Documentation | Documentation of code including a document to build the code from source | 
 
-### **Milestone 2 -**
+### **Milestone 2**
 
 In continuation to the previous work, we will be working on a rating system for both Customer and Service Provider. This rating will eventually be the motivating factor for performance in the network to be incentivized for quality work. :
 
@@ -150,7 +153,7 @@ In continuation to the previous work, we will be working on a rating system for 
 | 4      | Containerisation | Docker image creation of the second milestone along with a script to run unit tests | 
 
   
-### **Milestone 3 -**
+### **Milestone 3**
 The deliverable for this milestone is that we will be providing a multi user scenario to test the functionality and integrate with storage and backend APIs for multipart data to be uploaded and downloaded.
 
 | Number        | Deliverable   | Specification  |
@@ -163,12 +166,10 @@ The deliverable for this milestone is that we will be providing a multi user sce
 | 6      | Containerisation | Docker image creation of the entire package  | 
 
 
-### **Architecture Overview:**
-
-<img src = "https://user-images.githubusercontent.com/11945179/124599088-e8560b80-de82-11eb-8ece-1f9f8e76a235.png" width = 1000 height = 600>
-
 
 ### **Development team:**
+
+1 product manager (part time) 
 
 1 lead backend developer
   
@@ -176,11 +177,11 @@ The deliverable for this milestone is that we will be providing a multi user sce
 
 1 junior backend developer
 
-1 Designer 
+1 Designer (part time)
 
-1 Devops engineer 
+1 Devops engineer (part time)
  
-1 Technical Writer 
+1 Technical Writer (part time)
 
 Total man-hours: 620
 
