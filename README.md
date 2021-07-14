@@ -2,17 +2,18 @@
 
 - Status: Open
 - Proposer: Wow Labz
-- Projects you think this work could be useful for: All Polkadot projects, 
-[https://polkadot.network](https://polkadot.network/)
-[https://kusama.network](https://kusama.network/)
+- Projects you think this work could be useful for: 
+[Polkadot](https://polkadot.network/)
+[Kusama](https://kusama.network/)
+[Moonbeam](https://moonbeam.network/)
+and all Polkadot parachains/ parathreads 
 
 ### **Overview** 📄
 
-Dot Marketplace is a general purpose decentralised marketplace. It can be used by all decentralised projects to float any kind of tasks in a marketplace and invite their community members to execute them for a reward. Its roadmap includes integration with wallets and a decentralised court for dispute resolution.
+Dot Marketplace is a general purpose decentralised marketplace. 
+Here is a block diagram of the same. 
 
-The inspiration for Dot Marketplace emerged from our own needs while building Yoda - a protocol that supports decentralised product development leveraging open data. Dot Marketplace would be open sourced and we would be using it extensively to create marketplaces on Yoda protocol.
-
-Dot Marketplace is being built on Substrate. It would include boilerplate code that teams can customize as per their own requirements. We believe this project has the potential to transform community participation, engagement and governance in decentralized projects.
+Dot Marketplace is being built as a Substrate pallet. It would include boilerplate code that parachain teams can customize as per their own requirements. We believe this project has the potential to transform community participation, engagement and governance in decentralized projects.
 
 ### **Repository Hierarchy**
 ```
@@ -21,7 +22,7 @@ Dot Marketplace is being built on Substrate. It would include boilerplate code t
 │   ├── ./scripts [Packaging & Deployment Scripts]
 │   ├── ./pallets/pallet-tasking [Pallets]
 │   │	    └── ./pallet-tasking 
-│   │    	        └── ./src/lib.rs [Tasking Pallet (implemented)]
+│   │    	        └── ./src/lib.rs [Tasking Pallet (being implemented)]
 │   └── ./runtime [Runtime Module]
 │    	    └── Included custom Tasking Pallet
 
@@ -32,70 +33,68 @@ The current focus is to enhance the existing Substrate pallet and allied code ba
 
 ### **Ecosystem Fit**
 
-Needs to be updated
-Yes there are a few similar projects. But, what differentiates us from them is that our project bridges the gap and provides an entire ecosystem of Services, Data and Tools Marketplace. We can confidently say that, there is something for everyone and there is everything for someone.
+Dot Marketplace can be used by any decentralised project to float tasks and invite their community members to execute them for a reward. Its MVP was developed during the Polkadot India buildathon (2021).  
+
+The inspiration for Dot Marketplace emerged from our own needs while building Yoda - a protocol that facilitates decentralised app development leveraging open data. Dot Marketplace would be used to create data, services and app marketplaces on Yoda, which would motivate us to maintain this project in the long run. 
+
+![dotmarketplacegif](https://user-images.githubusercontent.com/11945179/124598936-c9f01000-de82-11eb-91d5-b2e37f1791df.gif)
 
 List of competitors:
 
-1. [https://data.iota.org/#/](https://data.iota.org/#/)
-2. [https://www.snowflake.com/data-marketplace/](https://www.snowflake.com/data-marketplace/)
-3. [https://datum.org/](https://datum.org/)
-4. [https://market.oceanprotocol.com/](https://market.oceanprotocol.com/)
-5. [https://streamr.network/](https://streamr.network/)
+Any product or services marketplace would qualify, here are some examples from outside the Polkadot ecosystem. 
+1. [Human Protocol](https://data.iota.org/#/)
+2. [Effect Network](https://www.snowflake.com/data-marketplace/)
+3. [Ocean Protocol Market](https://market.oceanprotocol.com/)
+
 
 ## **Team** 👥
 
 ### **Team members**
 
 - Amit Singh
-- Roshit Omanakuttan
-- Umashankar Das
-- Hamad Jowher
 - Varun Gyanchandani
 - Loakesh Indiran
 - Siddharth Teli
 
 ### **Team Website**
 
-- [http://www.wowlabz.com](https://www.yoda.to/)
+- [http://www.wowlabz.com](https://www.yoda.to/) // Needs to be converted into a Notion Page
 
 ### **Project Website**
 - Dot marketplace web
-- [https://www.yoda.to/](https://www.yoda.to/)
+- [https://www.yoda.to/](https://www.yoda.to/) // We can start with a quick Notion Page 
 
 ### **Legal Structure** <Needs to be updated>
 
 Wow Labz
 
-[Address](https://www.google.com/search?rlz=1C1CHZN_enIN936IN936&amp;q=wow+labz+address&amp;stick=H4sIAAAAAAAAAOPgE-LVT9c3NEzOKU7PqbA01pLNTrbSz8lPTizJzM-DM6wSU1KKUouLF7EKlOeXK-QkJlUpQIUAMRiJsEMAAAA&amp;ludocid=5336906714757536502&amp;sa=X&amp;ved=2ahUKEwiJkcvjtrLxAhXa6XMBHfEUA_IQ6BMwJHoECD0QBA): 3rd Floor, Fremont Terraces, #3580, 4th Cross Rd, HAL 2nd Stage, Doopanahalli, Indiranagar, Bengaluru, Karnataka 560008
+[Address](https://g.page/2gethr-ORR): Wow Labz, 2Gethr Cowork, Tower B, Mantri Commercio, Outer Ring Rd, near Sakra World Hospital, Kariyammana Agrahara, Bellandur, Bengaluru, Karnataka 560103
 
 ### **Team&#39;s experience**
 
 Dot Marketplace is being built by the team at Wow Labz.
- Wow Labz is one of India&#39;s leading turnkey product development companies. It has built over 100 products for several funded startups and enterprises. It is currently focused on building Blockchain and AI products.
-
- Previously, at Wow Labz we have built a decentralised storage protocol called Lake Network - [https://lakenetwork.io/](https://lakenetwork.io/)besides multiple dApps on Ethereum, Stellar, EOS and Hyperledger.
+Wow Labz is one of India&#39;s leading turnkey product development companies.
+Wow Labz is the parent company behind Yoda Protocol. The team has previously built a decentralised storage protocol called Lake Network - [https://lakenetwork.io/](https://lakenetwork.io/) besides multiple dApps on Ethereum, Stellar, EOS and Hyperledger.
 
 A list of centralised apps published can be found [here](https://www.wowlabz.com/work/).
+A list of awards won by the organisation can be found [here](https://www.wowlabz.com/awards/).
 
 ### **Team Code Repos**
 
-- [https://github.com/WowLabz](https://github.com/WowLabz)
-- [https://github.com/orgs/WowLabz/projects](https://github.com/orgs/WowLabz/projects)
+- [https://github.com/WowLabz](https://github.com/WowLabz) // Do we need this? 
+- [https://github.com/orgs/WowLabz/projects](https://github.com/orgs/WowLabz/projects) // Create a sub folder Blockchain and put the tasking pallet there
 - [https://github.com/WowLabz/tasking\_backend](https://github.com/WowLabz/tasking_backend)
 - [https://github.com/WowLabz/tasking\_frontend](https://github.com/WowLabz/tasking_frontend)
 
 ### **Team LinkedIn Profiles (if available)**
 
+Profiles of the people working actively on Dot Marketplace
 - [https://www.linkedin.com/in/startupamit/](https://www.linkedin.com/in/startupamit/) (Amit Singh)
-- [https://www.linkedin.com/in/hamadjowher/](https://www.linkedin.com/in/hamadjowher/) (Hamad Jowher)
 - [https://www.linkedin.com/in/varunsays/](https://www.linkedin.com/in/varunsays/) (Varun Gyanchandani)
-- [https://www.linkedin.com/in/siddharthteli/](https://www.linkedin.com/in/siddharthteli/) (Siddharth Teli)
+- [https://www.linkedin.com/in/siddharthteli/](https://www.linkedin.com/in/siddharthteli/) (Siddharth Teli) 
 - [https://www.linkedin.com/in/loakesh-indiran-8a2282140](https://www.linkedin.com/in/loakesh-indiran-8a2282140) (Loakesh Indiran)
 
 ## **Development Roadmap**🔩
-
-![dotmarketplacegif](https://user-images.githubusercontent.com/11945179/124598936-c9f01000-de82-11eb-91d5-b2e37f1791df.gif)
 
 Based on our past experience from building Dot Marketplace for the Polkadot Buildathon India (2021) and the expertise we gained while building this PoC Pallet-Tasking Runtime, we think that there are a number of tasks that will contribute to the success of Dot Marketplace.
 
