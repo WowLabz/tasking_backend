@@ -2,20 +2,24 @@
 
 - Status: Open
 - Proposer: Wow Labz
-- Projects you think this work could be useful for: 
-
-[Polkadot](https://polkadot.network/)
-
-[Kusama](https://kusama.network/)
-
-[Moonbeam](https://moonbeam.network/)
-
-and all Polkadot parachains/ parathreads 
+- Projects you think this work could be useful for: [Polkadot](https://polkadot.network/), [Kusama](https://kusama.network/), [Moonbeam](https://moonbeam.network/) and all Polkadot parachains/ parathreads 
 
 ### **Overview** 📄
 
-Dot Marketplace is a general purpose decentralised marketplace. 
+Dot Marketplace is a general purpose decentralised marketplace created as a Substrate pallet.  
+
+The current scope of work involves two user types: Customer and Service Provider (or Worker)
+The Customer can post a task and invite bids from Service Providers to fulfill it. 
+The Customer needs to deposit the budgeted amount in an escrow for the task to be published. 
+The Service Provider needs to deposit some token to participate in a bid. If not shortlisted, this bid amount is returned. 
+The Service Provider completes the task and submits it. 
+The Customer accepts the work and the escrowed amount is credited to the Service Providers wallet.
+The Customer rates the Service Provider and visa versa 
+
+NOTE: If the Customer doesn't accept the work, a dispute is raised and it gets resolved in a decentralised court (out of current scope) which will be implemented in the next phase. 
+
 Here is a user workflow diagram linked to the pallet tasking of the same. 
+
 
 Customer                   
 :-------------------------:
@@ -71,13 +75,13 @@ Any product or services marketplace would qualify, here are some examples from o
 
 ### **Team Website**
 
-- [http://www.wowlabz.com](https://www.yoda.to/) // Needs to be converted into a Notion Page
+- [http://www.wowlabz.com](https://www.wowlabz.com/) // Needs to be converted into a Notion Page
 
 ### **Project Website**
-- Dot marketplace web
-- [https://www.yoda.to/](https://www.yoda.to/) // We can start with a quick Notion Page 
+- Dot marketplace website is under construction
 
-### **Legal Structure** <Needs to be updated>
+### **Legal Structure** 
+- Indian, Private Limited Company <Needs to be updated>
 
 Wow Labz
 
@@ -87,7 +91,7 @@ Wow Labz
 
 Dot Marketplace is being built by the team at Wow Labz.
 Wow Labz is one of India&#39;s leading turnkey product development companies.
-Wow Labz is the parent company behind Yoda Protocol. The team has previously built a decentralised storage protocol called Lake Network - [https://lakenetwork.io/](https://lakenetwork.io/) besides multiple dApps on Ethereum, Stellar, EOS and Hyperledger.
+Yoda Protocol has been conceptualised and is being built by the team at Wow Labz. The team has previously built a decentralised storage protocol called Lake Network - [https://lakenetwork.io/](https://lakenetwork.io/) in addition to multiple dApps on Ethereum, Stellar, EOS and Hyperledger.
 
 A list of centralised apps published can be found [here](https://www.wowlabz.com/work/).
 A list of awards won by the organisation can be found [here](https://www.wowlabz.com/awards/).
@@ -109,45 +113,55 @@ Profiles of the people working actively on Dot Marketplace
 
 ## **Development Roadmap**🔩
 
-Based on our past experience from building Dot Marketplace for the Polkadot Buildathon India (2021) and the expertise we gained while building this PoC Pallet-Tasking Runtime, we think that there are a number of tasks that will contribute to the success of Dot Marketplace.
-
-For our custom pallet (tasking) we used various substrate provided traits like - Currency, ExistenceRequirement, LockIdentifier, LockableCurrency, ReservableCurrency and few more. Used the pre-existing pallets like assets, balances and staking. Implemented our custom struct like Task Details, Transfer Details. These in return are used for various functionalities like publish task, bid for task, complete task, approve task. A special transfer money function is only initiated once the task cycle gets completed and the escrow funds are released to the worker. 
+The development of Dot Marketplace is already underway. 
+For the custom pallet (tasking) we have: 
+1. Used various Substrate provided traits like - `Currency`, `ExistenceRequirement`, `LockIdentifier`, `LockableCurrency`, `ReservableCurrency` and few more;
+2. Used the pre-existing pallets like `assets`, `balances` and `staking`;
+3. Implemented custom structs like `Task Details` and `Transfer Details`. These in return are used for various functionalities like `publish task`, `bid for task`, `complete task` and `approve task`. A special transfer money function is only initiated once the task cycle gets completed and the escrow funds are released to the worker. 
 
 All the below mentioned Milestones are going to be an RFP response and this application is going to be fully public.
+  
+NOTE: A barebones UI would also be provided as a part of this submission to help the developer experience the functionality
 
 ### **Milestone 1** -
 
-The main deliverable for this milestone is that we will be building a substrate based services marketplace, where a user gets registered via a registration form and linking their respective wallets, which will be linked to Polkawallet.
+The main deliverable for this milestone will be to allow a user to register via a registration form and link her Polkawallet account along with role based switching from Service Provider view to Customer view and visa versa.
 
 
 | Number        | Deliverable   | Specification  |
 | :-------------|:-------------:| :--------------|
 | 1      | [Documentation](https://github.com/WowLabz/tasking_backend) | We will provide both inline documentation of the code and a tutorial that explains how a user can use DOT Marketplace and understand the flow of tasking pallet.         |
-| 2      | User Registeration | Form based user registeration and linking their respective wallets.         |
-| 3      | Wallet Linking | Support for most Substrate/Polkadot based wallet applications. Smart Contract transfer function allows for the directly wallet-signed transfer of assets from one application/user address to the other.         |
-| 4      | Profile based Screens | Support for role based screens to ease the usability for users  |
+| 2      | User Registration | Form based user registration         |
+| 3      | Wallet Linking | Support for user to link their Polkawallet with the account.     |
+| 4      | Profile | Support for role based screens to ease the usability for users  |
+| 5      | Containerisation | Docker image creation of the first milestone along with a script to run unit tests | 
+| 6      | Documentation | Documentation of code including a document to build the code from source | 
 
 ### **Milestone 2 -**
 
-In continuation to the previous work, we will be working on the rating system over here, which will help the platform provide the distribution of network rewards based on the user&#39;s performance and credible work submitted in the past. This rating will eventually be the motivating factor for performance in the network to be incentivized for quality work. :
+In continuation to the previous work, we will be working on a rating system for both Customer and Service Provider. This rating will eventually be the motivating factor for performance in the network to be incentivized for quality work. :
 
 
 | Number        | Deliverable   | Specification  |
 | :-------------|:-------------:| :--------------|
 | 1      | User Rating Workflows | Support for profile based rating using substrate balances, treasury and staking pallets to be integrated with our custom tasking pallet to weigh the user's performance and rewards based rating system.          |
-| 2      | Programmatic Wallet Transfer | Substrate based Smart Contract transfer function allows for the programmatic/automated transfer of tokens from one application/user via smart contract to the other.         |
-| 3      | Asset Restrictions | Support for the locking of assets by time or by issuer permission, support for expirations and potentially invalidations.         |
-| 4      | Settings View | UI enhancements for event notifications to be customized as per the user profile.         |
+| 2      | Programmatic Wallet Transfer | Substrate based Smart Contract transfer function for programmatic/automated transfer of tokens from one application/user to the other.         |
+| 3      | Asset Restrictions | Support for the locking of assets by time         |
+| 4      | Containerisation | Docker image creation of the second milestone along with a script to run unit tests | 
 
+  
 ### **Milestone 3 -**
 The deliverable for this milestone is that we will be providing a multi user scenario to test the functionality and integrate with storage and backend APIs for multipart data to be uploaded and downloaded.
 
 | Number        | Deliverable   | Specification  |
 | :-------------|:-------------:| :--------------|
 | 1      | Scalability | Support for multiple Substrate seed users to test the functionality and make the task based transactions as per the Status mentioned. Substrate based Lockable currency for reserving user funds and allowing the escrow unlock after the approved status.         |
-| 2      | Profile Tagging | Support for smart tags with the user profiles for programmatic track/domain alignment         |
-| 3      | Storage APIs  | API connections to cloud storage and backend database for async upload/download of multipart data using actix web         |
-| 4      | Testing | Repositories including the deployment and test sections for instructions and scripts to help contributors to package, deploy, run, test.        |
+| 2      | Profile Tagging | Support for smart tags with the user profiles for programmatic track/domain alignment in the future        |
+| 3      | Document Upload  | API connections to cloud storage async upload/download of small files via Rocket      |
+| 4      | Testing | Repositories including the deployment and test sections for instructions and scripts to help contributors to package, deploy, run and test.       |
+| 5      | Documentation | Documentation of the entire pallet, a guide for developers forking the project including FAQ | 
+| 6      | Containerisation | Docker image creation of the entire package  | 
+
 
 ### **Architecture Overview:**
 
@@ -156,55 +170,46 @@ The deliverable for this milestone is that we will be providing a multi user sce
 
 ### **Development team:**
 
-1 backend developer
+1 lead backend developer
+  
+1 full stack developer
 
-1 frontend developer
+1 junior backend developer
 
-1 Designer
+1 Designer 
 
-1 Devops + Technical Writer
+1 Devops engineer 
+ 
+1 Technical Writer 
 
-Total man-hours: 488
+Total man-hours: 620
 
-Total project length: 3 months
+Total project length: 2.5 months
 
 Every milestone will be documented and dockerized.
 
 ### **Additional Project Details**
 
 - Mockups/designs
-  - [http://yoda.to/](http://yoda.to/) (Yoda UI)
+  - [http://yoda.to/](http://yoda.to/) (Yoda UI) // This needs to be fixed 
 - Technology stack to be used
-  - Rust, Substrate, React, Python, MongoDB, Azure Storage, AMQP, Celery, Actix web
+  - Rust, Substrate, React, Python, MongoDB, Azure Storage, AMQP, Celery, Actix web // This needs to be fixed 
 - Documentation of components, protocols, architecture etc.
-  - [https://drive.google.com/drive/folders/173Wup7oxr7IywHFpfrhaTdZtNlkZfFL5?usp=sharing](https://drive.google.com/drive/folders/173Wup7oxr7IywHFpfrhaTdZtNlkZfFL5?usp=sharing)
+  - [https://drive.google.com/drive/folders/173Wup7oxr7IywHFpfrhaTdZtNlkZfFL5?usp=sharing](https://drive.google.com/drive/folders/173Wup7oxr7IywHFpfrhaTdZtNlkZfFL5?usp=sharing) // This needs to be fixed 
 - PoC/MVP
-  - [https://youtu.be/xQNOkXQdDnQ](https://youtu.be/xQNOkXQdDnQ) (Dot Marketplace Video)
-  - [http://65.2.26.225:8001/](http://65.2.26.225:8001/) (Dot Marketplace)
+  - [https://youtu.be/xQNOkXQdDnQ](https://youtu.be/xQNOkXQdDnQ) (Dot Marketplace Video) // Let's remove this 
+  - [http://65.2.26.225:8001/](http://65.2.26.225:8001/) (Dot Marketplace) // Let's remove this 
 
 
 ### **Future Plans** 
 Future releases of the Dot Marketplace include:
 
-| Version 2 | Project Milestones |  |  |
-| --- | --- | --- | --- |
-||| Only 3 milestones ||
-|||| Tasks view for milestones |
-||| % Completion ||
-||| Approval per milestone ||
-||| Payment per milestone ||
-|| Chat |||
-||| Built with a 3rd party tool ||
-|||||
-| Version 3 | Contest Submissions |||
-|| Decentralised Court |||
-||| Conflict Management ||
-|||||
-| Version 4 | Integration with EPNS (Ethereum Push Notification Service) |||
-||| Decentralised Chat using Push Notification Services ||
-|||||
-|| Integration with IPFS |||
-||| Decentralised file storage ||
-|||||
+| Phase        | Deliverable   | Specification  |
+| :-------------|:-------------:| :--------------|
+| 2      | Decentralised Court | A fully decentralised dispute resolution mechanism along with configurible rules for slashing and reputation.          |
+| 3      | Milestone based submissions | Making provisions to breakdown a task into multiple units beign fulfilled in parallel. Also make provisions to allow creation of multiple milestones per project, and approve each before proceeding        |
+| 4     | Decentralised Storage | Integration with IPFS or other decentralised storage platforms         |
+
+
 
 ###
