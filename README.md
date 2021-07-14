@@ -3,9 +3,13 @@
 - Status: Open
 - Proposer: Wow Labz
 - Projects you think this work could be useful for: 
+
 [Polkadot](https://polkadot.network/)
+
 [Kusama](https://kusama.network/)
+
 [Moonbeam](https://moonbeam.network/)
+
 and all Polkadot parachains/ parathreads 
 
 ### **Overview** 📄
