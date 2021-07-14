@@ -8,7 +8,8 @@
 
 Dot Marketplace is a general purpose decentralised marketplace created as a Substrate pallet.  
 
-The current scope of work involves two user types: Customer and Service Provider (or Worker)
+The current scope of work involves two user types: **Customer** and **Service Provider (or Worker)**
+
 The Customer can post a task and invite bids from Service Providers to fulfill it. 
 The Customer needs to deposit the budgeted amount in an escrow for the task to be published. 
 The Service Provider needs to deposit some token to participate in a bid. If not shortlisted, this bid amount is returned. 
