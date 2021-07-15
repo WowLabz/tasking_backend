@@ -70,13 +70,13 @@ Any product or services marketplace would qualify, here are some examples from o
 
 ### **Team members**
 
-- Amit Singh
-- Roshit Omanakuttan
-- Varun Gyanchandani
-- Loakesh Indiran
-- Siddharth Teli 
-- Bharath Kumar
-- Smita Ashok
+- Amit Singh (product manager)
+- Roshit Omanakuttan (technical architect)
+- Varun Gyanchandani (backend lead)
+- Loakesh Indiran (full stack dev)
+- Siddharth Teli (backend dev)
+- Bharath Kumar (tester)
+- Smita Ashok (tech content writer)
 
 
 ### **Team Website**
