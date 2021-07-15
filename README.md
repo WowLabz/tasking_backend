@@ -24,11 +24,11 @@ The following diagrams highlight the workflow:
 
 Customer                   
 :-------------------------:
-<img src = "https://user-images.githubusercontent.com/11945179/125753620-e1b094dc-552e-4a4f-9826-23cbefe3a677.png" widht=350 height=400>
+<img src = "https://user-images.githubusercontent.com/11945179/125753620-e1b094dc-552e-4a4f-9826-23cbefe3a677.png" widht=600>
 
 Worker
 :-------------------------:
-<img src = "https://user-images.githubusercontent.com/11945179/125753635-1cc3170e-7a19-410e-a350-93f75a10e93f.png" widht=350 height=400>
+<img src = "https://user-images.githubusercontent.com/11945179/125753635-1cc3170e-7a19-410e-a350-93f75a10e93f.png" widht=600>
 
 
 Dot Marketplace is being built as a Substrate pallet. It would include boilerplate code that parachain teams can customize as per their own requirements. We believe this project has the potential to transform community participation, engagement and governance in decentralized projects.
