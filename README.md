@@ -146,7 +146,7 @@ The main deliverable for this milestone will be to allow a user to register via 
 | :-------------|:-------------:| :--------------|
 | 0a      | License | Apache 2.0         |
 | 0b      | [Documentation](https://github.com/WowLabz/tasking_backend) | We will provide both inline documentation of the code and a tutorial that explains how a user can use DOT Marketplace and understand the flow of tasking pallet.         |
-| Oc      | Testing Guide | 	Testing | Repositories including the deployment and test sections for instructions and scripts to help contributors to package, deploy, run and test.
+| 0c      | Testing Guide | Repositories including the deployment and test sections for instructions and scripts to help contributors to package, deploy, run and test  |
 | 0d      | Docker Image | Docker image of build with a script to run unit tests | 
 | 1      | Registration Module | Form based user registration         |
 | 2      | Wallet Linking | Support for user to link their Polkawallet with the account.     |
@@ -167,7 +167,7 @@ In continuation to the previous work, we will be working on a rating system for 
 | :-------------|:-------------:| :--------------|
 | 0a      | License | Apache 2.0         |
 | 0b      | [Documentation](https://github.com/WowLabz/tasking_backend) | We will provide both inline documentation of the code and a tutorial that explains how a user can use DOT Marketplace and understand the flow of tasking pallet.         |
-| 0c      | Testing Guide | 	Testing | Repositories including the deployment and test sections for instructions and scripts to help contributors to package, deploy, run and test.
+| 0c      | Testing Guide | Repositories including the deployment and test sections for instructions and scripts to help contributors to package, deploy, run and test  |
 | 0d      | Docker Image | Docker image of build with a script to run unit tests | 
 | 1      | Rating Module | Support for profile based rating using substrate balances, treasury and staking pallets to be integrated with our custom tasking pallet to weigh the user's performance and rewards based rating system.          |
 | 2      | Programmatic Wallet Transfer | Substrate based Smart Contract transfer function for programmatic/automated transfer of tokens from one application/user to the other.         |
@@ -187,7 +187,7 @@ The deliverable for this milestone is that we will be providing a multi user sce
 | :-------------|:-------------:| :--------------|
 | 0a      | License | Apache 2.0         |
 | 0b      | [Documentation](https://github.com/WowLabz/tasking_backend) | Documentation of the entire pallet, a guide for developers forking the project including FAQ 
-| 0c      | Testing Guide | 	Testing | Repositories including the deployment and test sections for instructions and scripts to help contributors to package, deploy, run and test..
+| 0c      | Testing Guide | Repositories including the deployment and test sections for instructions and scripts to help contributors to package, deploy, run and test  |
 | 0d      | Docker Image | Docker image of build with a script to run unit tests | 
 | 1      | Multiuser Module | Support for multiple Substrate seed users to test the functionality and make the task based transactions as per the Status mentioned. Substrate based Lockable currency for reserving user funds and allowing the escrow unlock after the approved status.         |
 | 2      | Tagging Module | Support for smart tags with the user profiles for programmatic track/domain alignment in the future        |
