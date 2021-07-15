@@ -187,14 +187,14 @@ Every milestone will be documented and dockerized.
 ### **Additional Project Details**
 
 - Mockups/designs
-  - [http://yoda.to/](http://yoda.to/) (Yoda UI) // This needs to be fixed 
+  - (Yoda)[http://yoda.to/] (Yoda UI) // This needs to be fixed 
 - Technology stack to be used
   - Rust, Substrate, React, Python, MongoDB, Azure Storage, AMQP, Celery, Actix web // This needs to be fixed 
 - Documentation of components, protocols, architecture etc.
-  - [https://drive.google.com/drive/folders/173Wup7oxr7IywHFpfrhaTdZtNlkZfFL5?usp=sharing](https://drive.google.com/drive/folders/173Wup7oxr7IywHFpfrhaTdZtNlkZfFL5?usp=sharing) // This needs to be fixed 
+  - [User Workflows](https://drive.google.com/drive/folders/1tLV5q5iRt7Rz-F89UBKalfQ_C-JzbUe4?usp=sharing) // This needs to be fixed 
 - PoC/MVP
-  - [https://youtu.be/xQNOkXQdDnQ](https://youtu.be/xQNOkXQdDnQ) (Dot Marketplace Video) // Let's remove this 
-  - [http://65.2.26.225:8001/](http://65.2.26.225:8001/) (Dot Marketplace) // Let's remove this 
+  - [Buildathon Submission](https://youtu.be/xQNOkXQdDnQ) // Let's remove this 
+  - [Dot Marketplace](http://65.2.26.225:8001/)  // Let's remove this 
 
 
 ### **Future Plans** 
