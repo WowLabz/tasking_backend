@@ -15,7 +15,7 @@ The current scope of work involves two user types: **Customer** and **Service Pr
 - The Service Provider needs to deposit some token to participate in a bid. If not shortlisted, this bid amount is returned. 
 - The Service Provider completes the task and submits it. 
 - The Customer accepts the work and the escrowed amount is credited to the Service Providers wallet.
-- The Customer rates the Service Provider and visa versa 
+- The Customer rates the Service Provider and visa versa.
 
 NOTE: If the Customer doesn't accept the work, a dispute is raised and it gets resolved in a decentralised court (out of current scope) which will be implemented in the next phase. 
 
@@ -100,7 +100,7 @@ Wow Labz is one of India&#39;s leading turnkey product development companies.
 Yoda Protocol has been conceptualised and is being built by the team at Wow Labz. The team has previously built a decentralised storage protocol called Lake Network - [https://lakenetwork.io/](https://lakenetwork.io/) in addition to multiple dApps on Ethereum, Stellar, EOS and Hyperledger.
 
 A list of centralised apps published can be found [here](https://www.wowlabz.com/work/).
-A list of awards won by the organisation can be found [here](https://www.wowlabz.com/awards/).
+
 
 ### **Team Code Repos**
 
@@ -136,7 +136,7 @@ NOTE: A barebones UI would also be provided as a part of this submission to help
 Duration: 2 weeks  
 FTEs: 1  
 PTEs: 4  
-Costs: 3,220 USD // rest is funded by Yoda  
+Costs: 3,220 USD    // rest is funded by Yoda  
 
 
 The main deliverable for this milestone will be to allow a user to register via a registration form and link her Polkawallet account along with role based switching from Service Provider view to Customer view and visa versa.
@@ -158,7 +158,7 @@ The main deliverable for this milestone will be to allow a user to register via 
 Duration: 3 weeks  
 FTEs: 2  
 PTEs: 4  
-Costs: 7,440 USD // rest is funded by Yoda  
+Costs: 7,440 USD    // rest is funded by Yoda  
  
 In continuation to the previous work, we will be working on a rating system for both Customer and Service Provider. This rating will eventually be the motivating factor for performance in the network to be incentivized for quality work. :
 
@@ -179,7 +179,7 @@ In continuation to the previous work, we will be working on a rating system for 
 Duration: 3 weeks  
 FTEs: 2  
 PTEs: 5  
-Costs: 8,260 USD // rest is funded by Yoda  
+Costs: 8,260 USD    // rest is funded by Yoda  
 
 The deliverable for this milestone is that we will be providing a multi user scenario to test the functionality and integrate with storage and backend APIs for multipart data to be uploaded and downloaded.
 
@@ -191,7 +191,7 @@ The deliverable for this milestone is that we will be providing a multi user sce
 | 0d      | Docker Image | Docker image of the build | 
 | 1      | Multiuser Module | Support for multiple Substrate seed users to test the functionality and make the task based transactions as per the Status mentioned. Substrate based Lockable currency for reserving user funds and allowing the escrow unlock after the approved status.         |
 | 2      | Tagging Module | Support for smart tags with the user profiles for programmatic track/domain alignment in the future        |
-| 3      | Async Upload Module  | API connections to cloud storage async upload/download of small files via Rocket      |
+| 3      | File Transfer Module  | API connections to cloud storage async upload/download of small files via Rocket      |
 
 
 ### **Summary:**
