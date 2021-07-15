@@ -116,8 +116,8 @@ Profiles of the people working actively on Dot Marketplace
 - [Varun Gyanchandani](https://www.linkedin.com/in/varunsays/)
 - [Siddharth Teli](https://www.linkedin.com/in/siddharthteli/) () 
 - [Loakesh Indiran](https://www.linkedin.com/in/loakesh-indiran-8a2282140)
-- [Bharath Kumar]()
-- [Smita Ashok]()
+- [Bharath Kumar](https://www.linkedin.com/in/bharath-kumar-h-13a572126/)
+- [Smita Ashok](https://www.linkedin.com/in/smita-ashok-823631175/)
 
 ## **Development Roadmap**🔩
 
