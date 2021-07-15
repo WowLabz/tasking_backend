@@ -75,6 +75,8 @@ Any product or services marketplace would qualify, here are some examples from o
 - Varun Gyanchandani
 - Loakesh Indiran
 - Siddharth Teli 
+- Bharath Kumar
+- Smita Ashok
 
 
 ### **Team Website**
@@ -85,7 +87,7 @@ Any product or services marketplace would qualify, here are some examples from o
 - Dot marketplace website is under construction
 
 ### **Legal Structure** 
-- Indian, Private Limited Company <Needs to be updated>
+- Indian, Private Limited Company 
 
 Wow Labz
 
@@ -102,8 +104,7 @@ A list of awards won by the organisation can be found [here](https://www.wowlabz
 
 ### **Team Code Repos**
 
-- [https://github.com/WowLabz](https://github.com/WowLabz) // We don't need this 
-- [https://github.com/orgs/WowLabz/projects](https://github.com/orgs/WowLabz/projects) // Create a sub folder Blockchain and put the tasking pallet there
+- [https://github.com/orgs/WowLabz/projects](https://github.com/orgs/WowLabz/projects) 
 - [https://github.com/WowLabz/tasking\_backend](https://github.com/WowLabz/tasking_backend)
 - [https://github.com/WowLabz/tasking\_frontend](https://github.com/WowLabz/tasking_frontend)
 
@@ -115,6 +116,8 @@ Profiles of the people working actively on Dot Marketplace
 - [Varun Gyanchandani](https://www.linkedin.com/in/varunsays/)
 - [Siddharth Teli](https://www.linkedin.com/in/siddharthteli/) () 
 - [Loakesh Indiran](https://www.linkedin.com/in/loakesh-indiran-8a2282140)
+- [Bharath Kumar]()
+- [Smita Ashok]()
 
 ## **Development Roadmap**🔩
 
@@ -122,7 +125,7 @@ The development of Dot Marketplace is already underway.
 For the custom pallet (tasking) we have: 
 1. Used various Substrate provided traits like - `Currency`, `ExistenceRequirement`, `LockIdentifier`, `LockableCurrency`, `ReservableCurrency` and few more;
 2. Used the pre-existing pallets like `assets`, `balances` and `staking`;
-3. Implemented custom structs like `Task Details` and `Transfer Details`. These in return are used for various functionalities like `create_task`, `bid_task`, `complete_task` and `approve_task`. A special transfer money function is only initiated once the task cycle gets completed and the escrow funds are released to the worker. 
+3. Implemented custom structs like `TaskDetails` and `TransferDetails`. These in return are used for various functionalities like `create_task`, `bid_task`, `complete_task` and `approve_task`. A special transfer money function is only initiated once the task cycle gets completed and the escrow funds are released to the worker. 
 
 All the below mentioned milestones are going to be an RFP response and this application is going to be fully public.
   
@@ -130,14 +133,12 @@ NOTE: A barebones UI would also be provided as a part of this submission to help
 
 ### **Milestone 1**
 
- Duration - 3 weeks
- Full time engineers - 3
- 
+Duration: 2 weeks
+FTEs: 1
+PTEs: 4
+Costs: 3,220 USD // rest is funded by Yoda
 
 
-Total man-hours: 620
-
-Total project length: 2.5 months
 The main deliverable for this milestone will be to allow a user to register via a registration form and link her Polkawallet account along with role based switching from Service Provider view to Customer view and visa versa.
 
 
@@ -154,12 +155,10 @@ The main deliverable for this milestone will be to allow a user to register via 
 
 ### **Milestone 2**
   
- Duration - 3 weeks
- Full time engineers - 3
-  
-Total man-hours: 620
-
-Total project length: 2.5 months
+Duration: 3 weeks
+FTEs: 2
+PTEs: 4
+Costs: 7,440 USD // rest is funded by Yoda
  
 In continuation to the previous work, we will be working on a rating system for both Customer and Service Provider. This rating will eventually be the motivating factor for performance in the network to be incentivized for quality work. :
 
@@ -177,11 +176,10 @@ In continuation to the previous work, we will be working on a rating system for 
   
 ### **Milestone 3**
   
- Duration - 3 weeks
- Full time engineers - 3
-Total man-hours: 620
-
-Total project length: 2.5 months  
+Duration: 3 weeks
+FTEs: 2
+PTEs: 5
+Costs: 8,260 USD // rest is funded by Yoda 
 
 The deliverable for this milestone is that we will be providing a multi user scenario to test the functionality and integrate with storage and backend APIs for multipart data to be uploaded and downloaded.
 
@@ -199,31 +197,26 @@ The deliverable for this milestone is that we will be providing a multi user sce
 
 ### **Development team:**
 
+- 1 technial architect (part time)
 - 1 product manager (part time) 
-- 1 lead backend developer
-- 1 full stack developer
-- 1 junior backend developer
-- 1 Designer (part time)
-- 1 Devops engineer (part time)
-- 1 Technical Writer (part time)
+- 1 lead backend developer (part time)
+- 1 full stack developer (full time)
+- 1 junior backend developer (full time)
+- 1 tester (part time)
+- 1 technical Writer (part time)
 
-Total man-hours: 620
+Total man-hours: 926
+Total duration: 2 months
+Total cost: 18,920 USD
 
-Total project length: 2.5 months
-
-Every milestone will be documented and dockerized.
 
 ### **Additional Project Details**
 
-- Mockups/designs
-  - [Yoda](http://yoda.to/) // This needs to be fixed 
 - Technology stack to be used
-  - Rust, Substrate, React, Python, MongoDB, Azure Storage, AMQP, Celery, Actix web // This needs to be fixed 
+  - Rust, Substrate, React, Python, centralised cloud storage
 - Documentation of components, protocols, architecture etc.
   - [User Workflows](https://drive.google.com/drive/folders/1tLV5q5iRt7Rz-F89UBKalfQ_C-JzbUe4?usp=sharing) // This needs to be fixed 
-- PoC/MVP
-  - [Buildathon Submission](https://youtu.be/xQNOkXQdDnQ) // Let's remove this 
-  - [Dot Marketplace](http://65.2.26.225:8001/)  // Let's remove this 
+
 
 
 ### **Future Plans** 
