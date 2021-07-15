@@ -130,13 +130,10 @@ NOTE: A barebones UI would also be provided as a part of this submission to help
 
 ### **Milestone 1**
 
- - 1 product manager (part time) 
-- 1 lead backend developer
-- 1 full stack developer
-- 1 junior backend developer
-- 1 Designer (part time)
-- 1 Devops engineer (part time)
-- 1 Technical Writer (part time)
+ Duration - 3 weeks
+ Full time engineers - 3
+ 
+
 
 Total man-hours: 620
 
@@ -151,21 +148,15 @@ The main deliverable for this milestone will be to allow a user to register via 
 | Oc      | Testing Guide | 	Core functions will be fully covered by unit tests to ensure functionality and robustness. In the guide, we will describe how to run these tests.
 | 0d      | Docker Image | Docker image of build with a script to run unit tests | 
 | 1      | Registration Module | Form based user registration         |
-| 2      | Registration Module | Form based user registration         |
-| 3      | Wallet Linking | Support for user to link their Polkawallet with the account.     |
-| 4      | Profile Module | Support for role based screens to ease the usability for users  |
+| 2      | Wallet Linking | Support for user to link their Polkawallet with the account.     |
+| 3      | Profile Module | Support for role based screens to ease the usability for users  |
 
 
 ### **Milestone 2**
   
- - 1 product manager (part time) 
-- 1 lead backend developer
-- 1 full stack developer
-- 1 junior backend developer
-- 1 Designer (part time)
-- 1 Devops engineer (part time)
-- 1 Technical Writer (part time)
-
+ Duration - 3 weeks
+ Full time engineers - 3
+  
 Total man-hours: 620
 
 Total project length: 2.5 months
@@ -182,19 +173,12 @@ In continuation to the previous work, we will be working on a rating system for 
 | 1      | Rating Module | Support for profile based rating using substrate balances, treasury and staking pallets to be integrated with our custom tasking pallet to weigh the user's performance and rewards based rating system.          |
 | 2      | Programmatic Wallet Transfer | Substrate based Smart Contract transfer function for programmatic/automated transfer of tokens from one application/user to the other.         |
 | 3      | Asset Restrictions | Support for the locking of assets by time         |
-| 4      | Docker Image | Docker image of build with a script to run unit tests | 
 
   
 ### **Milestone 3**
   
- - 1 product manager (part time) 
-- 1 lead backend developer
-- 1 full stack developer
-- 1 junior backend developer
-- 1 Designer (part time)
-- 1 Devops engineer (part time)
-- 1 Technical Writer (part time)
-
+ Duration - 3 weeks
+ Full time engineers - 3
 Total man-hours: 620
 
 Total project length: 2.5 months  
@@ -204,16 +188,13 @@ The deliverable for this milestone is that we will be providing a multi user sce
 | Number        | Deliverable   | Specification  |
 | :-------------|:-------------:| :--------------|
 | 0a      | License | Apache 2.0         |
-| 0b      | [Documentation](https://github.com/WowLabz/tasking_backend) | We will provide both inline documentation of the code and a tutorial that explains how a user can use DOT Marketplace and understand the flow of tasking pallet.         |
+| 0b      | [Documentation](https://github.com/WowLabz/tasking_backend) | Documentation of the entire pallet, a guide for developers forking the project including FAQ 
 | Oc      | Testing Guide | 	Core functions will be fully covered by unit tests to ensure functionality and robustness. In the guide, we will describe how to run these tests.
 | 0d      | Docker Image | Docker image of build with a script to run unit tests | 
-| 1      | Scalability | Support for multiple Substrate seed users to test the functionality and make the task based transactions as per the Status mentioned. Substrate based Lockable currency for reserving user funds and allowing the escrow unlock after the approved status.         |
+| 1      | Multiuser Module | Support for multiple Substrate seed users to test the functionality and make the task based transactions as per the Status mentioned. Substrate based Lockable currency for reserving user funds and allowing the escrow unlock after the approved status.         |
 | 2      | Tagging Module | Support for smart tags with the user profiles for programmatic track/domain alignment in the future        |
 | 3      | Async Upload Module  | API connections to cloud storage async upload/download of small files via Rocket      |
 | 4      | Testing | Repositories including the deployment and test sections for instructions and scripts to help contributors to package, deploy, run and test.       |
-| 5      | Documentation | Documentation of the entire pallet, a guide for developers forking the project including FAQ | 
-| 6      | Containerisation | Docker image of the entire package  | 
-
 
 
 ### **Development team:**
