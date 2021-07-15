@@ -114,7 +114,7 @@ Profiles of the people working actively on Dot Marketplace
 - [Amit Singh](https://www.linkedin.com/in/startupamit/)
 - [Roshit Omanakuttan](https://www.linkedin.com/in/roshit/)
 - [Varun Gyanchandani](https://www.linkedin.com/in/varunsays/)
-- [Siddharth Teli](https://www.linkedin.com/in/siddharthteli/) () 
+- [Siddharth Teli](https://www.linkedin.com/in/siddharthteli/) 
 - [Loakesh Indiran](https://www.linkedin.com/in/loakesh-indiran-8a2282140)
 - [Bharath Kumar](https://www.linkedin.com/in/bharath-kumar-h-13a572126/)
 - [Smita Ashok](https://www.linkedin.com/in/smita-ashok-823631175/)
@@ -133,10 +133,10 @@ NOTE: A barebones UI would also be provided as a part of this submission to help
 
 ### **Milestone 1**
 
-Duration: 2 weeks
-FTEs: 1
-PTEs: 4
-Costs: 3,220 USD // rest is funded by Yoda
+Duration: 2 weeks  
+FTEs: 1  
+PTEs: 4  
+Costs: 3,220 USD // rest is funded by Yoda  
 
 
 The main deliverable for this milestone will be to allow a user to register via a registration form and link her Polkawallet account along with role based switching from Service Provider view to Customer view and visa versa.
@@ -155,10 +155,10 @@ The main deliverable for this milestone will be to allow a user to register via 
 
 ### **Milestone 2**
   
-Duration: 3 weeks
-FTEs: 2
-PTEs: 4
-Costs: 7,440 USD // rest is funded by Yoda
+Duration: 3 weeks  
+FTEs: 2  
+PTEs: 4  
+Costs: 7,440 USD // rest is funded by Yoda  
  
 In continuation to the previous work, we will be working on a rating system for both Customer and Service Provider. This rating will eventually be the motivating factor for performance in the network to be incentivized for quality work. :
 
@@ -176,10 +176,10 @@ In continuation to the previous work, we will be working on a rating system for 
   
 ### **Milestone 3**
   
-Duration: 3 weeks
-FTEs: 2
-PTEs: 5
-Costs: 8,260 USD // rest is funded by Yoda 
+Duration: 3 weeks  
+FTEs: 2  
+PTEs: 5  
+Costs: 8,260 USD // rest is funded by Yoda  
 
 The deliverable for this milestone is that we will be providing a multi user scenario to test the functionality and integrate with storage and backend APIs for multipart data to be uploaded and downloaded.
 
@@ -195,19 +195,11 @@ The deliverable for this milestone is that we will be providing a multi user sce
 | 4      | Testing | Repositories including the deployment and test sections for instructions and scripts to help contributors to package, deploy, run and test.       |
 
 
-### **Development team:**
+### **Summary:**
 
-- 1 technial architect (part time)
-- 1 product manager (part time) 
-- 1 lead backend developer (part time)
-- 1 full stack developer (full time)
-- 1 junior backend developer (full time)
-- 1 tester (part time)
-- 1 technical Writer (part time)
-
-Total man-hours: 926
-Total duration: 2 months
-Total cost: 18,920 USD
+Team count: 7  
+Total duration: 2 months  
+Total cost: 18,920 USD  
 
 
 ### **Additional Project Details**
