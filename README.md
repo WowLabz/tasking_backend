@@ -187,7 +187,7 @@ Every milestone will be documented and dockerized.
 ### **Additional Project Details**
 
 - Mockups/designs
-  - (Yoda)[http://yoda.to/] (Yoda UI) // This needs to be fixed 
+  - [Yoda](http://yoda.to/) // This needs to be fixed 
 - Technology stack to be used
   - Rust, Substrate, React, Python, MongoDB, Azure Storage, AMQP, Celery, Actix web // This needs to be fixed 
 - Documentation of components, protocols, architecture etc.
