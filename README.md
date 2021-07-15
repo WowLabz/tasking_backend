@@ -206,8 +206,8 @@ Total cost: 18,920 USD
 
 - Technology stack to be used
   - Rust, Substrate, React, Python, centralised cloud storage
-- Documentation of components, protocols, architecture etc.
-  - [User Workflows](https://drive.google.com/drive/folders/1tLV5q5iRt7Rz-F89UBKalfQ_C-JzbUe4?usp=sharing) // This needs to be fixed 
+- Documentation of workflows, architecture etc.
+  - [User Workflows](https://drive.google.com/drive/folders/1tLV5q5iRt7Rz-F89UBKalfQ_C-JzbUe4?usp=sharing)
 
 
 
