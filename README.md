@@ -133,10 +133,10 @@ NOTE: A barebones UI would also be provided as a part of this submission to help
 
 ### **Milestone 1**
 
-Duration: 2 weeks  
-FTEs: 1  
-PTEs: 4  
-Costs: 3,220 USD    // rest is funded by Yoda  
+* **Estimated duration:** 2 weeks
+* **FTE:**  1
+* **PTE:**  4
+* **Costs:** 3,220 USD    // rest is funded by Yoda   
 
 
 The main deliverable for this milestone will be to allow a user to register via a registration form and link her Polkawallet account along with role based switching from Service Provider view to Customer view and visa versa.
@@ -154,11 +154,11 @@ The main deliverable for this milestone will be to allow a user to register via 
 
 
 ### **Milestone 2**
-  
-Duration: 3 weeks  
-FTEs: 2  
-PTEs: 4  
-Costs: 7,440 USD    // rest is funded by Yoda  
+
+* **Estimated duration:** 3 weeks
+* **FTE:**  2
+* **PTE:**  4
+* **Costs:** 7,440 USD    // rest is funded by Yoda  
  
 In continuation to the previous work, we will be working on a rating system for both Customer and Service Provider. This rating will eventually be the motivating factor for performance in the network to be incentivized for quality work. :
 
@@ -175,11 +175,11 @@ In continuation to the previous work, we will be working on a rating system for 
 
   
 ### **Milestone 3**
-  
-Duration: 3 weeks  
-FTEs: 2  
-PTEs: 5  
-Costs: 8,260 USD    // rest is funded by Yoda  
+
+* **Estimated duration:** 3 weeks
+* **FTE:**  2
+* **PTE:**  5
+* **Costs:** 8,260 USD    // rest is funded by Yoda  
 
 The deliverable for this milestone is that we will be providing a multi user scenario to test the functionality and integrate with storage and backend APIs for multipart data to be uploaded and downloaded.
 
@@ -196,9 +196,9 @@ The deliverable for this milestone is that we will be providing a multi user sce
 
 ### **Summary:**
 
-Team count: 7  
-Total duration: 2 months  
-Total cost: 18,920 USD  
+* **Team count:** 7  
+* **Total duration:** 2 months  
+* **Total cost:** 18,920 USD  
 
 
 ### **Additional Project Details**
