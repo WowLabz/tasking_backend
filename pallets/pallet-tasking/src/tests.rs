@@ -96,7 +96,6 @@ fn correct_error_for_completing_a_task_with_incorrect_task_id() {
     })
 }
 
-
 #[test]
 fn correct_error_for_completing_a_task_with_same_publisher_id() {
     new_test_ext().execute_with(|| {
@@ -108,4 +107,28 @@ fn correct_error_for_completing_a_task_with_same_publisher_id() {
             Error::<Test>::UnauthorisedToComplete
         );
     })
+}
+
+#[test]
+fn correct_error_for_completing_a_task_with_incorrect_status() {
+    new_test_ext().execute_with(|| {
+        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec())
+            .unwrap();
+        assert_noop!(
+            PalletTasking::task_completed(Origin::signed(3), 0),
+            Error::<Test>::TaskIsNotInProgress
+        );
+    })
+}
+
+#[test]
+fn it_works_for_completing_a_task_with_correct_details() {
+	new_test_ext().execute_with(|| {
+        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec())
+            .unwrap();
+        PalletTasking::bid_for_task(Origin::signed(3), 0).unwrap();
+        assert_ok!(
+            PalletTasking::task_completed(Origin::signed(3), 0)
+        );
+	})
 }

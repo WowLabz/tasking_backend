@@ -335,22 +335,21 @@ decl_module! {
 
         #[weight = 10_000]
         pub fn task_completed(origin, task_id: u128) {
-             let bidder=ensure_signed(origin)?;
-             ensure!(Self::task_exist(task_id.clone()), Error::<T>::TaskDoesNotExist);
-
+            let bidder = ensure_signed(origin)?;
+            ensure!(Self::task_exist(task_id.clone()), Error::<T>::TaskDoesNotExist);
 
             let mut task_struct = TaskStorage::<T>::get(task_id.clone());
 
             let publisher = task_struct.publisher.clone();
             ensure!(publisher != bidder.clone(), Error::<T>::UnauthorisedToComplete);
 
-             let status = task_struct.status;
-             ensure!(status == Status::InProgress,Error::<T>::TaskIsNotInProgress);
-             
-             task_struct.status = Status::PendingApproval;
+            let status = task_struct.status;
+            ensure!(status == Status::InProgress, Error::<T>::TaskIsNotInProgress);
 
-             TaskStorage::<T>::insert(&task_id,task_struct.clone());
-             Self::deposit_event(RawEvent::TaskCompleted(publisher.clone(), task_id.clone(),bidder.clone()));
+            task_struct.status = Status::PendingApproval;
+
+            TaskStorage::<T>::insert(&task_id,task_struct.clone());
+            Self::deposit_event(RawEvent::TaskCompleted(publisher.clone(), task_id.clone(),bidder.clone()));
         }
 
         #[weight = 10_000]
