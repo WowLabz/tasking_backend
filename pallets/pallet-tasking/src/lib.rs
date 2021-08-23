@@ -23,6 +23,7 @@ use pallet_balances;
 use pallet_staking;
 use sp_std::vec::Vec;
 use utils::*;
+
 #[cfg(test)]
 mod mock;
 
