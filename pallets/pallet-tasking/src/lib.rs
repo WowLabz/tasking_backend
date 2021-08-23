@@ -197,6 +197,7 @@ decl_error! {
         UnauthorisedToBid,
         UnauthorisedToComplete,
         UnauthorisedToApprove,
+        UnauthorisedToProvideCustomerRating,
     }
 }
 
@@ -306,6 +307,7 @@ decl_module! {
             let task_struct=TaskStorage::<T>::get(&task_id);
             
             let customer = task_struct.publisher;
+            ensure!(customer != bidder.clone(), Error::<T>::UnauthorisedToProvideCustomerRating);
             
             // Handling Rating
             // Inserting Worker Rating to RatingMap
