@@ -195,6 +195,7 @@ decl_error! {
         TaskIsNotInProgress,
         TaskIsNotPendingApproval,
         UnauthorisedToBid,
+        UnauthorisedToComplete,
         UnauthorisedToApprove,
     }
 }
@@ -336,14 +337,16 @@ decl_module! {
         pub fn task_completed(origin, task_id: u128) {
              let bidder=ensure_signed(origin)?;
              ensure!(Self::task_exist(task_id.clone()), Error::<T>::TaskDoesNotExist);
-             let mut task_struct=TaskStorage::<T>::get(&task_id);
 
-             let status=task_struct.status;
+
+            let mut task_struct = TaskStorage::<T>::get(task_id.clone());
+
+            let publisher = task_struct.publisher.clone();
+            ensure!(publisher != bidder.clone(), Error::<T>::UnauthorisedToComplete);
+
+             let status = task_struct.status;
              ensure!(status == Status::InProgress,Error::<T>::TaskIsNotInProgress);
-
-             let publisher = task_struct.publisher.clone();
-             ensure!(task_struct.worker_id.clone().unwrap()==bidder, Error::<T>::YouNeverBiddedForThisTask);
-
+             
              task_struct.status = Status::PendingApproval;
 
              TaskStorage::<T>::insert(&task_id,task_struct.clone());
