@@ -123,12 +123,60 @@ fn correct_error_for_completing_a_task_with_incorrect_status() {
 
 #[test]
 fn it_works_for_completing_a_task_with_correct_details() {
-	new_test_ext().execute_with(|| {
+    new_test_ext().execute_with(|| {
         PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec())
             .unwrap();
         PalletTasking::bid_for_task(Origin::signed(3), 0).unwrap();
-        assert_ok!(
-            PalletTasking::task_completed(Origin::signed(3), 0)
+        assert_ok!(PalletTasking::task_completed(Origin::signed(3), 0));
+    })
+}
+
+#[test]
+fn correct_error_for_approving_a_task_with_incorrect_task_id() {
+    new_test_ext().execute_with(|| {
+        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec())
+            .unwrap();
+        PalletTasking::bid_for_task(Origin::signed(3), 0).unwrap();
+        assert_noop!(
+            PalletTasking::approve_task(Origin::signed(3), 10, 4),
+            Error::<Test>::TaskDoesNotExist
         );
-	})
+    })
+}
+
+#[test]
+fn correct_error_for_approving_a_task_with_incorrect_status() {
+    new_test_ext().execute_with(|| {
+        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec())
+            .unwrap();
+        assert_noop!(
+            PalletTasking::approve_task(Origin::signed(3), 0, 5),
+            Error::<Test>::TaskIsNotPendingApproval
+        );
+    })
+}
+
+#[test]
+fn correct_error_for_approving_a_task_with_worker_id() {
+    new_test_ext().execute_with(|| {
+        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec())
+            .unwrap();
+        PalletTasking::bid_for_task(Origin::signed(3), 0).unwrap();
+        PalletTasking::task_completed(Origin::signed(3), 0).unwrap();
+        assert_noop!(
+            PalletTasking::approve_task(Origin::signed(3), 0, 5),
+            Error::<Test>::UnauthorisedToApprove
+        );
+    })
+}
+
+#[test]
+fn it_works_for_approving_a_task_with_correct_details() {
+    new_test_ext().execute_with(|| {
+        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec())
+            .unwrap();
+        PalletTasking::bid_for_task(Origin::signed(3), 0).unwrap();
+        PalletTasking::task_completed(Origin::signed(3), 0).unwrap();
+        assert_ok!(PalletTasking::approve_task(Origin::signed(1), 0, 5));
+    })
 }
