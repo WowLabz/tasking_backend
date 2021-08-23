@@ -180,3 +180,18 @@ fn it_works_for_approving_a_task_with_correct_details() {
         assert_ok!(PalletTasking::approve_task(Origin::signed(1), 0, 5));
     })
 }
+
+#[test]
+fn correct_error_for_providing_customer_rating_with_publisher_id() {
+    new_test_ext().execute_with(|| {
+        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec())
+            .unwrap();
+        PalletTasking::bid_for_task(Origin::signed(3), 0).unwrap();
+        PalletTasking::task_completed(Origin::signed(3), 0).unwrap();
+        PalletTasking::approve_task(Origin::signed(1), 0, 5).unwrap();
+        assert_noop!(
+            PalletTasking::provide_customer_rating(Origin::signed(1), 0, 5),
+            Error::<Test>::UnauthorisedToProvideCustomerRating
+        );
+    })
+}
