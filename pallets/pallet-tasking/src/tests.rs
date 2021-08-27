@@ -1,6 +1,7 @@
 use crate::{mock::*, Error, Status, TaskDetails};
 use frame_support::{assert_noop, assert_ok, dispatch::DispatchError};
-use frame_system::ensure_signed;
+use frame_system::{ensure_signed, RawOrigin};
+use crate::mock::ExtBuilder;
 
 #[test]
 fn correct_error_for_unsigned_origin_while_creating_task_with_correct_() {
@@ -131,6 +132,7 @@ fn it_works_for_completing_a_task_with_correct_details() {
     })
 }
 
+// Failure for approving task
 #[test]
 fn correct_error_for_approving_a_task_with_incorrect_task_id() {
     new_test_ext().execute_with(|| {
@@ -144,6 +146,7 @@ fn correct_error_for_approving_a_task_with_incorrect_task_id() {
     })
 }
 
+// Failure for approving task
 #[test]
 fn correct_error_for_approving_a_task_with_incorrect_status() {
     new_test_ext().execute_with(|| {
@@ -156,6 +159,7 @@ fn correct_error_for_approving_a_task_with_incorrect_status() {
     })
 }
 
+// Failure for approving task
 #[test]
 fn correct_error_for_approving_a_task_with_worker_id() {
     new_test_ext().execute_with(|| {
@@ -170,6 +174,7 @@ fn correct_error_for_approving_a_task_with_worker_id() {
     })
 }
 
+// Success for approving task
 #[test]
 fn it_works_for_approving_a_task_with_correct_details() {
     new_test_ext().execute_with(|| {
@@ -181,6 +186,7 @@ fn it_works_for_approving_a_task_with_correct_details() {
     })
 }
 
+// Failure for providing customer rating
 #[test]
 fn correct_error_for_providing_customer_rating_with_publisher_id() {
     new_test_ext().execute_with(|| {
@@ -194,4 +200,31 @@ fn correct_error_for_providing_customer_rating_with_publisher_id() {
             Error::<Test>::UnauthorisedToProvideCustomerRating
         );
     })
+}
+
+// Success for provide customer rating
+#[test]
+fn it_works_for_providing_customer_rating_with_correct_details() {
+    ExtBuilder::default().with_balances(
+        vec![
+            (1, 100000),
+            (2, 100000),
+            (3, 100000),
+            (4, 100000),
+            (5, 100000),
+            (6, 100000),
+            (7, 100000),
+        ]
+    ).build().execute_with(|| {
+        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec())
+            .unwrap();
+        PalletTasking::bid_for_task(Origin::signed(3), 0).unwrap();
+        PalletTasking::task_completed(Origin::signed(3), 0).unwrap();
+        PalletTasking::approve_task(Origin::signed(1), 0, 5).unwrap();
+        assert_ok!(PalletTasking::provide_customer_rating(
+            Origin::signed(3),
+            0,
+            5
+        ));
+    });
 }
