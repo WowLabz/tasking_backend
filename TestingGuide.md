@@ -11,7 +11,19 @@ or use make alias
 Run in Docker
 First, install Docker and Docker Compose.
 
-Then run the following command to start a single node development chain.
+'sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose'
+
+'sudo chmod +x /usr/local/bin/docker-compose'
+
+To check the compose version
+
+'docker-compose --version'
+
+To run the docker-compose build
+
+'sudo docker-compose up --build -d' 
+
+Then run the following command to start the server.
 
 ../scripts/docker_run.sh
 This command will firstly compile your code, and then start a local development network. You can also replace the default command (cargo build --release && ./target/release/node-template --dev --ws-external) by appending your own. A few useful ones are as follow.
