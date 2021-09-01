@@ -11,17 +11,17 @@ or use make alias
 Run in Docker
 First, install Docker and Docker Compose.
 
-'sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose'
+`sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose`
 
-'sudo chmod +x /usr/local/bin/docker-compose'
+`sudo chmod +x /usr/local/bin/docker-compose`
 
 To check the compose version
 
-'docker-compose --version'
+`docker-compose --version`
 
 To run the docker-compose build
 
-'sudo docker-compose up --build -d' 
+`sudo docker-compose up --build -d` 
 
 Then run the following command to start the server.
 
