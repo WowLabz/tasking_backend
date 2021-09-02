@@ -44,6 +44,21 @@ To stop the service
 
 Then run the following command to start the server.
 
+# Build the Authentication Service
+
+To setup the Auth Service
+
+Clone the WowLabz [Dot_Marketplace_Authentication_Service](https://github.com/WowLabz/authentication_service.git)
+
+to initiate the service run the following commands
+
+Run `sudo docker-compose up -d`
+
+To check the running container run `sudo docker ps`
+    Run the following commands from your terminals for individual repos (cd)
+    
+    sudo docker-compose up --build -d
+
 # Run UI
 
 To setup the UI
@@ -56,26 +71,17 @@ Run `sudo docker-compose up -d`
 
 Once the build is complete, access the port `9001` from your localhost
 
-# Build the Authentication Service
 
-To setup the Auth Service
 
-Clone the WowLabz [Dot_Marketplace_Authentication_Service](https://github.com/WowLabz/authentication_service.git)
+# Run backend node
 
-to initiate the service run the following commands
+To setup the Backend Node
+
+Clone the WowLabz [Dot_Marketplace_backend](https://github.com/WowLabz/tasking_backend.git)
+
+to intitate the docker build for UI
 
 Run `sudo docker-compose up -d`
-
-To check the running container run `sudo docker ps`
-
-# Run Substrate node without re-compiling
-
-
-
-../scripts/docker_run.sh
-This command will firstly compile your code, and then start a local development network. You can also replace the default command (cargo build --release && ./target/release/node-template --dev --ws-external) by appending your own. A few useful ones are as follow.
-
-
 
 
 
