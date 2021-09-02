@@ -3,13 +3,25 @@ First, complete the basic Rust setup instructions.
 
 Use Rust's native cargo command to build and launch the node:
 
-`cargo run --release -- --dev --tmp`
-or use make alias
+`cargo build --release`
 
-`make run`
+`./target/release/node-template \
+    --base-path /tmp/node \
+    --port 30333 \
+    --ws-port 9944 \
+    --rpc-port 9933 \
+    --rpc-cors all \
+    --validator \
+    --ws-external \
+    --rpc-external \
+    --rpc-methods=Unsafe \
+    --prometheus-external \
+    --name pallet_tasking_backend \
+    --dev \`
 
 Run in Docker
 First, install Docker and Docker Compose.
+For a Ubuntu Machine
 
 `sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose`
 
@@ -21,7 +33,11 @@ To check the compose version
 
 To run the docker-compose build
 
-`sudo docker-compose up --build -d` 
+`sudo docker-compose up -d` Or to rebuild any image `sudo docker-compose up --build -d` 
+
+To stop the service
+
+`sudo docker-compose down`
 
 Then run the following command to start the server.
 
