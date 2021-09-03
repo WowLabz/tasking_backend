@@ -7,31 +7,43 @@ Run in Docker
 
 # Install Docker-Compose
 
-First, install Docker and Docker Compose.
-For a Ubuntu/Linux Machine
-
-`curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose`
-
-`chmod +x /usr/local/bin/docker-compose`
-
-To check the compose version
-
-`docker-compose --version`
-
-To run the docker-compose build
-
-`docker-compose up -d` Or to rebuild any image `docker-compose up --build -d` 
-
-To stop the service
-
-`docker-compose down`
-
-Then run the following command to start the server.
+First, install Docker and Docker Compose. Follow the basic installation guide [Docker](https://docs.docker.com/engine/install/) and [Docker Compose](https://docs.docker.com/compose/install/)
 
 For a Windows Machine
 
 [Follow the guide mentioned here](https://docs.docker.com/desktop/windows/install/)
 
+Installation from the terminal on a Ubuntu/Linux Machine 
+
+`curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose`
+
+`chmod +x /usr/local/bin/docker-compose`
+
+# Docker quick guide
+
+To check the compose version
+
+`docker-compose --version`
+
+To run the build
+
+`docker-compose up --build -d` 
+
+To stop the service
+
+`docker-compose down`
+
+To view the installed images locally
+
+`docker images`
+
+To delete the images
+
+`docker rmi <IMAGE ID>`
+
+Then run the following command to start the server.
+
+To get more idea about the project and the build please refer the link <To be added>
 
 # Run backend node
 
