@@ -1,23 +1,7 @@
 ## Setup ##
-First, complete the basic Rust setup instructions.
+First, complete the basic Rust setup instructions. If you want to play at the code level.
 
-Use Rust's native cargo command to build and launch the node:
-
-`cargo build --release`
-
-`./target/release/node-template \
-    --base-path /tmp/node \
-    --port 30333 \
-    --ws-port 9944 \
-    --rpc-port 9933 \
-    --rpc-cors all \
-    --validator \
-    --ws-external \
-    --rpc-external \
-    --rpc-methods=Unsafe \
-    --prometheus-external \
-    --name pallet_tasking_backend \
-    --dev \`
+If No, then plz follow this simple guide to make your life easy :)
 
 Run in Docker
 
@@ -26,9 +10,9 @@ Run in Docker
 First, install Docker and Docker Compose.
 For a Ubuntu/Linux Machine
 
-`sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose`
+`curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose`
 
-`sudo chmod +x /usr/local/bin/docker-compose`
+`chmod +x /usr/local/bin/docker-compose`
 
 To check the compose version
 
@@ -36,13 +20,17 @@ To check the compose version
 
 To run the docker-compose build
 
-`sudo docker-compose up -d` Or to rebuild any image `sudo docker-compose up --build -d` 
+`docker-compose up -d` Or to rebuild any image `docker-compose up --build -d` 
 
 To stop the service
 
-`sudo docker-compose down`
+`docker-compose down`
 
 Then run the following command to start the server.
+
+For a Windows Machine
+
+[Follow the guide mentioned here](https://docs.docker.com/desktop/windows/install/)
 
 # Build the Authentication Service
 
@@ -52,12 +40,9 @@ Clone the WowLabz [Dot_Marketplace_Authentication_Service](https://github.com/Wo
 
 to initiate the service run the following commands
 
-Run `sudo docker-compose up -d`
+Run `docker-compose up --build -d`
 
-To check the running container run `sudo docker ps`
-    Run the following commands from your terminals for individual repos (cd)
-    
-    sudo docker-compose up --build -d
+To check the running container run `docker ps`
 
 # Run UI
 
@@ -67,10 +52,9 @@ Clone the WowLabz [Dot_Marketplace_Frontend](https://github.com/WowLabz/tasking_
 
 to intitate the docker build for UI
 
-Run `sudo docker-compose up -d`
+Run `docker-compose up --build -d`
 
 Once the build is complete, access the port `9001` from your localhost
-
 
 
 # Run backend node
@@ -79,29 +63,29 @@ To setup the Backend Node
 
 Clone the WowLabz [Dot_Marketplace_backend](https://github.com/WowLabz/tasking_backend.git)
 
-to intitate the docker build for UI
+Run `docker-compose up --build -d`
 
-Run `sudo docker-compose up -d`
+In order to check for the status of the running node
+Run 'docker-compose logs <CONTAINER ID>`
 
+# Launch Interactive Bash Session with the Node
+    
+`docker exec -it <CONTAINER ID> bash` |OR| `docker exec -it <CONTAINER ID> /bin/sh`
+    
+# Run Tests
+    
+`cargo test` (This will run all the test cases)
+ 
+ `cargo test <test_name>` (For checking any specific test case)
 
+# Interacting with Polkadot Js Apps Explorer
+    
+![BlocksFinality](https://user-images.githubusercontent.com/11945179/131971129-d166e10f-5efe-4d1a-8fab-082ba8a13a07.png)
+    
+To check the working of palletTasking go to Developers -> Extrinsics -> Submit the following Extrinsic -> palletTasking -> createTask (Starting Point, explore further we have worked on the full tasking lifecycle) 
 
-# Run Substrate node without re-compiling
-../scripts/docker_run.sh ./target/release/node-template --dev --ws-external
-
-# Purge the local dev chain
-../scripts/docker_run.sh ./target/release/node-template purge-chain --dev
-
-# Check whether the code is compilable
-../scripts/docker_run.sh cargo check
-Automation Testing
-The make tests command will launch comprehensive test suite.
-
-To launch only pallet tests run
-
-`cargo test <test-name>`
-Manual testing
-Launch node
-
-make run
-Use this link to open the Polkadot JS Apps UI and automatically configure the UI to connect to the local node.
+![ChainExtrinsics](https://user-images.githubusercontent.com/11945179/131971070-580769be-7827-429e-8d9b-7216997813ca.png)
+    
+    
+To read about the working of the pallet please refer the guide [Description](https://github.com/WowLabz/tasking_backend/tree/dev#readme)
 
