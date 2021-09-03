@@ -32,6 +32,18 @@ For a Windows Machine
 
 [Follow the guide mentioned here](https://docs.docker.com/desktop/windows/install/)
 
+
+# Run backend node
+
+To setup the Backend Node
+
+Clone the WowLabz [Dot_Marketplace_backend](https://github.com/WowLabz/tasking_backend.git)
+
+Run `docker-compose up --build -d`
+
+In order to check for the status of the running node
+Run `docker-compose logs <CONTAINER ID>`
+
 # Build the Authentication Service
 
 To setup the Auth Service
@@ -56,17 +68,7 @@ Run `docker-compose up --build -d`
 
 Once the build is complete, access the port `9001` from your localhost
 
-
-# Run backend node
-
-To setup the Backend Node
-
-Clone the WowLabz [Dot_Marketplace_backend](https://github.com/WowLabz/tasking_backend.git)
-
-Run `docker-compose up --build -d`
-
-In order to check for the status of the running node
-Run 'docker-compose logs <CONTAINER ID>`
+![Screenshot_15](https://user-images.githubusercontent.com/11945179/131972401-6a700ce1-d938-45e2-931d-a50986daac12.png)
 
 # Launch Interactive Bash Session with the Node
     
