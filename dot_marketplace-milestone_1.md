@@ -9,7 +9,7 @@
 
 | Number | Deliverable | Accepted | Link | Evaluation Notes |
 | ------ | ----------- | :------: | ---- |----------------- |
-| 0a. | License | <ul><li>[x] </li></ul> | [Apache](https://github.com/WowLabz/tasking_backend/blob/main/LICENSE)| — |
+| 0a. | License | <ul><li>[x] </li></ul> | [Apache 2.0](https://github.com/WowLabz/tasking_backend/blob/main/LICENSE)| — |
 | 0b.  | Documentation | <ul><li>[x] </li></ul> | Pallet Tasking Backend ([github.io](https://github.com/WowLabz/tasking_backend/blob/main/pallets/pallet-tasking/src/lib.rs), node ([Readme](https://github.com/WowLabz/tasking_backend/tree/dev#readme)) | Good setup guide, great inline documentation. |
 | 0c.  | Testing Guide | <ul><li>[x] </li></ul> | [Testing Guide](https://github.com/WowLabz/tasking_backend/blob/Phase1_Milestone1/TestingGuide.md)| — |
 | 1 | User profile Modules | <ul><li>[x] </li></ul> | [Source code](https://github.com/WowLabz/tasking_frontend/tree/Phase1_Milestone1/src/View/Modules/Authorization)| User profile modules  |
