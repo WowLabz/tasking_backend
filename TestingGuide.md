@@ -21,9 +21,10 @@ Installation from the terminal on a Ubuntu/Linux Machine
 
 # Docker quick guide
 
+```bash
 To check the compose version
 
-`docker-compose --version`
+docker-compose --version
 
 To run the build
 
@@ -41,8 +42,7 @@ To delete the images
 
 `docker rmi <IMAGE ID>`
 
-Then run the following command to start the server.
-
+```
 To get more idea about the project and the build please refer the link <To be added>
 
 # Run backend node
