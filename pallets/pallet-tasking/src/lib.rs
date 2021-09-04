@@ -11,7 +11,7 @@ use frame_support::sp_runtime::{
 /// Learn more about FRAME and the core library of Substrate FRAME pallets:
 /// https://substrate.dev/docs/en/knowledgebase/runtime/frame
 use frame_support::{
-    debug, decl_error, decl_event, decl_module, decl_storage, dispatch, ensure,
+    decl_error, decl_event, decl_module, decl_storage, dispatch, ensure, runtime_print,
     traits::{
         Currency, ExistenceRequirement, Get, LockIdentifier, LockableCurrency, ReservableCurrency,
         WithdrawReasons,
@@ -71,7 +71,7 @@ pub struct User<AccountId> {
 impl<AccountId> User<AccountId> {
     pub fn new(account_id: AccountId, user_type: UserType, ratings_vec: Vec<u8>) -> Self {
         let rating = Some(Self::get_list_average(ratings_vec.clone()));
-        debug::info!("Ratings clac for new User struct: {:#?}", rating.clone());
+        runtime_print!("Ratings clac for new User struct: {:#?}", rating.clone());
 
         Self {
             account_id,
@@ -82,7 +82,7 @@ impl<AccountId> User<AccountId> {
     }
 
     pub fn get_list_average(list: Vec<u8>) -> u8 {
-        debug::info!("List: {:#?}", list.clone());
+        runtime_print!("List: {:#?}", list.clone());
         let list_len: u8 = list.len() as u8;
 
         if list_len == 1 {
@@ -93,9 +93,9 @@ impl<AccountId> User<AccountId> {
         for item in list.iter() {
             total_sum += item;
         }
-        debug::info!("Total sum of Rating: {:#?}", total_sum.clone());
+        runtime_print!("Total sum of Rating: {:#?}", total_sum.clone());
         let average = total_sum / list_len;
-        debug::info!("Average Rating: {:#?}", average.clone());
+        runtime_print!("Average Rating: {:#?}", average.clone());
         average
     }
 }
@@ -222,7 +222,7 @@ decl_module! {
          let current_count = Self::get_task_count();
 
          let result_from_locking = T::Currency::set_lock(LOCKSECRET, &sender, task_cost.clone(), WithdrawReasons::TRANSACTION_PAYMENT);
-         debug::info!("result_from_locking : {:#?}", result_from_locking);
+         runtime_print!("result_from_locking : {:#?}", result_from_locking);
 
          let temp= TaskDetails {
               task_id: current_count.clone(),
@@ -259,7 +259,7 @@ decl_module! {
             Self::deposit_event(RawEvent::TaskIsBidded(bidder.clone(), task_id.clone()));
 
             let task_details_by_helper = Self::get_task(task_id.clone());
-            debug::info!("task_details_by_helper : {:#?}", task_details_by_helper);
+            runtime_print!("task_details_by_helper : {:#?}", task_details_by_helper);
         }
 
         #[weight = 10_000]
@@ -277,18 +277,18 @@ decl_module! {
 
             // Inserting Worker Rating to RatingMap
             let existing_bidder_ratings: User<T::AccountId> = WorkerRatings::<T>::get(&bidder);
-            debug::info!("existing_bidder_ratings: {:#?}", existing_bidder_ratings.clone());
+            runtime_print!("existing_bidder_ratings: {:#?}", existing_bidder_ratings.clone());
 
             let mut temp_rating_vec = Vec::<u8>::new();
             for rating in existing_bidder_ratings.ratings_vec {
                 temp_rating_vec.push(rating);
             }
             temp_rating_vec.push(rating_for_the_worker);
-            debug::info!("Temp Rating Vec: {:#?}", temp_rating_vec.clone());
+            runtime_print!("Temp Rating Vec: {:#?}", temp_rating_vec.clone());
 
             let curr_bidder_ratings = User::new(bidder.clone(), UserType::Worker, temp_rating_vec);
             WorkerRatings::<T>::insert(bidder.clone(), curr_bidder_ratings.clone());
-            debug::info!("Calculated Rating: {:#?}", curr_bidder_ratings.rating);
+            runtime_print!("Calculated Rating: {:#?}", curr_bidder_ratings.rating);
 
 
             // Updating Task Status
@@ -312,18 +312,18 @@ decl_module! {
             // Handling Rating
             // Inserting Worker Rating to RatingMap
             let existing_customer_rating: User<T::AccountId> = CustomerRatings::<T>::get(&customer);
-            debug::info!("existing_customer_ratings: {:#?}", existing_customer_rating.clone());
+            runtime_print!("existing_customer_ratings: {:#?}", existing_customer_rating.clone());
 
             let mut temp_rating_vec = Vec::<u8>::new();
             for rating in existing_customer_rating.ratings_vec {
                 temp_rating_vec.push(rating);
             }
             temp_rating_vec.push(rating_for_customer);
-            debug::info!("Temp Rating Vec: {:#?}", temp_rating_vec.clone());
+            runtime_print!("Temp Rating Vec: {:#?}", temp_rating_vec.clone());
 
             let curr_customer_ratings = User::new(customer.clone(), UserType::Customer, temp_rating_vec);
             CustomerRatings::<T>::insert(customer.clone(), curr_customer_ratings.clone());
-            debug::info!("Calculated Rating: {:#?}", curr_customer_ratings.rating);
+            runtime_print!("Calculated Rating: {:#?}", curr_customer_ratings.rating);
 
             // Unlocking funds from escrow and transfer
             let transfer_amount = task_struct.cost;
@@ -360,7 +360,7 @@ decl_module! {
 
             ensure!(TaskStorage::<T>::contains_key(&task_id), Error::<T>::TaskDoesNotExist);
             let mut temp_staker_list = Self::staker_list(&task_id);
-            debug::info!("Calling function using get method {:?}", &temp_staker_list);
+            runtime_print!("Calling function using get method {:?}", &temp_staker_list);
 
             match temp_staker_list.binary_search(&staker) {
                 // If the search succeeds, the caller is already a member, so just return
@@ -398,7 +398,7 @@ decl_module! {
                 current_balance = AccountBalances::<T>::get(&sender);
             }
 
-            debug::info!("Account Balance: {:?}", current_balance);
+            runtime_print!("Account Balance: {:?}", current_balance);
             Self::deposit_event(RawEvent::AccBalance(sender, current_balance));
             Ok(())
         }
@@ -409,13 +409,13 @@ decl_module! {
 
             let acc_balance = T::Currency::total_balance(&sender);
             // let acc_balance = AccountBalances::<T>::get(&sender);
-            debug::info!("get_data_from_store balance: {:?}", acc_balance);
+            runtime_print!("get_data_from_store balance: {:?}", acc_balance);
 
             let task_details = TaskStorage::<T>::get(&task_id);
-            debug::info!("get_data_from_store taskstore: {:#?}", task_details);
+            runtime_print!("get_data_from_store taskstore: {:#?}", task_details);
 
             let task_details_by_helper = Self::get_task(task_id.clone());
-            debug::info!("task_details_by_helper : {:#?}", task_details_by_helper);
+            runtime_print!("task_details_by_helper : {:#?}", task_details_by_helper);
 
             Ok(())
         }
@@ -438,13 +438,13 @@ decl_module! {
             let sender_account_balance = T::Currency::total_balance(&sender);
 
             // let is_valid_to_transfer = sender_account_balance.clone() < transfer_amount.clone();
-            // debug::info!("is_valid_to_transfer {:?}", is_valid_to_transfer);
+            // runtime_print!("is_valid_to_transfer {:?}", is_valid_to_transfer);
             // ensure!(!is_valid_to_transfer, Error::<T>::NotEnoughBalance);
 
             let to_account_balance = T::Currency::total_balance(&to);
 
             let result = T::Currency::transfer(&sender, &to, transfer_amount, ExistenceRequirement::KeepAlive)?;
-            debug::info!("Transfer Result {:?}", result);
+            runtime_print!("Transfer Result {:?}", result);
 
             let updated_sender_account_balance = T::Currency::total_balance(&sender);
             let updated_to_account_balance = T::Currency::total_balance(&to);
@@ -462,14 +462,14 @@ decl_module! {
             };
             details.push(transfer_details);
             Transfers::<T>::put(details);
-            debug::info!("Transfer Details Sender: {:#?}", &sender);
-            debug::info!("Transfer Details Before Balance{:#?}", sender_account_balance.clone());
-            debug::info!("Transfer Details After Balance: {:#?}", updated_sender_account_balance.clone());
-            debug::info!("Transfer Details To Account: {:#?}", &to);
-            debug::info!("Transfer Details Before Balance {:#?}", to_account_balance.clone());
-            debug::info!("Transfer Details After Balance: {:#?}", updated_to_account_balance.clone());
+            runtime_print!("Transfer Details Sender: {:#?}", &sender);
+            runtime_print!("Transfer Details Before Balance{:#?}", sender_account_balance.clone());
+            runtime_print!("Transfer Details After Balance: {:#?}", updated_sender_account_balance.clone());
+            runtime_print!("Transfer Details To Account: {:#?}", &to);
+            runtime_print!("Transfer Details Before Balance {:#?}", to_account_balance.clone());
+            runtime_print!("Transfer Details After Balance: {:#?}", updated_to_account_balance.clone());
             let transfers_in_store = Self::get_transfers();
-            debug::info!("Transfer Details From Vec: {:#?}", &transfers_in_store[0]);
+            runtime_print!("Transfer Details From Vec: {:#?}", &transfers_in_store[0]);
             Self::deposit_event(RawEvent::TransferMoney(sender.clone(), sender_account_balance.clone(), updated_sender_account_balance.clone(), to.clone(), to_account_balance.clone(), updated_to_account_balance.clone()));
             Ok(())
         }
