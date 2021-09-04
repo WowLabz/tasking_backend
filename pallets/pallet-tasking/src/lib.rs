@@ -266,7 +266,7 @@ decl_module! {
         pub fn approve_task(origin,task_id: u128, rating_for_the_worker: u8) {
             let publisher=ensure_signed(origin)?;
             ensure!(Self::task_exist(task_id.clone()), Error::<T>::TaskDoesNotExist);
-            
+
             let mut task_struct = TaskStorage::<T>::get(&task_id);
             let status = task_struct.status;
             ensure!(status == Status::PendingApproval, Error::<T>::TaskIsNotPendingApproval);
@@ -289,15 +289,15 @@ decl_module! {
             let curr_bidder_ratings = User::new(bidder.clone(), UserType::Worker, temp_rating_vec);
             WorkerRatings::<T>::insert(bidder.clone(), curr_bidder_ratings.clone());
             debug::info!("Calculated Rating: {:#?}", curr_bidder_ratings.rating);
-            
-            
+
+
             // Updating Task Status
             task_struct.status = Status::Completed;
             TaskStorage::<T>::insert(&task_id,task_struct.clone());
-            
+
             Self::deposit_event(RawEvent::TaskApproved(task_id.clone()));
         }
-        
+
         // Worker provies the rating for the customer
         // Funds from Escrow gets unlocked
         // and the funds get transfered
@@ -305,10 +305,10 @@ decl_module! {
         pub fn provide_customer_rating(origin, task_id: u128, rating_for_customer: u8) {
             let bidder = ensure_signed(origin)?;
             let task_struct=TaskStorage::<T>::get(&task_id);
-            
+
             let customer = task_struct.publisher;
             ensure!(customer != bidder.clone(), Error::<T>::UnauthorisedToProvideCustomerRating);
-            
+
             // Handling Rating
             // Inserting Worker Rating to RatingMap
             let existing_customer_rating: User<T::AccountId> = CustomerRatings::<T>::get(&customer);
