@@ -1,8 +1,9 @@
 # Evaluation
 
-- **Status:** Accepted
-- **PR Link:** https://github.com/w3f/Grant-Milestone-Delivery/pull/496
-- **Milestone:** 1
+* **Status:** Accepted
+* **PR Link:** https://github.com/w3f/Grant-Milestone-Delivery/pull/496
+* **Milestone:** 1
+* **Kusama Identity:** [HFG4FvoJv8uanizzetS1tPA6wigNAiKuEHKcm1NaKNNDwve](https://polkascan.io/pre/kusama/account/HFG4FvoJv8uanizzetS1tPA6wigNAiKuEHKcm1NaKNNDwve) // Need to be provided
 - **Previously successfully merged evaluation:** All by semuelle
 
 **The [invoice form :pencil:](https://docs.google.com/forms/d/e/1FAIpQLSfmNYaoCgrxyhzgoKQ0ynQvnNRoTmgApz9NrMp-hd8mhIiO0A/viewform) has been filled out correctly for this milestone and the delivery is according to the official [milestone delivery guidelines](https://github.com/w3f/Grants-Program/blob/master/docs/milestone-deliverables-guidelines.md).**
