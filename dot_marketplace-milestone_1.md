@@ -1,8 +1,8 @@
 # Milestone Delivery :mailbox:
 
-**The [invoice form :pencil:](https://forms.gle/8Wx7nxtq8fKrsuEz8) has been filled out correctly for this milestone and the delivery is according to the official [milestone delivery guidelines](https://github.com/w3f/General-Grants-Program/blob/master/grants/milestone-deliverables-guidelines.md).**
+**The [invoice form :pencil:](https://docs.google.com/forms/d/e/1FAIpQLSdSqj2vYjvpiIytkjcc40Pwl0Eg76WGUAq5L9e8eFuuOegmLw/viewform) has been filled out correctly for this milestone and the delivery is according to the official [milestone delivery guidelines](https://github.com/w3f/General-Grants-Program/blob/master/grants/milestone-deliverables-guidelines.md).**
 
-* **PR Link:** https://github.com/w3f/Grant-Milestone-Delivery/pull/496
+* **PR Link:** https://github.com/w3f/Grants-Program/pull/496
 * **Milestone Number:** 1
 
 
