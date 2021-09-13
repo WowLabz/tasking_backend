@@ -3,7 +3,7 @@
 * **Status:** Accepted
 * **PR Link:** https://github.com/w3f/Grant-Milestone-Delivery/pull/496
 * **Milestone:** 1
-* **Kusama Identity:** [HFG4FvoJv8uanizzetS1tPA6wigNAiKuEHKcm1NaKNNDwve](https://polkascan.io/pre/kusama/account/HFG4FvoJv8uanizzetS1tPA6wigNAiKuEHKcm1NaKNNDwve) // Need to be provided
+* **Kusama Identity:** [JEntf7sDFGDzHy2oTUKY3Ug34nNuQsfc2skWAAWarC9LyWu](https://polkascan.io/kusama/account/JEntf7sDFGDzHy2oTUKY3Ug34nNuQsfc2skWAAWarC9LyWu)
 - **Previously successfully merged evaluation:** All by semuelle
 
 **The [invoice form :pencil:](https://docs.google.com/forms/d/e/1FAIpQLSfmNYaoCgrxyhzgoKQ0ynQvnNRoTmgApz9NrMp-hd8mhIiO0A/viewform) has been filled out correctly for this milestone and the delivery is according to the official [milestone delivery guidelines](https://github.com/w3f/Grants-Program/blob/master/docs/milestone-deliverables-guidelines.md).**
@@ -11,7 +11,7 @@
 | Number | Deliverable | Accepted | Link | Evaluation Notes |
 | ------ | ----------- | :------: | ---- |----------------- |
 | 0a. | License | <ul><li>[x] </li></ul> | [Apache 2.0](https://github.com/WowLabz/tasking_backend/blob/main/LICENSE)| — |
-| 0b.  | Documentation | <ul><li>[x] </li></ul> | Pallet Tasking Backend ([github.io](https://github.com/WowLabz/tasking_backend/blob/main/pallets/pallet-tasking/src/lib.rs), node ([Readme](https://github.com/WowLabz/tasking_backend/tree/dev#readme)) | Good setup guide, great inline documentation. |
+| 0b.  | Documentation | <ul><li>[x] </li></ul> | Pallet Tasking Backend - [github.io](https://github.com/WowLabz/tasking_backend/blob/main/pallets/pallet-tasking/src/lib.rs), [Readme](https://github.com/WowLabz/tasking_backend/tree/dev#readme) | Good setup guide, great inline documentation. |
 | 0c.  | Testing Guide | <ul><li>[x] </li></ul> | [Testing Guide](https://github.com/WowLabz/tasking_backend/blob/Phase1_Milestone1/TestingGuide.md)| — |
 | 0d. | Docker | <ul><li>[x] </li></ul> | [docker-compose](https://github.com/WowLabz/tasking_backend/blob/Phase1_Milestone1/docker-compose.yml)| Node build image |
 | 1 | User profile Modules | <ul><li>[x] </li></ul> | [Source code](https://github.com/WowLabz/tasking_frontend/tree/Phase1_Milestone1/src/View/Modules/Authorization)| User profile modules  |
