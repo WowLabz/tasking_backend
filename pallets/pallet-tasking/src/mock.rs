@@ -76,7 +76,7 @@ impl pallet_tasking::Config for Test {
     type Currency = Balances;
 }
 
-// Implementing the ExtBuilder to initialize balances 
+// Implementing the ExtBuilder to initialize balances
 pub(crate) struct ExtBuilder {
     // endowed accounts with balances
     balances: Vec<(AccountId, Balance)>,
