@@ -307,8 +307,8 @@ decl_module! {
             let bidder = ensure_signed(origin)?;
             let mut task_struct=TaskStorage::<T>::get(&task_id);
             
-            let customer = task_struct.publisher;
-            ensure!(customer != bidder.clone(), Error::<T>::UnauthorisedToProvideCustomerRating);
+            let customer = &task_struct.publisher;
+            ensure!(customer != &bidder, Error::<T>::UnauthorisedToProvideCustomerRating);
             
             // Handling Rating
             // Inserting Worker Rating to RatingMap
