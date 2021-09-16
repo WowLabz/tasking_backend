@@ -105,6 +105,7 @@ pub enum Status {
     Open,
     InProgress,
     PendingApproval,
+    PendingRatings,
     Completed,
 }
 
@@ -292,7 +293,7 @@ decl_module! {
             
             
             // Updating Task Status
-            task_struct.status = Status::Completed;
+            task_struct.status = Status::PendingRatings;
             TaskStorage::<T>::insert(&task_id,task_struct.clone());
             
             Self::deposit_event(RawEvent::TaskApproved(task_id.clone()));
@@ -304,7 +305,7 @@ decl_module! {
         #[weight = 10_000]
         pub fn provide_customer_rating(origin, task_id: u128, rating_for_customer: u8) {
             let bidder = ensure_signed(origin)?;
-            let task_struct=TaskStorage::<T>::get(&task_id);
+            let mut task_struct=TaskStorage::<T>::get(&task_id);
             
             let customer = task_struct.publisher;
             ensure!(customer != bidder.clone(), Error::<T>::UnauthorisedToProvideCustomerRating);
@@ -330,6 +331,11 @@ decl_module! {
             T::Currency::remove_lock(LOCKSECRET,&customer);
             T::Currency::remove_lock(LOCKSECRET,&bidder);
             T::Currency::transfer(&customer,&bidder, transfer_amount, ExistenceRequirement::KeepAlive)?;
+
+            // Updating Task Status
+            task_struct.status = Status::Completed;
+            TaskStorage::<T>::insert(&task_id,task_struct.clone());
+
             Self::deposit_event(RawEvent::AmountTransfered(customer.clone(),bidder.clone(),transfer_amount.clone()));
 
             Self::deposit_event(RawEvent::TaskClosed(task_id.clone()));
