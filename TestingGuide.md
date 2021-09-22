@@ -94,8 +94,8 @@ To stop an individual service
 docker-compose -f <file_name> down
 ```
 # Individual Service Repos (To do a code walkthrough)
-1. [Tasking Backend Node](https://github.com/WowLabz/tasking_backend.git)
-2. [Tasking Frontend](https://github.com/WowLabz/tasking_frontend.git)
+1. [Tasking Backend Node](https://github.com/WowLabz/tasking_backend/tree/Phase1_Milestone2)
+2. [Tasking Frontend](https://github.com/WowLabz/tasking_frontend/tree/Phase1_Milestone2)
 3. [Authentication Service](https://github.com/WowLabz/authentication_service.git)
 
 # Container Instructions
@@ -108,6 +108,11 @@ docker-compose logs <CONTAINER ID>
 You can access the frontend application on `http://127.0.0.1:9001`
 
 ![Screenshot_15](https://user-images.githubusercontent.com/11945179/131972401-6a700ce1-d938-45e2-931d-a50986daac12.png)
+
+# Task Details
+To view the task details which comprises of functionalities like Escrow, Task Progress/Status & entire pallet_tasking workflow click on any card
+
+![Screenshot_20210922_162143](https://user-images.githubusercontent.com/66478092/134331009-22430184-777d-4840-8090-4ecb50c9c60a.png)
 
 # Launch Interactive Bash Session with the Node
     
