@@ -126,7 +126,15 @@ Enter into the interactive bash with the container id pertaining to dot_marketpl
 `cargo test` (This will run all the test cases)
  
  `cargo test <test_name>` (For checking any specific test case)
+ 
+ # Run Tests for the authentication service
 
+Enter into the interactive bash with the container id pertaining to authentication service and run the following commands
+
+Note: Run the tests using a single thread
+```bash
+cargo test -- --test-threads=1
+```
 # Interacting with Polkadot Js Apps Explorer
     
 ![BlocksFinality](https://user-images.githubusercontent.com/11945179/131971129-d166e10f-5efe-4d1a-8fab-082ba8a13a07.png)
