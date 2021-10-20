@@ -14,7 +14,7 @@ use frame_support::{
     debug, decl_error, decl_event, decl_module, decl_storage, dispatch, ensure,
     traits::{
         Currency, ExistenceRequirement, Get, LockIdentifier, LockableCurrency, ReservableCurrency,
-        WithdrawReasons,
+        Time, WithdrawReasons,
     },
 };
 use frame_system::ensure_signed;
@@ -42,10 +42,23 @@ pub struct TaskDetails<AccountId, Balance> {
     task_id: u128,
     publisher: AccountId,
     worker_id: Option<AccountId>,
+    publisher_name: Option<Vec<u8>>,
+    worker_name: Option<Vec<u8>>,
+    task_tags: Vec<TaskTypeTags>,
     task_deadline: u64,
     cost: Balance,
     status: Status,
     task_description: Vec<u8>,
+}
+
+#[derive(Encode, Decode, PartialEq, Eq, Debug, Clone)]
+pub enum TaskTypeTags {
+    WebDevelopment,
+    MobileDevelopment,
+    MachineLearning,
+    DeepLearning,
+    FullStackDevelopment,
+    CoreBlockchainDevelopment,
 }
 
 #[derive(Encode, Decode, PartialEq, Eq, Debug, Clone)]
@@ -166,12 +179,12 @@ decl_event!(
         /// Event documentation should end with an array that provides descriptive names for event
         /// parameters. [something, who]
         SomethingStored(u32, AccountId),
-        TaskCreated(AccountId, u128, u64, Balance, Vec<u8>),
+        TaskCreated(AccountId, Vec<u8>, u128, u64, Balance, Vec<u8>),
         AccBalance(AccountId, Balance),
         CountIncreased(u128),
         TransferMoney(AccountId, Balance, Balance, AccountId, Balance, Balance),
         StakerAdded(AccountId),
-        TaskIsBidded(AccountId, u128),
+        TaskIsBidded(AccountId, Vec<u8>, u128),
         AmountTransfered(AccountId, AccountId, Balance),
         TaskCompleted(AccountId, u128, AccountId),
         TaskApproved(u128),
@@ -218,7 +231,7 @@ decl_module! {
 
         /// An example dispatchable that may throw a custom error
         #[weight = 10_000]
-        pub fn create_task(origin, task_duration: u64, task_cost: BalanceOf<T>, task_des: Vec<u8>) {
+        pub fn create_task(origin, task_duration: u64, task_cost: BalanceOf<T>, task_des: Vec<u8>, publisher_name: Vec<u8>, task_tags: Vec<TaskTypeTags>) {
          let sender = ensure_signed(origin)?;
          let current_count = Self::get_task_count();
 
@@ -229,18 +242,21 @@ decl_module! {
               task_id: current_count.clone(),
               publisher:sender.clone(),
               worker_id: None,
+              publisher_name: Some(publisher_name.clone()),
+              worker_name: None,
+              task_tags: task_tags.clone(),
               task_deadline: task_duration.clone(),
               cost:task_cost.clone(),
               status: Default::default(),
               task_description: task_des.clone(),
           };
           TaskStorage::<T>::insert(current_count.clone(), temp);
-          Self::deposit_event(RawEvent::TaskCreated(sender, current_count.clone(), task_duration.clone(), task_cost.clone(), task_des.clone()));
+          Self::deposit_event(RawEvent::TaskCreated(sender, publisher_name.clone(), current_count.clone(), task_duration.clone(), task_cost.clone(), task_des.clone()));
           TaskCount::put(current_count + 1);
         }
 
         #[weight = 10_000]
-        pub fn bid_for_task(origin, task_id: u128) {
+        pub fn bid_for_task(origin, task_id: u128, worker_name: Vec<u8>) {
             let bidder = ensure_signed(origin)?;
             ensure!(TaskStorage::<T>::contains_key(&task_id), Error::<T>::TaskDoesNotExist);
             let mut task = TaskStorage::<T>::get(task_id.clone());
@@ -253,11 +269,12 @@ decl_module! {
 
             let task_cost= task.cost.clone();
             task.worker_id = Some(bidder.clone());
+            task.worker_name = Some(worker_name.clone());
             task.status= Status::InProgress;
 
             TaskStorage::<T>::insert(&task_id, task);
             T::Currency::set_lock(LOCKSECRET, &bidder, task_cost.clone(), WithdrawReasons::TRANSACTION_PAYMENT);
-            Self::deposit_event(RawEvent::TaskIsBidded(bidder.clone(), task_id.clone()));
+            Self::deposit_event(RawEvent::TaskIsBidded(bidder.clone(), worker_name.clone(), task_id.clone()));
 
             let task_details_by_helper = Self::get_task(task_id.clone());
             debug::info!("task_details_by_helper : {:#?}", task_details_by_helper);
@@ -267,7 +284,6 @@ decl_module! {
         pub fn approve_task(origin,task_id: u128, rating_for_the_worker: u8) {
             let publisher=ensure_signed(origin)?;
             ensure!(Self::task_exist(task_id.clone()), Error::<T>::TaskDoesNotExist);
-            
             let mut task_struct = TaskStorage::<T>::get(&task_id);
             let status = task_struct.status;
             ensure!(status == Status::PendingApproval, Error::<T>::TaskIsNotPendingApproval);
@@ -290,15 +306,12 @@ decl_module! {
             let curr_bidder_ratings = User::new(bidder.clone(), UserType::Worker, temp_rating_vec);
             WorkerRatings::<T>::insert(bidder.clone(), curr_bidder_ratings.clone());
             debug::info!("Calculated Rating: {:#?}", curr_bidder_ratings.rating);
-            
-            
+
             // Updating Task Status
             task_struct.status = Status::PendingRatings;
             TaskStorage::<T>::insert(&task_id,task_struct.clone());
-            
             Self::deposit_event(RawEvent::TaskApproved(task_id.clone()));
         }
-        
         // Worker provies the rating for the customer
         // Funds from Escrow gets unlocked
         // and the funds get transfered
@@ -306,10 +319,8 @@ decl_module! {
         pub fn provide_customer_rating(origin, task_id: u128, rating_for_customer: u8) {
             let bidder = ensure_signed(origin)?;
             let mut task_struct=TaskStorage::<T>::get(&task_id);
-            
             let customer = &task_struct.publisher;
             ensure!(customer != &bidder, Error::<T>::UnauthorisedToProvideCustomerRating);
-            
             // Handling Rating
             // Inserting Worker Rating to RatingMap
             let existing_customer_rating: User<T::AccountId> = CustomerRatings::<T>::get(&customer);
