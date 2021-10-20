@@ -1,4 +1,4 @@
-use crate::{mock::*, Error, Status, TaskDetails};
+use crate::{mock::*, Error, Status, TaskDetails, TaskTypeTags};
 use frame_support::{assert_noop, assert_ok, dispatch::DispatchError};
 use frame_system::{ensure_signed, RawOrigin};
 use crate::mock::ExtBuilder;
@@ -8,7 +8,7 @@ fn correct_error_for_unsigned_origin_while_creating_task_with_correct_() {
     new_test_ext().execute_with(|| {
         // Ensure the expected error is thrown when no value is present.
         assert_noop!(
-            PalletTasking::create_task(Origin::none(), 30, 300, b"Create a website".to_vec()),
+            PalletTasking::create_task(Origin::none(), 30, 300, b"Create a website".to_vec(), b"Alice".to_vec(), vec![TaskTypeTags::WebDevelopment]),
             DispatchError::BadOrigin,
         );
     });
@@ -22,7 +22,9 @@ fn it_works_for_creating_a_task_with_correct_details_provided() {
             Origin::signed(1),
             30,
             300,
-            b"Create a website".to_vec()
+            b"Create a website".to_vec(),
+            b"Alice".to_vec(),
+            vec![TaskTypeTags::WebDevelopment]
         ));
         // Read pallet storage and assert an expected result.
         let sender = ensure_signed(Origin::signed(1)).unwrap();
@@ -30,6 +32,9 @@ fn it_works_for_creating_a_task_with_correct_details_provided() {
             task_id: 0,
             publisher: sender.clone(),
             worker_id: None,
+            publisher_name: Some(b"Alice".to_vec()),
+            worker_name: None,
+            task_tags: vec![TaskTypeTags::WebDevelopment],
             task_deadline: 30,
             cost: 300,
             status: Status::Open,
@@ -43,7 +48,7 @@ fn it_works_for_creating_a_task_with_correct_details_provided() {
 fn correct_error_for_bidding_a_task_with_incorrect_task_id() {
     new_test_ext().execute_with(|| {
         assert_noop!(
-            PalletTasking::bid_for_task(Origin::signed(3), 10),
+            PalletTasking::bid_for_task(Origin::signed(3), 10, b"Bob".to_vec()),
             Error::<Test>::TaskDoesNotExist
         );
     })
@@ -52,10 +57,10 @@ fn correct_error_for_bidding_a_task_with_incorrect_task_id() {
 #[test]
 fn correct_error_for_bidding_a_task_with_the_same_publisher_id() {
     new_test_ext().execute_with(|| {
-        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec())
+        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec(), b"Alice".to_vec(), vec![TaskTypeTags::FullStackDevelopment])
             .unwrap();
         assert_noop!(
-            PalletTasking::bid_for_task(Origin::signed(1), 0),
+            PalletTasking::bid_for_task(Origin::signed(1), 0, b"Bob".to_vec()),
             Error::<Test>::UnauthorisedToBid
         );
     })
@@ -64,12 +69,12 @@ fn correct_error_for_bidding_a_task_with_the_same_publisher_id() {
 #[test]
 fn correct_error_for_bidding_a_task_with_incorrect_status() {
     new_test_ext().execute_with(|| {
-        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec())
+        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec(), b"Alice".to_vec(), vec![TaskTypeTags::FullStackDevelopment])
             .unwrap();
-        PalletTasking::bid_for_task(Origin::signed(3), 0).unwrap();
+        PalletTasking::bid_for_task(Origin::signed(3), 0, b"Bob".to_vec()).unwrap();
         PalletTasking::task_completed(Origin::signed(3), 0).unwrap();
         assert_noop!(
-            PalletTasking::bid_for_task(Origin::signed(3), 0),
+            PalletTasking::bid_for_task(Origin::signed(3), 0, b"Bob".to_vec()),
             Error::<Test>::TaskIsNotOpen
         );
     })
@@ -78,18 +83,18 @@ fn correct_error_for_bidding_a_task_with_incorrect_status() {
 #[test]
 fn it_works_for_bidding_a_task_with_correct_details() {
     new_test_ext().execute_with(|| {
-        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec())
+        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec(), b"Alice".to_vec(), vec![TaskTypeTags::FullStackDevelopment])
             .unwrap();
-        assert_ok!(PalletTasking::bid_for_task(Origin::signed(3), 0));
+        assert_ok!(PalletTasking::bid_for_task(Origin::signed(3), 0, b"Bob".to_vec()));
     })
 }
 
 #[test]
 fn correct_error_for_completing_a_task_with_incorrect_task_id() {
     new_test_ext().execute_with(|| {
-        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec())
+        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec(), b"Alice".to_vec(), vec![TaskTypeTags::FullStackDevelopment])
             .unwrap();
-        PalletTasking::bid_for_task(Origin::signed(3), 0).unwrap();
+        PalletTasking::bid_for_task(Origin::signed(3), 0, b"Bob".to_vec()).unwrap();
         assert_noop!(
             PalletTasking::task_completed(Origin::signed(3), 10),
             Error::<Test>::TaskDoesNotExist
@@ -100,9 +105,9 @@ fn correct_error_for_completing_a_task_with_incorrect_task_id() {
 #[test]
 fn correct_error_for_completing_a_task_with_same_publisher_id() {
     new_test_ext().execute_with(|| {
-        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec())
+        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec(), b"Alice".to_vec(), vec![TaskTypeTags::FullStackDevelopment])
             .unwrap();
-        PalletTasking::bid_for_task(Origin::signed(3), 0).unwrap();
+        PalletTasking::bid_for_task(Origin::signed(3), 0, b"Bob".to_vec()).unwrap();
         assert_noop!(
             PalletTasking::task_completed(Origin::signed(1), 0),
             Error::<Test>::UnauthorisedToComplete
@@ -113,7 +118,7 @@ fn correct_error_for_completing_a_task_with_same_publisher_id() {
 #[test]
 fn correct_error_for_completing_a_task_with_incorrect_status() {
     new_test_ext().execute_with(|| {
-        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec())
+        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec(), b"Alice".to_vec(), vec![TaskTypeTags::FullStackDevelopment])
             .unwrap();
         assert_noop!(
             PalletTasking::task_completed(Origin::signed(3), 0),
@@ -125,9 +130,9 @@ fn correct_error_for_completing_a_task_with_incorrect_status() {
 #[test]
 fn it_works_for_completing_a_task_with_correct_details() {
     new_test_ext().execute_with(|| {
-        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec())
+        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec(), b"Alice".to_vec(), vec![TaskTypeTags::FullStackDevelopment])
             .unwrap();
-        PalletTasking::bid_for_task(Origin::signed(3), 0).unwrap();
+        PalletTasking::bid_for_task(Origin::signed(3), 0, b"Bob".to_vec()).unwrap();
         assert_ok!(PalletTasking::task_completed(Origin::signed(3), 0));
     })
 }
@@ -136,9 +141,9 @@ fn it_works_for_completing_a_task_with_correct_details() {
 #[test]
 fn correct_error_for_approving_a_task_with_incorrect_task_id() {
     new_test_ext().execute_with(|| {
-        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec())
+        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec(), b"Alice".to_vec(), vec![TaskTypeTags::FullStackDevelopment])
             .unwrap();
-        PalletTasking::bid_for_task(Origin::signed(3), 0).unwrap();
+        PalletTasking::bid_for_task(Origin::signed(3), 0, b"Bob".to_vec()).unwrap();
         assert_noop!(
             PalletTasking::approve_task(Origin::signed(3), 10, 4),
             Error::<Test>::TaskDoesNotExist
@@ -150,7 +155,7 @@ fn correct_error_for_approving_a_task_with_incorrect_task_id() {
 #[test]
 fn correct_error_for_approving_a_task_with_incorrect_status() {
     new_test_ext().execute_with(|| {
-        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec())
+        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec(), b"Alice".to_vec(), vec![TaskTypeTags::FullStackDevelopment])
             .unwrap();
         assert_noop!(
             PalletTasking::approve_task(Origin::signed(3), 0, 5),
@@ -163,9 +168,9 @@ fn correct_error_for_approving_a_task_with_incorrect_status() {
 #[test]
 fn correct_error_for_approving_a_task_with_worker_id() {
     new_test_ext().execute_with(|| {
-        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec())
+        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec(), b"Alice".to_vec(), vec![TaskTypeTags::FullStackDevelopment])
             .unwrap();
-        PalletTasking::bid_for_task(Origin::signed(3), 0).unwrap();
+        PalletTasking::bid_for_task(Origin::signed(3), 0, b"Bob".to_vec()).unwrap();
         PalletTasking::task_completed(Origin::signed(3), 0).unwrap();
         assert_noop!(
             PalletTasking::approve_task(Origin::signed(3), 0, 5),
@@ -178,9 +183,9 @@ fn correct_error_for_approving_a_task_with_worker_id() {
 #[test]
 fn it_works_for_approving_a_task_with_correct_details() {
     new_test_ext().execute_with(|| {
-        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec())
+        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec(), b"Alice".to_vec(), vec![TaskTypeTags::FullStackDevelopment])
             .unwrap();
-        PalletTasking::bid_for_task(Origin::signed(3), 0).unwrap();
+        PalletTasking::bid_for_task(Origin::signed(3), 0, b"Bob".to_vec()).unwrap();
         PalletTasking::task_completed(Origin::signed(3), 0).unwrap();
         assert_ok!(PalletTasking::approve_task(Origin::signed(1), 0, 5));
     })
@@ -190,9 +195,9 @@ fn it_works_for_approving_a_task_with_correct_details() {
 #[test]
 fn correct_error_for_providing_customer_rating_with_publisher_id() {
     new_test_ext().execute_with(|| {
-        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec())
+        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec(), b"Alice".to_vec(), vec![TaskTypeTags::FullStackDevelopment])
             .unwrap();
-        PalletTasking::bid_for_task(Origin::signed(3), 0).unwrap();
+        PalletTasking::bid_for_task(Origin::signed(3), 0, b"Bob".to_vec()).unwrap();
         PalletTasking::task_completed(Origin::signed(3), 0).unwrap();
         PalletTasking::approve_task(Origin::signed(1), 0, 5).unwrap();
         assert_noop!(
@@ -216,9 +221,9 @@ fn it_works_for_providing_customer_rating_with_correct_details() {
             (7, 100000),
         ]
     ).build().execute_with(|| {
-        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec())
+        PalletTasking::create_task(Origin::signed(1), 50, 500, b"Backend Systems".to_vec(), b"Alice".to_vec(), vec![TaskTypeTags::FullStackDevelopment])
             .unwrap();
-        PalletTasking::bid_for_task(Origin::signed(3), 0).unwrap();
+        PalletTasking::bid_for_task(Origin::signed(3), 0, b"Bob".to_vec()).unwrap();
         PalletTasking::task_completed(Origin::signed(3), 0).unwrap();
         PalletTasking::approve_task(Origin::signed(1), 0, 5).unwrap();
         assert_ok!(PalletTasking::provide_customer_rating(
