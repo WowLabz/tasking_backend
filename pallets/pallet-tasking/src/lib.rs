@@ -49,6 +49,7 @@ pub struct TaskDetails<AccountId, Balance> {
     cost: Balance,
     status: Status,
     task_description: Vec<u8>,
+    attachments: Option<Vec<Vec<u8>>>
 }
 
 #[derive(Encode, Decode, PartialEq, Eq, Debug, Clone)]
@@ -231,7 +232,7 @@ decl_module! {
 
         /// An example dispatchable that may throw a custom error
         #[weight = 10_000]
-        pub fn create_task(origin, task_duration: u64, task_cost: BalanceOf<T>, task_des: Vec<u8>, publisher_name: Vec<u8>, task_tags: Vec<TaskTypeTags>) {
+        pub fn create_task(origin, task_duration: u64, task_cost: BalanceOf<T>, task_des: Vec<u8>, publisher_name: Vec<u8>, task_tags: Vec<TaskTypeTags>, publisher_attachments: Option<Vec<Vec<u8>>>) {
          let sender = ensure_signed(origin)?;
          let current_count = Self::get_task_count();
 
@@ -249,6 +250,7 @@ decl_module! {
               cost:task_cost.clone(),
               status: Default::default(),
               task_description: task_des.clone(),
+              attachments: publisher_attachments.clone(),
           };
           TaskStorage::<T>::insert(current_count.clone(), temp);
           Self::deposit_event(RawEvent::TaskCreated(sender, publisher_name.clone(), current_count.clone(), task_duration.clone(), task_cost.clone(), task_des.clone()));
@@ -353,7 +355,7 @@ decl_module! {
         }
 
         #[weight = 10_000]
-        pub fn task_completed(origin, task_id: u128) {
+        pub fn task_completed(origin, task_id: u128, worker_attachments: Option<Vec<Vec<u8>>>) {
             let bidder = ensure_signed(origin)?;
             ensure!(Self::task_exist(task_id.clone()), Error::<T>::TaskDoesNotExist);
 
@@ -366,6 +368,15 @@ decl_module! {
             ensure!(status == Status::InProgress, Error::<T>::TaskIsNotInProgress);
 
             task_struct.status = Status::PendingApproval;
+
+            // Update the attachments vector to hold both publisher and worker file urls
+            let existing_attachments = task_struct.attachments.clone();
+            let mut updated_attachments: Vec<Vec<u8>> = Vec::new();
+            updated_attachments.extend(existing_attachments.unwrap().clone());
+            updated_attachments.extend(worker_attachments.unwrap().clone());
+
+            task_struct.attachments = Some(updated_attachments);
+            debug::info!("Updated_attachments {:?}", task_struct.clone());
 
             TaskStorage::<T>::insert(&task_id,task_struct.clone());
             Self::deposit_event(RawEvent::TaskCompleted(publisher.clone(), task_id.clone(),bidder.clone()));

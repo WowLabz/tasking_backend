@@ -10,7 +10,8 @@
     "task_deadline": "u64",
     "cost": "Balance",
     "status": "Status",
-    "task_description": "Text"
+    "task_description": "Text",
+    "attachments": "Vec<Text>"
   },
   "Status": {
     "_enum": [
