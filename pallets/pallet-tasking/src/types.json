@@ -4,14 +4,14 @@
     "task_id": "u128",
     "client": "AccountId",
     "worker_id": "Option<AccountId>",
-    "publisher_name": "Text",
-    "worker_name": "Text",
+    "publisher_name": "Option<Text>",
+    "worker_name": "Option<Text>",
     "task_tags": "Vec<TaskTypeTags>",
     "task_deadline": "u64",
     "cost": "Balance",
     "status": "Status",
     "task_description": "Text",
-    "attachments": "Vec<Text>"
+    "attachments": "Option<Vec<Text>>"
   },
   "Status": {
     "_enum": [
