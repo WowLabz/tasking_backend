@@ -77,8 +77,8 @@ Any product or services marketplace would qualify, here are some examples from o
 * Varun Gyanchandani (backend lead)
 * Loakesh Indiran (full stack dev)
 * Siddharth Teli (backend dev)
+* Ritiek Malhotra (backend dev)
 * Bharath Kumar (tester)
-* Smita Ashok (tech content writer)
 
 
 ### **Team Website**
@@ -116,10 +116,10 @@ Profiles of the people working actively on Dot Marketplace
 * [Amit Singh](https://www.linkedin.com/in/startupamit/)
 * [Roshit Omanakuttan](https://www.linkedin.com/in/roshit/)
 * [Varun Gyanchandani](https://www.linkedin.com/in/varunsays/)
-* [Siddharth Teli](https://www.linkedin.com/in/siddharthteli/) 
 * [Loakesh Indiran](https://www.linkedin.com/in/loakesh-indiran-8a2282140)
+* [Siddharth Teli](https://www.linkedin.com/in/siddharthteli/)
+* [Ritiek Malhotra](https://www.linkedin.com/in/ritiek/)
 * [Bharath Kumar](https://www.linkedin.com/in/bharath-kumar-h-13a572126/)
-* [Smita Ashok](https://www.linkedin.com/in/smita-ashok-823631175/)
 
 ## **Development Roadmap**🔩
 
