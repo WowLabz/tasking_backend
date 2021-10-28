@@ -20,5 +20,5 @@
 | 2.     | Tagging Module | [Tagging Module](https://github.com/WowLabz/authentication_service/blob/version/2.0/src/models/user.rs#L9-L41) | Support for smart tags with the user profiles for programmatic track/domain alignment in the future        |
 | 3.     | File Transfer Module  | [File Transfer Module](https://github.com/WowLabz/authentication_service/blob/version/2.0/src/services/file_service.rs) | API connections to cloud storage async upload/download of small files via Rocket      |
 | 4.     | Frontend App | [Frontend App](https://github.com/WowLabz/tasking_frontend/tree/Phase1_Milestone3/src) | Supporting frontend UI to test the aforementioned functionality   |
-| 5.     | Website | Dedicated one page website for Dot Marketplace |  
-| 6.     | Article | Website article sharing the motivation behind Dot Marketplace and how to make best use of it      |
+| 5.     | Website | [Dot Marketplace](https://dotmarketplace.webflow.io/)|Dedicated one page website for Dot Marketplace |  
+| 6.     | Article | [Article](https://github.com/WowLabz/dot_marketplace_docker/blob/Phase1_Milestone3/README.md)|Website article sharing the motivation behind Dot Marketplace and how to make best use of it      |
