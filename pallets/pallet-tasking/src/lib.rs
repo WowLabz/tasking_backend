@@ -216,7 +216,9 @@ decl_error! {
         YouNeverBiddedForThisTask,
         TaskIsNotOpen,
         TaskIsNotInProgress,
+        WorkerNotSet,
         TaskIsNotPendingApproval,
+        TaskIsNotPendingRating,
         UnauthorisedToBid,
         UnauthorisedToComplete,
         UnauthorisedToApprove,
@@ -299,15 +301,14 @@ decl_module! {
             ensure!(Self::task_exist(task_id.clone()), Error::<T>::TaskDoesNotExist);
 
             let mut task_struct = TaskStorage::<T>::get(task_id.clone());
+            let status = task_struct.status;
+            ensure!(status == Status::InProgress, Error::<T>::TaskIsNotInProgress);
 
             let publisher = task_struct.publisher.clone();
-            let worker = task_struct.worker_id.clone().unwrap();
+            let worker = task_struct.worker_id.clone().ok_or(Error::<T>::WorkerNotSet)?;
 
             // only the worker can complete the task
             ensure!(worker == bidder.clone(), Error::<T>::UnauthorisedToComplete);
-
-            let status = task_struct.status;
-            ensure!(status == Status::InProgress, Error::<T>::TaskIsNotInProgress);
 
             task_struct.status = Status::PendingApproval;
 
@@ -337,6 +338,7 @@ decl_module! {
         pub fn approve_task(origin,task_id: u128, rating_for_the_worker: u8) {
             let publisher=ensure_signed(origin)?;
             ensure!(Self::task_exist(task_id.clone()), Error::<T>::TaskDoesNotExist);
+
             let mut task_struct = TaskStorage::<T>::get(&task_id);
             let status = task_struct.status;
             ensure!(status == Status::PendingApproval, Error::<T>::TaskIsNotPendingApproval);
@@ -345,7 +347,7 @@ decl_module! {
             // Only the task publisher can approve the task
             ensure!(publisher == approver.clone(), Error::<T>::UnauthorisedToApprove);
 
-            let bidder = task_struct.worker_id.clone().unwrap();
+            let bidder = task_struct.worker_id.clone().ok_or(Error::<T>::WorkerNotSet)?;
 
             // Inserting Worker Rating to RatingMap
             let existing_bidder_ratings: User<T::AccountId> = WorkerRatings::<T>::get(&bidder);
@@ -374,8 +376,13 @@ decl_module! {
         #[weight = 10_000]
         pub fn provide_customer_rating(origin, task_id: u128, rating_for_customer: u8) {
             let bidder = ensure_signed(origin)?;
+
             let mut task_struct=TaskStorage::<T>::get(&task_id);
-            let worker = task_struct.worker_id.clone().unwrap();
+
+            let status = task_struct.status;
+            ensure!(status == Status::PendingRatings, Error::<T>::TaskIsNotPendingRating);
+
+            let worker = task_struct.worker_id.clone().ok_or(Error::<T>::WorkerNotSet)?;
 
             // only the bidder/worker should be able to provide customer ratings
             ensure!(worker == bidder.clone(), Error::<T>::UnauthorisedToProvideCustomerRating);
@@ -549,15 +556,5 @@ impl<T: Config> Module<T> {
 
     pub fn get_task(task_id: u128) -> TaskDetails<T::AccountId, BalanceOf<T>> {
         TaskStorage::<T>::get(&task_id)
-    }
-
-    pub fn transfer(sender: T::AccountId, to: T::AccountId, amount_to_transfer: BalanceOf<T>) {
-        T::Currency::transfer(
-            &sender,
-            &to,
-            amount_to_transfer,
-            ExistenceRequirement::KeepAlive,
-        )
-        .unwrap();
     }
 }
