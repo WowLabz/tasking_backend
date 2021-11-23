@@ -180,15 +180,23 @@ decl_event!(
         /// Event documentation should end with an array that provides descriptive names for event
         /// parameters. [something, who]
         SomethingStored(u32, AccountId),
+        /// (AccountId, Name, TaskId, Task Duration, Task Cost, Task Description)
         TaskCreated(AccountId, Vec<u8>, u128, u64, Balance, Vec<u8>),
+        /// (AccountId, Balance)
         AccBalance(AccountId, Balance),
+        /// (Count)
         CountIncreased(u128),
         TransferMoney(AccountId, Balance, Balance, AccountId, Balance, Balance),
         StakerAdded(AccountId),
+        /// (Bidder, Name, Task Id)
         TaskIsBidded(AccountId, Vec<u8>, u128),
+        /// (from, to, amount)
         AmountTransfered(AccountId, AccountId, Balance),
+        /// (worker, taskId, publisher)
         TaskCompleted(AccountId, u128, AccountId),
+        /// (taskId)
         TaskApproved(u128),
+        /// (taskId)
         TaskClosed(u128),
     }
 );
@@ -241,7 +249,7 @@ decl_module! {
 
          let temp= TaskDetails {
               task_id: current_count.clone(),
-              publisher:sender.clone(),
+              publisher: sender.clone(),
               worker_id: None,
               publisher_name: Some(publisher_name.clone()),
               worker_name: None,
@@ -252,6 +260,7 @@ decl_module! {
               task_description: task_des.clone(),
               attachments: publisher_attachments.clone(),
           };
+
           TaskStorage::<T>::insert(current_count.clone(), temp);
           Self::deposit_event(RawEvent::TaskCreated(sender, publisher_name.clone(), current_count.clone(), task_duration.clone(), task_cost.clone(), task_des.clone()));
           TaskCount::put(current_count + 1);
@@ -264,6 +273,8 @@ decl_module! {
             let mut task = TaskStorage::<T>::get(task_id.clone());
 
             let publisher = task.publisher.clone();
+
+            // anyone except the publisher can bid for the task
             ensure!(publisher != bidder.clone(), Error::<T>::UnauthorisedToBid);
 
             let status = task.status.clone();
@@ -283,16 +294,58 @@ decl_module! {
         }
 
         #[weight = 10_000]
+        pub fn task_completed(origin, task_id: u128, worker_attachments: Option<Vec<Vec<u8>>>) {
+            let bidder = ensure_signed(origin)?;
+            ensure!(Self::task_exist(task_id.clone()), Error::<T>::TaskDoesNotExist);
+
+            let mut task_struct = TaskStorage::<T>::get(task_id.clone());
+
+            let publisher = task_struct.publisher.clone();
+            let worker = task_struct.worker_id.clone().unwrap();
+
+            // only the worker can complete the task
+            ensure!(worker == bidder.clone(), Error::<T>::UnauthorisedToComplete);
+
+            let status = task_struct.status;
+            ensure!(status == Status::InProgress, Error::<T>::TaskIsNotInProgress);
+
+            task_struct.status = Status::PendingApproval;
+
+            // Update the attachments vector to hold both publisher and worker file urls
+            let existing_attachments = task_struct.attachments.clone();
+            let mut updated_attachments: Vec<Vec<u8>> = Vec::new();
+
+            // update only if attachments exist 
+            if let Some(attachments) =  existing_attachments {
+                updated_attachments.extend(attachments.clone());
+            }
+
+            // update only if attachments exist 
+            if let Some(work_attachments) =  worker_attachments {
+                updated_attachments.extend(work_attachments.clone());
+            }
+
+            task_struct.attachments = Some(updated_attachments);
+
+            debug::info!("Updated_attachments {:?}", task_struct.clone());
+
+            TaskStorage::<T>::insert(&task_id,task_struct.clone());
+            Self::deposit_event(RawEvent::TaskCompleted(worker.clone(), task_id.clone(), publisher.clone()));
+        }
+
+        #[weight = 10_000]
         pub fn approve_task(origin,task_id: u128, rating_for_the_worker: u8) {
             let publisher=ensure_signed(origin)?;
             ensure!(Self::task_exist(task_id.clone()), Error::<T>::TaskDoesNotExist);
             let mut task_struct = TaskStorage::<T>::get(&task_id);
             let status = task_struct.status;
             ensure!(status == Status::PendingApproval, Error::<T>::TaskIsNotPendingApproval);
-            let bidder= task_struct.worker_id.clone().unwrap();
+            let approver = task_struct.publisher.clone();
 
-            // Bidder cannot approve task
-            ensure!(publisher != bidder.clone(), Error::<T>::UnauthorisedToApprove);
+            // Only the task publisher can approve the task
+            ensure!(publisher == approver.clone(), Error::<T>::UnauthorisedToApprove);
+
+            let bidder = task_struct.worker_id.clone().unwrap();
 
             // Inserting Worker Rating to RatingMap
             let existing_bidder_ratings: User<T::AccountId> = WorkerRatings::<T>::get(&bidder);
@@ -314,6 +367,7 @@ decl_module! {
             TaskStorage::<T>::insert(&task_id,task_struct.clone());
             Self::deposit_event(RawEvent::TaskApproved(task_id.clone()));
         }
+
         // Worker provies the rating for the customer
         // Funds from Escrow gets unlocked
         // and the funds get transfered
@@ -321,8 +375,13 @@ decl_module! {
         pub fn provide_customer_rating(origin, task_id: u128, rating_for_customer: u8) {
             let bidder = ensure_signed(origin)?;
             let mut task_struct=TaskStorage::<T>::get(&task_id);
+            let worker = task_struct.worker_id.clone().unwrap();
+
+            // only the bidder/worker should be able to provide customer ratings
+            ensure!(worker == bidder.clone(), Error::<T>::UnauthorisedToProvideCustomerRating);
+
             let customer = &task_struct.publisher;
-            ensure!(customer != &bidder, Error::<T>::UnauthorisedToProvideCustomerRating);
+
             // Handling Rating
             // Inserting Worker Rating to RatingMap
             let existing_customer_rating: User<T::AccountId> = CustomerRatings::<T>::get(&customer);
@@ -354,33 +413,6 @@ decl_module! {
             Self::deposit_event(RawEvent::TaskClosed(task_id.clone()));
         }
 
-        #[weight = 10_000]
-        pub fn task_completed(origin, task_id: u128, worker_attachments: Option<Vec<Vec<u8>>>) {
-            let bidder = ensure_signed(origin)?;
-            ensure!(Self::task_exist(task_id.clone()), Error::<T>::TaskDoesNotExist);
-
-            let mut task_struct = TaskStorage::<T>::get(task_id.clone());
-
-            let publisher = task_struct.publisher.clone();
-            ensure!(publisher != bidder.clone(), Error::<T>::UnauthorisedToComplete);
-
-            let status = task_struct.status;
-            ensure!(status == Status::InProgress, Error::<T>::TaskIsNotInProgress);
-
-            task_struct.status = Status::PendingApproval;
-
-            // Update the attachments vector to hold both publisher and worker file urls
-            let existing_attachments = task_struct.attachments.clone();
-            let mut updated_attachments: Vec<Vec<u8>> = Vec::new();
-            updated_attachments.extend(existing_attachments.unwrap().clone());
-            updated_attachments.extend(worker_attachments.unwrap().clone());
-
-            task_struct.attachments = Some(updated_attachments);
-            debug::info!("Updated_attachments {:?}", task_struct.clone());
-
-            TaskStorage::<T>::insert(&task_id,task_struct.clone());
-            Self::deposit_event(RawEvent::TaskCompleted(publisher.clone(), task_id.clone(),bidder.clone()));
-        }
 
         #[weight = 10_000]
         pub fn function_for_tasks_and_accounts_using_vec_staking(origin, task_id: u128) -> dispatch::DispatchResult {
