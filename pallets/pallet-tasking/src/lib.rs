@@ -204,25 +204,42 @@ decl_event!(
 // Errors inform users that something went wrong.
 decl_error! {
     pub enum Error for Module<T: Config> {
-        /// Error names should be descriptive.
+        /// None Error
         NoneValue,
-        /// Errors should have helpful documentation associated with them.
+        /// Error when there is a storage overflow
         StorageOverflow,
+        /// Error when origin is not signed
         OriginNotSigned,
+        /// Error when there is not enough balance
         NotEnoughBalance,
+        /// Error when the task does not exist
         TaskDoesNotExist,
+        // AlreadyMember Error
         AlreadyMember,
+        /// Error TaskIsNotApproved
         TaskIsNotApproved,
+        /// Error YouNeverBiddedForThisTask
         YouNeverBiddedForThisTask,
+        ///Error TaskIsNotOpen
         TaskIsNotOpen,
+        /// Error TaskIsNotInProgress
         TaskIsNotInProgress,
+        /// Error WorkerNotSet
         WorkerNotSet,
+        /// Error TaskIsNotPendingApproval
         TaskIsNotPendingApproval,
+        /// Error TaskIsNotPendingRating
         TaskIsNotPendingRating,
+        /// Error UnauthorisedToBid
         UnauthorisedToBid,
+        /// Error UnauthorisedToComplete
         UnauthorisedToComplete,
+        /// Error UnauthorisedToApprove
         UnauthorisedToApprove,
+        /// Error UnauthorisedToProvideCustomerRating
         UnauthorisedToProvideCustomerRating,
+        /// Error NotEnoughBalanceToBid
+        NotEnoughBalanceToBid
     }
 }
 
@@ -271,9 +288,13 @@ decl_module! {
         #[weight = 10_000]
         pub fn bid_for_task(origin, task_id: u128, worker_name: Vec<u8>) {
             let bidder = ensure_signed(origin)?;
+
             ensure!(TaskStorage::<T>::contains_key(&task_id), Error::<T>::TaskDoesNotExist);
             let mut task = TaskStorage::<T>::get(task_id.clone());
+            let task_cost= task.cost.clone();
 
+            ensure!(T::Currency::free_balance(&bidder.clone()) > task_cost, Error::<T>::NotEnoughBalanceToBid);
+            
             let publisher = task.publisher.clone();
 
             // anyone except the publisher can bid for the task
@@ -282,7 +303,6 @@ decl_module! {
             let status = task.status.clone();
             ensure!(status == Status::Open, Error::<T>::TaskIsNotOpen);
 
-            let task_cost= task.cost.clone();
             task.worker_id = Some(bidder.clone());
             task.worker_name = Some(worker_name.clone());
             task.status= Status::InProgress;
