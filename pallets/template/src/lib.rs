@@ -100,7 +100,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn task)]
-	pub(super) type TaskStorage<T: Config> = StorageMap<_, Blake2_128Concat, Vec<u8>, TaskDetails<T::AccountId, BalanceOf<T>>, ValueQuery>;
+	pub(super) type TaskStorage<T: Config> = StorageMap<_, Blake2_128Concat, u128, TaskDetails<T::AccountId, BalanceOf<T>>, ValueQuery>;
 
 	// Pallets use events to inform users when important changes are made.
 	// https://docs.substrate.io/v3/runtime/events-and-errors
@@ -140,9 +140,9 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin).unwrap();
 			let current_task_count = Self::get_task_count();
-			log::info!("$$$$$ Current task count: {:#?}", current_task_count);
+			// log::info!("$$$$$ Current task count: {:#?}", current_task_count);
 			let result_from_locking = T::Currency::set_lock(LOCKSECRET, &who, task_cost.clone(), WithdrawReasons::TRANSACTION_PAYMENT);
-			log::info!("$$$$$ Locked amount of publisher: {:#?}", result_from_locking);
+			// log::info!("$$$$$ Locked amount of publisher: {:#?}", result_from_locking);
 			let task_details = TaskDetails {
 				task_id: current_task_count.clone(),
 				publisher: who.clone(),
@@ -156,8 +156,8 @@ pub mod pallet {
 				task_description: task_des.clone(),
 				attachments: publisher_attachments.clone(),
 			};
-			log::info!("$$$$$ Task details: {:#?}", task_details);
-			TaskStorage::<T>::insert(<T as EncodeLike>::current_task_count.clone(), <T as EncodeLike>::task_details);
+			// log::info!("$$$$$ Task details: {:#?}", task_details);
+			<TaskStorage<T>>::insert(current_task_count.clone(), task_details);
 			Self::deposit_event(
 				Event::TaskCreated(
 					who, 
@@ -168,7 +168,7 @@ pub mod pallet {
 					task_des.clone()
 				)
 			);
-			TaskCount::put(current_task_count + 1);
+			<TaskCount<T>>::put(current_task_count + 1);
 			Ok(())
 		}
 
