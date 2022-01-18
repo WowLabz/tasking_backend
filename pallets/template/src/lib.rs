@@ -130,6 +130,16 @@ pub mod pallet {
 		}
 	}
 
+	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
+	pub struct TransferDetails<AccountId, Balance> {
+		transfer_from: AccountId,
+		from_before: Balance,
+		from_after: Balance,
+		transfer_to: AccountId,
+		to_before: Balance,
+		to_after: Balance,
+	}
+
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -162,6 +172,18 @@ pub mod pallet {
 	#[pallet::getter(fn get_customer_ratings)]
 	pub(super) type CustomerRatings<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, User<T::AccountId>, ValueQuery>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn get_account_balances)]
+	pub(super) type AccountBalances<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, BalanceOf<T>, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_count)]
+	pub(super) type Count<T> = StorageValue<_, u128, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_transfers)]
+	pub(super) type Transfers<T: Config> = StorageValue<_, Vec<TransferDetails<T::AccountId, BalanceOf<T>>>, ValueQuery>;
+
 
 	// Pallets use events to inform users when important changes are made.
 	// https://docs.substrate.io/v3/runtime/events-and-errors
@@ -176,7 +198,10 @@ pub mod pallet {
 		TaskCompleted(T::AccountId, u128, T::AccountId),
 		TaskApproved(u128),
 		AmountTransfered(T::AccountId, T::AccountId, BalanceOf<T>),
-		TaskClosed(u128)
+		TaskClosed(u128),
+		AccBalance(T::AccountId, BalanceOf<T>),
+		CountIncreased(u128),
+		TransferMoney(T::AccountId, BalanceOf<T>, BalanceOf<T>, T::AccountId, BalanceOf<T>, BalanceOf<T>)
 	}
 
 	// Errors inform users that something went wrong.
@@ -207,7 +232,9 @@ pub mod pallet {
 		/// To ensure task is approved by the publisher
 		TaskIsNotPendingRating,
 		/// To ensure the worker only provides the publisher rating
-		UnauthorisedToProvideCustomerRating
+		UnauthorisedToProvideCustomerRating,
+		/// TO check if the sender has sufficient balance for a transfer
+		NotEnoughBalance
 
 	}
 
@@ -224,9 +251,9 @@ pub mod pallet {
 			task_tags: Vec<TaskTypeTags>, 
 			publisher_attachments: Option<Vec<Vec<u8>>>
 		) -> DispatchResult {
-			/// Extrinsic for creating tasks on the blockchain. This is called by the ..
-			/// publisher who wants to post tasks on the chain that can be ..
-			/// put up for bidding.
+			// Extrinsic for creating tasks on the blockchain. This is called by the ..
+			// publisher who wants to post tasks on the chain that can be ..
+			// put up for bidding.
 			let who = ensure_signed(origin)?;
 			let current_task_count = Self::get_task_count();
 			let result_from_locking = T::Currency::set_lock(
@@ -269,9 +296,9 @@ pub mod pallet {
 			task_id:u128, 
 			worker_name:Vec<u8>
 		) -> DispatchResult {
-			/// Extrinsic for bidding for tasks on the blockchain. This is called by ..
-			/// the worker who wants to take up tasks on the chain that ..
-			/// can be completed in the given span of time.
+			// Extrinsic for bidding for tasks on the blockchain. This is called by ..
+			// the worker who wants to take up tasks on the chain that ..
+			// can be completed in the given span of time.
 			let bidder = ensure_signed(origin)?;
 			ensure!(
 				<TaskStorage<T>>::contains_key(&task_id), 
@@ -423,6 +450,73 @@ pub mod pallet {
 			Ok(())
 		}
 
+		#[pallet::weight(10_000)]
+		pub fn get_account_balance(origin:OriginFor<T>)-> DispatchResult{
+
+			// To check balance of an account
+			// 1. Returns the account balance
+			// 2. Store the balances in a map
+			// 3. if the balance of the accountId already exists in the map, then get that value and return it
+			// 4. else make a call using the Currency::total_balance function to get the account balance and
+			//  store it in the map and also return the value
+
+			let result;
+			let current_balance;
+			let sender = ensure_signed(origin)?;
+
+			result = <AccountBalances<T>>::contains_key(&sender);
+			if !result {
+				current_balance = T::Currency::total_balance(&sender);
+				<AccountBalances<T>>::insert(&sender, &current_balance);
+			} else {
+				current_balance = Self::get_account_balances(&sender);
+			}
+
+			Self::deposit_event(Event::AccBalance(sender, current_balance));
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn transfer_money(origin:OriginFor<T>, to: T::AccountId, transfer_amount:BalanceOf<T>)-> DispatchResult{
+
+			// 1. Transfer Money
+			// 2. Check if the sender has enough funds to send money else throw Error
+			// 2. Store the details in a struct
+			// 3. Store the details in a vec
+
+			let sender = ensure_signed(origin)?;
+			let sender_account_balance = T::Currency::total_balance(&sender);
+
+			let is_valid_to_transfer = sender_account_balance.clone() < transfer_amount.clone();
+			ensure!(!is_valid_to_transfer, <Error<T>>::NotEnoughBalance);
+
+			let to_account_balance = T::Currency::total_balance(&to);
+
+			let result = T::Currency::transfer(&sender, &to, transfer_amount, ExistenceRequirement::KeepAlive)?;
+
+			let updated_sender_account_balance = T::Currency::total_balance(&sender);
+			let updated_to_account_balance = T::Currency::total_balance(&to);
+			Self::deposit_event(Event::CountIncreased(Self::get_count()));
+
+			// Initializing a vec and storing the details is a Vec
+			let mut details: Vec<TransferDetails<T::AccountId, BalanceOf<T>>> = Vec::new();
+
+			let transfer_details = TransferDetails {
+				transfer_from: sender.clone(),
+				from_before: sender_account_balance.clone(),
+				from_after: updated_sender_account_balance.clone(),
+				transfer_to: to.clone(),
+				to_before: to_account_balance.clone(),
+				to_after: updated_to_account_balance.clone(),
+			};
+			details.push(transfer_details);
+			<Transfers<T>>::put(details);
+
+			Self::deposit_event(Event::TransferMoney(sender.clone(), sender_account_balance.clone(), updated_sender_account_balance.clone(), to.clone(), to_account_balance.clone(), updated_to_account_balance.clone()));
+			Ok(())
+
+		}
+
 
 
 
@@ -449,8 +543,53 @@ pub mod pallet {
 		// }
 	}
 }
+// #[weight = 10_000]
+// pub fn transfer_money(origin, to: T::AccountId, transfer_amount: BalanceOf<T>) -> dispatch::DispatchResult {
+// 	// 1. Transfer Money
+// 	// 2. Check if the sender has enough funds to send money else throw Error
+// 	// 2. Store the details in a struct
+// 	// 3. Store the details in a vec
+// 	let sender = ensure_signed(origin)?;
+// 	let sender_account_balance = T::Currency::total_balance(&sender);
 
+// 	// let is_valid_to_transfer = sender_account_balance.clone() < transfer_amount.clone();
+// 	// debug::info!("is_valid_to_transfer {:?}", is_valid_to_transfer);
+// 	// ensure!(!is_valid_to_transfer, Error::<T>::NotEnoughBalance);
 
+// 	let to_account_balance = T::Currency::total_balance(&to);
+
+// 	let result = T::Currency::transfer(&sender, &to, transfer_amount, ExistenceRequirement::KeepAlive)?;
+// 	debug::info!("Transfer Result {:?}", result);
+
+// 	let updated_sender_account_balance = T::Currency::total_balance(&sender);
+// 	let updated_to_account_balance = T::Currency::total_balance(&to);
+// 	Self::deposit_event(RawEvent::CountIncreased(Self::get_count()));
+
+// 	// Initializing a vec and storing the details is a Vec
+// 	let mut details: Vec<TransferDetails<T::AccountId, BalanceOf<T>>> = Vec::new();
+// 	let transfer_details = TransferDetails {
+// 		transfer_from: sender.clone(),
+// 		from_before: sender_account_balance.clone(),
+// 		from_after: updated_sender_account_balance.clone(),
+// 		transfer_to: to.clone(),
+// 		to_before: to_account_balance.clone(),
+// 		to_after: updated_to_account_balance.clone(),
+// 	};
+// 	details.push(transfer_details);
+// 	Transfers::<T>::put(details);
+// 	debug::info!("Transfer Details Sender: {:#?}", &sender);
+// 	debug::info!("Transfer Details Before Balance{:#?}", sender_account_balance.clone());
+// 	debug::info!("Transfer Details After Balance: {:#?}", updated_sender_account_balance.clone());
+// 	debug::info!("Transfer Details To Account: {:#?}", &to);
+// 	debug::info!("Transfer Details Before Balance {:#?}", to_account_balance.clone());
+// 	debug::info!("Transfer Details After Balance: {:#?}", updated_to_account_balance.clone());
+// 	let transfers_in_store = Self::get_transfers();
+// 	debug::info!("Transfer Details From Vec: {:#?}", &transfers_in_store[0]);
+// 	Self::deposit_event(RawEvent::TransferMoney(sender.clone(), sender_account_balance.clone(), updated_sender_account_balance.clone(), to.clone(), to_account_balance.clone(), updated_to_account_balance.clone()));
+// 	Ok(())
+// }
+
+// }
 
 
 
