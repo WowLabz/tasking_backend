@@ -110,7 +110,8 @@ pub mod pallet {
 		/// Event documentation should end with an array that provides descriptive names for event
 		/// parameters. [something, who]
 		SomethingStored(u32, T::AccountId),
-		TaskCreated(T::AccountId, Vec<u8>, u128, u64, BalanceOf<T>, Vec<u8>)
+		TaskCreated(T::AccountId, Vec<u8>, u128, u64, BalanceOf<T>, Vec<u8>),
+		TaskIsBid(T::AccountId, Vec<u8>, u128)
 	}
 
 	// Errors inform users that something went wrong.
@@ -120,6 +121,16 @@ pub mod pallet {
 		NoneValue,
 		/// Errors should have helpful documentation associated with them.
 		StorageOverflow,
+		/// To ensure that the  task exists
+		TaskDoesNotExist,
+		/// To check the status and availibility of the task
+		TaskIsNotOpen,
+		/// To check balance of bidder for ability to stake amount
+		NotEnoughBalanceToBid,
+		/// To ensure publisher does not bid for the same task posted
+		UnauthorisedToBid,
+
+
 	}
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
@@ -138,7 +149,7 @@ pub mod pallet {
 			task_tags: Vec<TaskTypeTags>, 
 			publisher_attachments: Option<Vec<Vec<u8>>>
 		) -> DispatchResult {
-			let who = ensure_signed(origin).unwrap();
+			let who = ensure_signed(origin)?;
 			let current_task_count = Self::get_task_count();
 			// log::info!("$$$$$ Current task count: {:#?}", current_task_count);
 			let result_from_locking = T::Currency::set_lock(LOCKSECRET, &who, task_cost.clone(), WithdrawReasons::TRANSACTION_PAYMENT);
@@ -172,8 +183,38 @@ pub mod pallet {
 			Ok(())
 		}
 
+		#[pallet::weight(10_000)]
+		pub fn bid_for_task(origin:OriginFor<T>,task_id:u128,worker_name:Vec<u8>)-> DispatchResult{
+			let bidder = ensure_signed(origin)?;
+
+			ensure!(<TaskStorage<T>>::contains_key(&task_id), <Error<T>>::TaskDoesNotExist);
+			let mut task = Self::task(task_id.clone());
+			let task_cost = task.cost.clone();
+
+			ensure!(T::Currency::free_balance(&bidder.clone()) > task_cost, <Error<T>>::NotEnoughBalanceToBid);
+
+			let publisher = task.publisher.clone();
+
+			// anyone except the publisher can bid for the task
+			ensure!(publisher != bidder.clone(), <Error<T>>::UnauthorisedToBid);
+
+			let status = task.status.clone();
+			ensure!(status == Status::Open, <Error<T>>::TaskIsNotOpen);
+
+			task.worker_id = Some(bidder.clone());
+			task.worker_name = Some(worker_name.clone());
+			task.status = Status::InProgress;
+
+			<TaskStorage<T>>::insert(&task_id,task);
+			T::Currency::set_lock(LOCKSECRET, &bidder, task_cost.clone(), WithdrawReasons::TRANSACTION_PAYMENT);		
+			Self::deposit_event(Event::TaskIsBid(bidder.clone(), worker_name.clone(), task_id.clone()));
+			Ok(())
+
+		}
+
+
 		// #[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
-		// pub fn do_something(origin: OriginFor<T>, something: u32) -> DispatchResult {
+		// pub fn do_something(origin: Or;iginFor<T>, something: u32) -> DispatchResult {
 		// 	let who = ensure_signed(origin)?;
 		// 	<Something<T>>::put(something);
 		// 	Self::deposit_event(Event::SomethingStored(something, who));
@@ -224,3 +265,32 @@ pub fn create_task(origin, task_duration: u64, task_cost: BalanceOf<T>, task_des
 	TaskCount::put(current_count + 1);
 }
 */
+
+// pub fn bid_for_task(origin, task_id: u128, worker_name: Vec<u8>) {
+// 	let bidder = ensure_signed(origin)?;
+
+// 	ensure!(TaskStorage::<T>::contains_key(&task_id), Error::<T>::TaskDoesNotExist);
+// 	let mut task = TaskStorage::<T>::get(task_id.clone());
+// 	let task_cost= task.cost.clone();
+
+// 	ensure!(T::Currency::free_balance(&bidder.clone()) > task_cost, Error::<T>::NotEnoughBalanceToBid);
+	
+// 	let publisher = task.publisher.clone();
+
+// 	// anyone except the publisher can bid for the task
+// 	ensure!(publisher != bidder.clone(), Error::<T>::UnauthorisedToBid);
+
+// 	let status = task.status.clone();
+// 	ensure!(status == Status::Open, Error::<T>::TaskIsNotOpen);
+
+// 	task.worker_id = Some(bidder.clone());
+// 	task.worker_name = Some(worker_name.clone());
+// 	task.status= Status::InProgress;
+
+// 	TaskStorage::<T>::insert(&task_id, task);
+// 	T::Currency::set_lock(LOCKSECRET, &bidder, task_cost.clone(), WithdrawReasons::TRANSACTION_PAYMENT);
+// 	Self::deposit_event(RawEvent::TaskIsBidded(bidder.clone(), worker_name.clone(), task_id.clone()));
+
+// 	let task_details_by_helper = Self::get_task(task_id.clone());
+// 	debug::info!("task_details_by_helper : {:#?}", task_details_by_helper);
+// }
