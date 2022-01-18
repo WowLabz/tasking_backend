@@ -78,6 +78,58 @@ pub mod pallet {
 		attachments: Option<Vec<Vec<u8>>>
 	}
 
+	#[derive(Encode, Decode, PartialEq, Eq, Debug, Clone, TypeInfo)]
+	pub enum UserType {
+		Customer,
+		Worker,
+	}
+
+	impl Default for UserType {
+		fn default() -> Self {
+			UserType::Worker
+		}
+	}
+
+	#[derive(Encode, Decode, Debug, PartialEq, Clone, Eq, Default, TypeInfo)]
+	pub struct User<AccountId> {
+		account_id: AccountId,
+		user_type: UserType,
+		rating: Option<u8>,
+		ratings_vec: Vec<u8>,
+	}
+
+	impl<AccountId> User<AccountId> {
+		pub fn new(account_id: AccountId, user_type: UserType, ratings_vec: Vec<u8>) -> Self {
+			let rating = Some(Self::get_list_average(ratings_vec.clone()));
+			
+
+			Self {
+				account_id,
+				user_type,
+				rating,
+				ratings_vec,
+			}
+		}
+
+		pub fn get_list_average(list: Vec<u8>) -> u8 {
+			
+			let list_len: u8 = list.len() as u8;
+
+			if list_len == 1 {
+				return list[0];
+			}
+
+			let mut total_sum = 0;
+			for item in list.iter() {
+				total_sum += item;
+			}
+			
+			let average = total_sum / list_len;
+			
+			average
+		}
+	}
+
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -102,6 +154,15 @@ pub mod pallet {
 	#[pallet::getter(fn task)]
 	pub(super) type TaskStorage<T: Config> = StorageMap<_, Blake2_128Concat, u128, TaskDetails<T::AccountId, BalanceOf<T>>, ValueQuery>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn get_worker_ratings)]
+	pub(super) type WorkerRatings<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, User<T::AccountId>, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_customer_ratings)]
+	pub(super) type CustomerRatings<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, User<T::AccountId>, ValueQuery>;
+
+
 	// Pallets use events to inform users when important changes are made.
 	// https://docs.substrate.io/v3/runtime/events-and-errors
 	#[pallet::event]
@@ -112,7 +173,10 @@ pub mod pallet {
 		SomethingStored(u32, T::AccountId),
 		TaskCreated(T::AccountId, Vec<u8>, u128, u64, BalanceOf<T>, Vec<u8>),
 		TaskIsBid(T::AccountId, Vec<u8>, u128),
-		TaskCompleted(T::AccountId, u128, T::AccountId)
+		TaskCompleted(T::AccountId, u128, T::AccountId),
+		TaskApproved(u128),
+		AmountTransfered(T::AccountId, T::AccountId, BalanceOf<T>),
+		TaskClosed(u128)
 	}
 
 	// Errors inform users that something went wrong.
@@ -136,6 +200,14 @@ pub mod pallet {
 		WorkerNotSet,
 		/// To ensure only the assigned worker completes the task
 		UnauthorisedToComplete,
+		/// To ensure task status is completed and is waiting for approval from the publisher
+		TaskIsNotPendingApproval,
+		/// To ensure only the publisher approves the task
+		UnauthorisedToApprove,
+		/// To ensure task is approved by the publisher
+		TaskIsNotPendingRating,
+		/// To ensure the worker only provides the publisher rating
+		UnauthorisedToProvideCustomerRating
 		
 
 
@@ -260,6 +332,84 @@ pub mod pallet {
 			Ok(())
 		}
 
+		#[pallet::weight(10_000)]
+		pub fn approve_task(origin:OriginFor<T>, task_id:u128, rating_for_the_worker:u8)-> DispatchResult{
+			
+			let publisher = ensure_signed(origin)?;
+			ensure!(<TaskStorage<T>>::contains_key(task_id.clone()), <Error<T>>::TaskDoesNotExist);
+
+			let mut task = Self::task(task_id.clone());
+			let status = task.status;
+			ensure!(status == Status::PendingApproval, <Error<T>>::TaskIsNotPendingApproval);
+			let approver = task.publisher.clone();
+
+			ensure!(publisher == approver.clone(), <Error<T>>::UnauthorisedToApprove);
+
+			let bidder = task.worker_id.clone().ok_or(<Error<T>>::WorkerNotSet)?;
+
+			// Inserting Worker Rating to RatingMap
+			let existing_bidder_ratings: User<T::AccountId> = Self::get_worker_ratings(&bidder);
+
+			let mut temp_rating_vec = Vec::<u8>::new();
+			for rating in existing_bidder_ratings.ratings_vec {
+				temp_rating_vec.push(rating);
+			}
+			temp_rating_vec.push(rating_for_the_worker);
+
+			let curr_bidder_ratings = User::new(bidder.clone(), UserType::Worker, temp_rating_vec);
+			<WorkerRatings<T>>::insert(bidder.clone(), curr_bidder_ratings.clone());
+
+			// Updating Task Status
+			task.status = Status::PendingRatings;
+			<TaskStorage<T>>::insert(&task_id,task.clone());
+			Self::deposit_event(Event::TaskApproved(task_id.clone()));
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn provide_customer_rating(origin:OriginFor<T>, task_id:u128, rating_for_customer:u8)-> DispatchResult{
+
+			let bidder = ensure_signed(origin)?;
+
+			let mut task = Self::task(task_id.clone());
+			let status = task.status;
+			ensure!(status == Status::PendingRatings, <Error<T>>::TaskIsNotPendingRating);
+
+			let worker = task.worker_id.clone().ok_or(<Error<T>>::WorkerNotSet)?;
+
+			// only the bidder/worker should be able to provide customer ratings
+			ensure!(worker == bidder.clone(), <Error<T>>::UnauthorisedToProvideCustomerRating);
+
+			let customer = &task.publisher;
+
+			let existing_customer_rating: User<T::AccountId> = Self::get_customer_ratings(&customer);
+
+			let mut temp_rating_vec = Vec::<u8>::new();
+			for rating in existing_customer_rating.ratings_vec {
+				temp_rating_vec.push(rating);
+			}
+			temp_rating_vec.push(rating_for_customer);
+
+			let curr_customer_ratings = User::new(customer.clone(), UserType::Customer, temp_rating_vec);
+			<CustomerRatings<T>>::insert(customer.clone(), curr_customer_ratings.clone());
+
+			let transfer_amount = task.cost;
+			T::Currency::remove_lock(LOCKSECRET,&customer);
+			T::Currency::remove_lock(LOCKSECRET,&bidder);
+			T::Currency::transfer(&customer,&bidder, transfer_amount, ExistenceRequirement::KeepAlive)?;
+
+			// Updating Task Status
+			task.status = Status::Completed;
+			TaskStorage::<T>::insert(&task_id,task.clone());
+
+			Self::deposit_event(Event::AmountTransfered(customer.clone(),bidder.clone(),transfer_amount.clone()));
+
+			Self::deposit_event(Event::TaskClosed(task_id.clone()));
+			Ok(())
+		}
+
+
+
 
 		// #[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		// pub fn do_something(origin: Or;iginFor<T>, something: u32) -> DispatchResult {
@@ -285,69 +435,10 @@ pub mod pallet {
 	}
 }
 
-/*
-#[weight = 10_000]
-pub fn create_task(origin, task_duration: u64, task_cost: BalanceOf<T>, task_des: Vec<u8>, publisher_name: Vec<u8>, task_tags: Vec<TaskTypeTags>, publisher_attachments: Option<Vec<Vec<u8>>>) {
-	let sender = ensure_signed(origin)?;
-	let current_count = Self::get_task_count();
 
-	let result_from_locking = T::Currency::set_lock(LOCKSECRET, &sender, task_cost.clone(), WithdrawReasons::TRANSACTION_PAYMENT);
-	debug::info!("result_from_locking : {:#?}", result_from_locking);
 
-	let temp= TaskDetails {
-		task_id: current_count.clone(),
-		publisher: sender.clone(),
-		worker_id: None,
-		publisher_name: Some(publisher_name.clone()),
-		worker_name: None,
-		task_tags: task_tags.clone(),
-		task_deadline: task_duration.clone(),
-		cost:task_cost.clone(),
-		status: Default::default(),
-		task_description: task_des.clone(),
-		attachments: publisher_attachments.clone(),
-	};
 
-	TaskStorage::<T>::insert(current_count.clone(), temp);
-	Self::deposit_event(RawEvent::TaskCreated(sender, publisher_name.clone(), current_count.clone(), task_duration.clone(), task_cost.clone(), task_des.clone()));
-	TaskCount::put(current_count + 1);
-}
-*/
 
-// #[weight = 10_000]
-//         pub fn task_completed(origin, task_id: u128, worker_attachments: Option<Vec<Vec<u8>>>) {
-//             let bidder = ensure_signed(origin)?;
-//             ensure!(Self::task_exist(task_id.clone()), Error::<T>::TaskDoesNotExist);
 
-//             let mut task_struct = TaskStorage::<T>::get(task_id.clone());
-//             let status = task_struct.status;
-//             ensure!(status == Status::InProgress, Error::<T>::TaskIsNotInProgress);
 
-//             let publisher = task_struct.publisher.clone();
-//             let worker = task_struct.worker_id.clone().ok_or(Error::<T>::WorkerNotSet)?;
 
-//             // only the worker can complete the task
-//             ensure!(worker == bidder.clone(), Error::<T>::UnauthorisedToComplete);
-
-//             task_struct.status = Status::PendingApproval;
-
-//             // Update the attachments vector to hold both publisher and worker file urls
-//             let existing_attachments = task_struct.attachments.clone();
-//             let mut updated_attachments: Vec<Vec<u8>> = Vec::new();
-
-//             // update only if attachments exist 
-//             if let Some(attachments) =  existing_attachments {
-//                 updated_attachments.extend(attachments.clone());
-//             }
-
-//             // update only if attachments exist 
-//             if let Some(work_attachments) =  worker_attachments {
-//                 updated_attachments.extend(work_attachments.clone());
-//             }
-
-//             task_struct.attachments = Some(updated_attachments);
-
-//             debug::info!("Updated_attachments {:?}", task_struct.clone());
-
-//             TaskStorage::<T>::insert(&task_id,task_struct.clone());
-//             Self::deposit_event(RawEvent::TaskCompleted(worker.clone(), task_id.clone(), publisher.clone()));
