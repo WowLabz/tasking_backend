@@ -208,15 +208,9 @@ pub mod pallet {
 		TaskIsNotPendingRating,
 		/// To ensure the worker only provides the publisher rating
 		UnauthorisedToProvideCustomerRating
-		
-
-
 
 	}
 
-	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
-	// These functions materialize as "extrinsics", which are often compared to transactions.
-	// Dispatchable functions must be annotated with a weight and must return a DispatchResult.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 
@@ -230,11 +224,17 @@ pub mod pallet {
 			task_tags: Vec<TaskTypeTags>, 
 			publisher_attachments: Option<Vec<Vec<u8>>>
 		) -> DispatchResult {
+			/// Extrinsic for creating tasks on the blockchain. This is called by the ..
+			/// publisher who wants to post tasks on the chain that can be ..
+			/// put up for bidding.
 			let who = ensure_signed(origin)?;
 			let current_task_count = Self::get_task_count();
-			// log::info!("$$$$$ Current task count: {:#?}", current_task_count);
-			let result_from_locking = T::Currency::set_lock(LOCKSECRET, &who, task_cost.clone(), WithdrawReasons::TRANSACTION_PAYMENT);
-			// log::info!("$$$$$ Locked amount of publisher: {:#?}", result_from_locking);
+			let result_from_locking = T::Currency::set_lock(
+				LOCKSECRET, 
+				&who, 
+				task_cost.clone(), 
+				WithdrawReasons::TRANSACTION_PAYMENT
+			);
 			let task_details = TaskDetails {
 				task_id: current_task_count.clone(),
 				publisher: who.clone(),
@@ -248,7 +248,6 @@ pub mod pallet {
 				task_description: task_des.clone(),
 				attachments: publisher_attachments.clone(),
 			};
-			// log::info!("$$$$$ Task details: {:#?}", task_details);
 			<TaskStorage<T>>::insert(current_task_count.clone(), task_details);
 			Self::deposit_event(
 				Event::TaskCreated(
@@ -265,32 +264,48 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn bid_for_task(origin:OriginFor<T>, task_id:u128, worker_name:Vec<u8>)-> DispatchResult{
+		pub fn bid_for_task(
+			origin:OriginFor<T>, 
+			task_id:u128, 
+			worker_name:Vec<u8>
+		) -> DispatchResult {
+			/// Extrinsic for bidding for tasks on the blockchain. This is called by ..
+			/// the worker who wants to take up tasks on the chain that ..
+			/// can be completed in the given span of time.
 			let bidder = ensure_signed(origin)?;
-
-			ensure!(<TaskStorage<T>>::contains_key(&task_id), <Error<T>>::TaskDoesNotExist);
+			ensure!(
+				<TaskStorage<T>>::contains_key(&task_id), 
+				<Error<T>>::TaskDoesNotExist
+			);
 			let mut task = Self::task(task_id.clone());
 			let task_cost = task.cost.clone();
-
-			ensure!(T::Currency::free_balance(&bidder.clone()) > task_cost, <Error<T>>::NotEnoughBalanceToBid);
-
+			ensure!(
+				T::Currency::free_balance(&bidder.clone()) > task_cost, 
+				<Error<T>>::NotEnoughBalanceToBid
+			);
 			let publisher = task.publisher.clone();
-
-			// anyone except the publisher can bid for the task
-			ensure!(publisher != bidder.clone(), <Error<T>>::UnauthorisedToBid);
-
+			ensure!(
+				publisher != bidder.clone(), 
+				<Error<T>>::UnauthorisedToBid
+			);
 			let status = task.status.clone();
 			ensure!(status == Status::Open, <Error<T>>::TaskIsNotOpen);
-
 			task.worker_id = Some(bidder.clone());
 			task.worker_name = Some(worker_name.clone());
 			task.status = Status::InProgress;
-
 			<TaskStorage<T>>::insert(&task_id,task);
-			T::Currency::set_lock(LOCKSECRET, &bidder, task_cost.clone(), WithdrawReasons::TRANSACTION_PAYMENT);		
-			Self::deposit_event(Event::TaskIsBid(bidder.clone(), worker_name.clone(), task_id.clone()));
+			T::Currency::set_lock(
+				LOCKSECRET, 
+				&bidder, 
+				task_cost.clone(), 
+				WithdrawReasons::TRANSACTION_PAYMENT
+			);		
+			Self::deposit_event(
+				Event::TaskIsBid(bidder.clone(), 
+				worker_name.clone(), 
+				task_id.clone())
+			);
 			Ok(())
-
 		}
 
 		#[pallet::weight(10_000)]
