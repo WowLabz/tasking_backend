@@ -111,7 +111,8 @@ pub mod pallet {
 		/// parameters. [something, who]
 		SomethingStored(u32, T::AccountId),
 		TaskCreated(T::AccountId, Vec<u8>, u128, u64, BalanceOf<T>, Vec<u8>),
-		TaskIsBid(T::AccountId, Vec<u8>, u128)
+		TaskIsBid(T::AccountId, Vec<u8>, u128),
+		TaskCompleted(T::AccountId, u128, T::AccountId)
 	}
 
 	// Errors inform users that something went wrong.
@@ -129,6 +130,14 @@ pub mod pallet {
 		NotEnoughBalanceToBid,
 		/// To ensure publisher does not bid for the same task posted
 		UnauthorisedToBid,
+		/// To ensure that a task is bid for and is in progress
+		TaskIsNotInProgress,
+		/// To ensure a worker is chosen and is assigned to the task
+		WorkerNotSet,
+		/// To ensure only the assigned worker completes the task
+		UnauthorisedToComplete,
+		
+
 
 
 	}
@@ -184,7 +193,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn bid_for_task(origin:OriginFor<T>,task_id:u128,worker_name:Vec<u8>)-> DispatchResult{
+		pub fn bid_for_task(origin:OriginFor<T>, task_id:u128, worker_name:Vec<u8>)-> DispatchResult{
 			let bidder = ensure_signed(origin)?;
 
 			ensure!(<TaskStorage<T>>::contains_key(&task_id), <Error<T>>::TaskDoesNotExist);
@@ -210,6 +219,45 @@ pub mod pallet {
 			Self::deposit_event(Event::TaskIsBid(bidder.clone(), worker_name.clone(), task_id.clone()));
 			Ok(())
 
+		}
+
+		#[pallet::weight(10_000)]
+		// NOTE: work_attachments should not be an option, should be mandatory for the jurors to review work in case of a dispute
+		pub fn task_completed(origin:OriginFor<T>, task_id:u128, worker_attachments: Option<Vec<Vec<u8>>>)-> DispatchResult{
+			let bidder = ensure_signed(origin)?;
+			ensure!(<TaskStorage<T>>::contains_key(task_id.clone()), <Error<T>>::TaskDoesNotExist);
+
+			let mut task = Self::task(task_id.clone());
+			let status = task.status;
+			ensure!(status == Status::InProgress, <Error<T>>::TaskIsNotInProgress);
+
+			let publisher = task.publisher.clone();
+			let worker = task.worker_id.clone().ok_or(<Error<T>>::WorkerNotSet)?;
+
+			// only the worker can complete the task
+            ensure!(worker == bidder.clone(), <Error<T>>::UnauthorisedToComplete);
+
+			task.status = Status::PendingApproval;
+
+			// Update the attachments vector to hold both publisher and worker file urls
+			let existing_attachments = task.attachments.clone();
+			let mut updated_attachments: Vec<Vec<u8>> = Vec::new();
+
+			// update only if attachments exist 
+            if let Some(attachments) =  existing_attachments {
+                updated_attachments.extend(attachments.clone());
+            }
+
+			// update only if attachments exist 
+            if let Some(work_attachments) =  worker_attachments {
+                updated_attachments.extend(work_attachments.clone());
+            }
+
+			task.attachments = Some(updated_attachments);
+
+			<TaskStorage<T>>::insert(&task_id,task.clone());
+			Self::deposit_event(Event::TaskCompleted(worker.clone(), task_id.clone(), publisher.clone()));
+			Ok(())
 		}
 
 
@@ -266,31 +314,40 @@ pub fn create_task(origin, task_duration: u64, task_cost: BalanceOf<T>, task_des
 }
 */
 
-// pub fn bid_for_task(origin, task_id: u128, worker_name: Vec<u8>) {
-// 	let bidder = ensure_signed(origin)?;
+// #[weight = 10_000]
+//         pub fn task_completed(origin, task_id: u128, worker_attachments: Option<Vec<Vec<u8>>>) {
+//             let bidder = ensure_signed(origin)?;
+//             ensure!(Self::task_exist(task_id.clone()), Error::<T>::TaskDoesNotExist);
 
-// 	ensure!(TaskStorage::<T>::contains_key(&task_id), Error::<T>::TaskDoesNotExist);
-// 	let mut task = TaskStorage::<T>::get(task_id.clone());
-// 	let task_cost= task.cost.clone();
+//             let mut task_struct = TaskStorage::<T>::get(task_id.clone());
+//             let status = task_struct.status;
+//             ensure!(status == Status::InProgress, Error::<T>::TaskIsNotInProgress);
 
-// 	ensure!(T::Currency::free_balance(&bidder.clone()) > task_cost, Error::<T>::NotEnoughBalanceToBid);
-	
-// 	let publisher = task.publisher.clone();
+//             let publisher = task_struct.publisher.clone();
+//             let worker = task_struct.worker_id.clone().ok_or(Error::<T>::WorkerNotSet)?;
 
-// 	// anyone except the publisher can bid for the task
-// 	ensure!(publisher != bidder.clone(), Error::<T>::UnauthorisedToBid);
+//             // only the worker can complete the task
+//             ensure!(worker == bidder.clone(), Error::<T>::UnauthorisedToComplete);
 
-// 	let status = task.status.clone();
-// 	ensure!(status == Status::Open, Error::<T>::TaskIsNotOpen);
+//             task_struct.status = Status::PendingApproval;
 
-// 	task.worker_id = Some(bidder.clone());
-// 	task.worker_name = Some(worker_name.clone());
-// 	task.status= Status::InProgress;
+//             // Update the attachments vector to hold both publisher and worker file urls
+//             let existing_attachments = task_struct.attachments.clone();
+//             let mut updated_attachments: Vec<Vec<u8>> = Vec::new();
 
-// 	TaskStorage::<T>::insert(&task_id, task);
-// 	T::Currency::set_lock(LOCKSECRET, &bidder, task_cost.clone(), WithdrawReasons::TRANSACTION_PAYMENT);
-// 	Self::deposit_event(RawEvent::TaskIsBidded(bidder.clone(), worker_name.clone(), task_id.clone()));
+//             // update only if attachments exist 
+//             if let Some(attachments) =  existing_attachments {
+//                 updated_attachments.extend(attachments.clone());
+//             }
 
-// 	let task_details_by_helper = Self::get_task(task_id.clone());
-// 	debug::info!("task_details_by_helper : {:#?}", task_details_by_helper);
-// }
+//             // update only if attachments exist 
+//             if let Some(work_attachments) =  worker_attachments {
+//                 updated_attachments.extend(work_attachments.clone());
+//             }
+
+//             task_struct.attachments = Some(updated_attachments);
+
+//             debug::info!("Updated_attachments {:?}", task_struct.clone());
+
+//             TaskStorage::<T>::insert(&task_id,task_struct.clone());
+//             Self::deposit_event(RawEvent::TaskCompleted(worker.clone(), task_id.clone(), publisher.clone()));
