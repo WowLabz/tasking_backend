@@ -583,7 +583,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/*
+		/* Description:
          * Extrinsic for transfering funds from one account to another ..
          * on the blockchain. This is called by the worker / publisher.
         */
