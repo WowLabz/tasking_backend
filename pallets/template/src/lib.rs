@@ -280,18 +280,18 @@ pub mod pallet {
 			task_tags: Vec<TaskTypeTags>, 
 			publisher_attachments: Option<Vec<Vec<u8>>>
 		) -> DispatchResult {
-            /// User authentication
+            // User authentication
 			let who = ensure_signed(origin)?;
-            /// Fetching the latest task count
+            // Fetching the latest task count
 			let current_task_count = Self::get_task_count();
-            /// Locking the amount from the publisher for the task
+            // Locking the amount from the publisher for the task
 			T::Currency::set_lock(
 				LOCKSECRET, 
 				&who, 
 				task_cost.clone(), 
 				WithdrawReasons::TRANSACTION_PAYMENT
 			);
-            /// Details related to task created for storage
+            // Details related to task created for storage
 			let task_details = TaskDetails {
 				task_id: current_task_count.clone(),
 				publisher: who.clone(),
@@ -305,9 +305,9 @@ pub mod pallet {
 				task_description: task_des.clone(),
 				attachments: publisher_attachments.clone(),
 			};
-            /// Inserting the new task details to storage
+            // Inserting the new task details to storage
 			<TaskStorage<T>>::insert(current_task_count.clone(), task_details);
-            /// Notifying the user about the transaction event
+            // Notifying the user about the transaction event
 			Self::deposit_event(
 				Event::TaskCreated(
 					who, 
@@ -318,7 +318,7 @@ pub mod pallet {
 					task_des.clone()
 				)
 			);
-            /// Incrementing the task count in storage
+            // Incrementing the task count in storage
 			<TaskCount<T>>::put(current_task_count + 1);
 
 			Ok(())
@@ -335,49 +335,49 @@ pub mod pallet {
 			task_id:u128, 
 			worker_name:Vec<u8>
 		) -> DispatchResult {
-            /// User authentication
+            // User authentication
 			let bidder = ensure_signed(origin)?;
-            /// Does task exists?
+            // Does task exists?
 			ensure!(
 				<TaskStorage<T>>::contains_key(&task_id), 
 				<Error<T>>::TaskDoesNotExist
-			);
-            /// Getting task details
+            };
+            // Getting task details
 			let mut task = Self::task(task_id.clone());
-            /// Accessing task cost
+            // Accessing task cost
 			let task_cost = task.cost.clone();
-            /// Is there balance to bid?
+            // Is there balance to bid?
 			ensure!(
 				T::Currency::free_balance(&bidder.clone()) > task_cost, 
 				<Error<T>>::NotEnoughBalanceToBid
 			);
-            /// Accessing publisher
+            // Accessing publisher
 			let publisher = task.publisher.clone();
-            /// Is publisher the bidder?
+            // Is publisher the bidder?
 			ensure!(
 				publisher != bidder.clone(), 
 				<Error<T>>::UnauthorisedToBid
 			);
-            /// Accessing task status
+            // Accessing task status
 			let status = task.status.clone();
-            /// Is task open?
+            // Is task open?
 			ensure!(status == Status::Open, <Error<T>>::TaskIsNotOpen);
-            /// Updating worker id
+            // Updating worker id
 			task.worker_id = Some(bidder.clone());
-            /// Updating worker name
+            // Updating worker name
 			task.worker_name = Some(worker_name.clone());
-            /// Updating status of task
+            // Updating status of task
 			task.status = Status::InProgress;
-            /// Inserting updated task in storage
+            // Inserting updated task in storage
 			<TaskStorage<T>>::insert(&task_id, task);
-            /// Locking bid amount
+            // Locking bid amount
 			T::Currency::set_lock(
 				LOCKSECRET, 
 				&bidder, 
 				task_cost.clone(), 
 				WithdrawReasons::TRANSACTION_PAYMENT
 			);		
-            /// Notifying the user
+            // Notifying the user
 			Self::deposit_event(
 				Event::TaskIsBid(bidder.clone(), 
 				worker_name.clone(), 
@@ -399,33 +399,33 @@ pub mod pallet {
             task_id: u128, 
             worker_attachments: Option<Vec<Vec<u8>>> // TODO: Mandatory
         ) -> DispatchResult {
-            /// User authentication
+            // User authentication
 			let bidder = ensure_signed(origin)?;
-            /// Does task exist?
+            // Does task exist?
 			ensure!(
                 <TaskStorage<T>>::contains_key(task_id.clone()), 
                 <Error<T>>::TaskDoesNotExist
             );
-            /// Get task details from storage
+            // Get task details from storage
 			let mut task = Self::task(task_id.clone());
-            /// Accessing task status
+            // Accessing task status
 			let status = task.status;
-            /// Is task in progress?
+            // Is task in progress?
 			ensure!(
                 status == Status::InProgress, 
                 <Error<T>>::TaskIsNotInProgress
             );
-            /// Accessing publisher
+            // Accessing publisher
 			let publisher = task.publisher.clone();
-            /// Checking if worker is set or not
+            // Checking if worker is set or not
 			let worker = task.worker_id.clone().ok_or(<Error<T>>::WorkerNotSet)?;
 			// Is worker the biider?
             ensure!(worker == bidder.clone(), <Error<T>>::UnauthorisedToComplete);
-            /// Updating the status
+            // Updating the status
 			task.status = Status::PendingApproval;
 			// Accessing the task attachments
             let existing_attachments = task.attachments.clone();
-            /// Creating vector for holding old and new attachents
+            // Creating vector for holding old and new attachents
 			let mut updated_attachments: Vec<Vec<u8>> = Vec::new();
 			// Update only if old attachments exist 
             if let Some(attachments) =  existing_attachments {
@@ -435,11 +435,11 @@ pub mod pallet {
             if let Some(work_attachments) =  worker_attachments {
                 updated_attachments.extend(work_attachments.clone());
             }
-            /// Updating the attachments for storage
+            // Updating the attachments for storage
 			task.attachments = Some(updated_attachments);
-            /// Inserting the updated task details
+            // Inserting the updated task details
 			<TaskStorage<T>>::insert(&task_id, task.clone());
-            /// Notify user
+            // Notify user
 			Self::deposit_event(
                 Event::TaskCompleted(
                     worker.clone(), 
@@ -463,50 +463,50 @@ pub mod pallet {
             task_id: u128, 
             rating_for_the_worker: u8
         ) -> DispatchResult {
-	        /// User authentication
+	        // User authentication
 			let publisher = ensure_signed(origin)?;
-            /// Does task exist?
+            // Does task exist?
 			ensure!(
                 <TaskStorage<T>>::contains_key(task_id.clone()),
                 <Error<T>>::TaskDoesNotExist
             );
-            /// Getting task details from storage
+            // Getting task details from storage
 			let mut task = Self::task(task_id.clone());
-            /// Accessing task status
+            // Accessing task status
 			let status = task.status;
-            /// Is approval pending?
+            // Is approval pending?
 			ensure!(
                 status == Status::PendingApproval, 
                 <Error<T>>::TaskIsNotPendingApproval
             );
-            /// Accessing publisher
+            // Accessing publisher
 			let approver = task.publisher.clone();
-            /// Is publisher the approver?
+            // Is publisher the approver?
 			ensure!(
                 publisher == approver.clone(), 
                 <Error<T>>::UnauthorisedToApprove
             );
-            /// Checking if the worker is set or not
+            // Checking if the worker is set or not
 			let bidder = task.worker_id.clone().ok_or(<Error<T>>::WorkerNotSet)?;
 			// Inserting Worker Rating to RatingMap
 			let existing_bidder_ratings: User<T::AccountId> = Self::get_worker_ratings(&bidder);
-            /// Creating temp rating vector
+            // Creating temp rating vector
 			let mut temp_rating_vec = Vec::<u8>::new();
-            /// Looping through all the existing worker ratings
+            // Looping through all the existing worker ratings
 			for rating in existing_bidder_ratings.ratings_vec {
 				temp_rating_vec.push(rating);
 			}
-            /// Updating the temp rating vector with new rating
+            // Updating the temp rating vector with new rating
 			temp_rating_vec.push(rating_for_the_worker);
-            /// Creating a new user instance for updating worker details
+            // Creating a new user instance for updating worker details
 			let curr_bidder_ratings = User::new(bidder.clone(), UserType::Worker, temp_rating_vec);
-            /// Inserting into worker rating storage
+            // Inserting into worker rating storage
 			<WorkerRatings<T>>::insert(bidder.clone(), curr_bidder_ratings.clone());
 			// Updating task status
 			task.status = Status::PendingRatings;
-            /// Inserting updated task into storage
+            // Inserting updated task into storage
 			<TaskStorage<T>>::insert(&task_id, task.clone());
-            /// Notify user
+            // Notify user
 			Self::deposit_event(Event::TaskApproved(task_id.clone()));
 
 			Ok(())
@@ -523,53 +523,53 @@ pub mod pallet {
             task_id: u128, 
             rating_for_customer: u8
         ) -> DispatchResult {
-            /// User authentication
+            // User authentication
 			let bidder = ensure_signed(origin)?;
-            /// Getting task details from storage
+            // Getting task details from storage
 			let mut task = Self::task(task_id.clone());
-            /// Accessing status 
+            // Accessing status 
 			let status = task.status;
-            /// Is rating pending from worker to publisher?
+            // Is rating pending from worker to publisher?
 			ensure!(
                 status == Status::PendingRatings, 
                 <Error<T>>::TaskIsNotPendingRating
             );
-            /// Get worker id
+            // Get worker id
             let worker = task.worker_id.clone().ok_or(<Error<T>>::WorkerNotSet)?;
-			/// Is worker the bidder?
+			// Is worker the bidder?
             ensure!(
                 worker == bidder.clone(), 
                 <Error<T>>::UnauthorisedToProvideCustomerRating
             );
-            /// Accessing reference of the publisher
+            // Accessing reference of the publisher
 			let customer = &task.publisher;
-            /// Get existing customer ratings
+            // Get existing customer ratings
 			let existing_customer_rating: User<T::AccountId> = Self::get_customer_ratings(&customer);
-            /// Creating a temp rating vector
+            // Creating a temp rating vector
 			let mut temp_rating_vec = Vec::<u8>::new();
-            /// Looping over all the existing customer ratings
+            // Looping over all the existing customer ratings
 			for rating in existing_customer_rating.ratings_vec {
 				temp_rating_vec.push(rating);
 			}
-            /// Updating temp rating vector with new rating
+            // Updating temp rating vector with new rating
 			temp_rating_vec.push(rating_for_customer);
-            /// Creating new user instance with new rating
+            // Creating new user instance with new rating
 			let curr_customer_ratings = User::new(customer.clone(), UserType::Customer, temp_rating_vec);
-            /// Inserting new user instance in customer rating storage
+            // Inserting new user instance in customer rating storage
 			<CustomerRatings<T>>::insert(customer.clone(), curr_customer_ratings.clone());
-            /// Accessing task cost
+            // Accessing task cost
 			let transfer_amount = task.cost;
-            /// Removing the lock on customer's funds
+            // Removing the lock on customer's funds
 			T::Currency::remove_lock(LOCKSECRET,&customer);
-            /// Removing the lock on the bidder's funds
+            // Removing the lock on the bidder's funds
 			T::Currency::remove_lock(LOCKSECRET,&bidder);
-            /// Transfering amount from customer to bidder
+            // Transfering amount from customer to bidder
 			T::Currency::transfer(&customer, &bidder, transfer_amount, ExistenceRequirement::KeepAlive)?;
 			// Updating task status
 			task.status = Status::Completed;
-            /// Inserting updated task details
+            // Inserting updated task details
 			TaskStorage::<T>::insert(&task_id, task.clone());
-            /// Notify user about the transfered amount
+            // Notify user about the transfered amount
 			Self::deposit_event(
                 Event::AmountTransfered(
                     customer.clone(),
@@ -577,7 +577,7 @@ pub mod pallet {
                     transfer_amount.clone()
                 )
             );
-            /// Notify the user about the task being closed
+            // Notify the user about the task being closed
 			Self::deposit_event(Event::TaskClosed(task_id.clone()));
 
 			Ok(())
@@ -593,27 +593,27 @@ pub mod pallet {
             to: T::AccountId, 
             transfer_amount: BalanceOf<T>
         ) -> DispatchResult {
-            /// User authentication
+            // User authentication
 			let sender = ensure_signed(origin)?;
-            /// Get total balance of sender
+            // Get total balance of sender
 			let sender_account_balance = T::Currency::total_balance(&sender);
-            /// Verify if sender's balance is greater than transfer amount
+            // Verify if sender's balance is greater than transfer amount
 			let is_valid_to_transfer = sender_account_balance.clone() < transfer_amount.clone();
-            /// Is the transfer valid based on the sender's balance
+            // Is the transfer valid based on the sender's balance
 			ensure!(!is_valid_to_transfer, <Error<T>>::NotEnoughBalance);
-            /// Get account balance of receiver
+            // Get account balance of receiver
 			let to_account_balance = T::Currency::total_balance(&to);
-            /// Making the transfer
+            // Making the transfer
 			T::Currency::transfer(&sender, &to, transfer_amount, ExistenceRequirement::KeepAlive)?;
-            /// Get updated balance of sender
+            // Get updated balance of sender
 			let updated_sender_account_balance = T::Currency::total_balance(&sender);
-            /// Get updated balance of receiver
+            // Get updated balance of receiver
 			let updated_to_account_balance = T::Currency::total_balance(&to);
-            /// Notify user about the increased transfer count
+            // Notify user about the increased transfer count
 			Self::deposit_event(Event::CountIncreased(Self::get_count()));
 			// Initializing a vec and storing the details is a Vec
 			let mut details: Vec<TransferDetails<T::AccountId, BalanceOf<T>>> = Vec::new();
-            /// Preparing the transfer details structure
+            // Preparing the transfer details structure
 			let transfer_details = TransferDetails {
 				transfer_from: sender.clone(),
 				from_before: sender_account_balance.clone(),
@@ -622,11 +622,11 @@ pub mod pallet {
 				to_before: to_account_balance.clone(),
 				to_after: updated_to_account_balance.clone(),
 			};
-            /// Updating the vector with transfer details
+            // Updating the vector with transfer details
 			details.push(transfer_details);
-            /// Updating storage with new transfer details
+            // Updating storage with new transfer details
 			<Transfers<T>>::put(details);
-            /// Notify user about the transfer details
+            // Notify user about the transfer details
 			Self::deposit_event(
                 Event::TransferMoney(
                     sender.clone(), 
