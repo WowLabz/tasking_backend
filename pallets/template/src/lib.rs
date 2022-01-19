@@ -19,7 +19,14 @@ pub mod pallet {
 	use frame_support::{
 		log,
         sp_runtime::traits::Hash,
-        traits::{ Randomness, Currency, tokens::ExistenceRequirement, LockIdentifier, WithdrawReasons, LockableCurrency },
+        traits::{ 
+            Randomness, 
+            Currency, 
+            tokens::ExistenceRequirement, 
+            LockIdentifier, 
+            WithdrawReasons, 
+            LockableCurrency 
+        },
 		dispatch::{ EncodeLike },
         transactional
     };
@@ -99,7 +106,6 @@ pub mod pallet {
 		pub fn new(account_id: AccountId, user_type: UserType, ratings_vec: Vec<u8>) -> Self {
 			let rating = Some(Self::get_list_average(ratings_vec.clone()));
 			
-
 			Self {
 				account_id,
 				user_type,
@@ -109,18 +115,14 @@ pub mod pallet {
 		}
 
 		pub fn get_list_average(list: Vec<u8>) -> u8 {
-			
 			let list_len: u8 = list.len() as u8;
-
 			if list_len == 1 {
 				return list[0];
 			}
-
 			let mut total_sum = 0;
 			for item in list.iter() {
 				total_sum += item;
 			}
-			
 			let average = total_sum / list_len;
 			
 			average
@@ -137,8 +139,8 @@ pub mod pallet {
 		to_after: Balance,
 	}
 
-	/// Configure the pallet by specifying the parameters and types on which it depends.
-	#[pallet::config]
+	/// Pallet configuration 
+    #[pallet::config]
 	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		type Currency: LockableCurrency<Self::AccountId>;
@@ -150,37 +152,71 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_task_count)]
+    /// For storing the number of tasks
 	pub type TaskCount<T> = StorageValue<_, u128, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn task)]
-	pub(super) type TaskStorage<T: Config> = StorageMap<_, Blake2_128Concat, u128, TaskDetails<T::AccountId, BalanceOf<T>>, ValueQuery>;
+    /// For storing the task details
+	pub(super) type TaskStorage<T: Config> = StorageMap<
+        _, 
+        Blake2_128Concat, 
+        u128, 
+        TaskDetails<T::AccountId, BalanceOf<T>>, 
+        ValueQuery
+    >;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_worker_ratings)]
-	pub(super) type WorkerRatings<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, User<T::AccountId>, ValueQuery>;
+    /// For storing the worker ratings
+	pub(super) type WorkerRatings<T: Config> = StorageMap<
+        _, 
+        Blake2_128Concat, 
+        T::AccountId, 
+        User<T::AccountId>, 
+        ValueQuery
+    >;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_customer_ratings)]
-	pub(super) type CustomerRatings<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, User<T::AccountId>, ValueQuery>;
+    /// For storing customer ratings
+	pub(super) type CustomerRatings<T: Config> = StorageMap<
+        _, 
+        Blake2_128Concat, 
+        T::AccountId, 
+        User<T::AccountId>, 
+        ValueQuery
+    >;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_account_balances)]
-	pub(super) type AccountBalances<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, BalanceOf<T>, ValueQuery>;
+    /// For storing account balances
+	pub(super) type AccountBalances<T: Config> = StorageMap<
+        _, 
+        Blake2_128Concat, 
+        T::AccountId, 
+        BalanceOf<T>, 
+        ValueQuery
+    >;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_count)]
+    /// For fetching the count of transfers
 	pub(super) type Count<T> = StorageValue<_, u128, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_transfers)]
-	pub(super) type Transfers<T: Config> = StorageValue<_, Vec<TransferDetails<T::AccountId, BalanceOf<T>>>, ValueQuery>;
+    /// For fetching the transfer details
+	pub(super) type Transfers<T: Config> = StorageValue<
+        _, 
+        Vec<TransferDetails<T::AccountId, BalanceOf<T>>>, 
+        ValueQuery
+    >;
 
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-
 		TaskCreated(T::AccountId, Vec<u8>, u128, u64, BalanceOf<T>, Vec<u8>),
 		TaskIsBid(T::AccountId, Vec<u8>, u128),
 		TaskCompleted(T::AccountId, u128, T::AccountId),
@@ -224,12 +260,10 @@ pub mod pallet {
 		UnauthorisedToProvideCustomerRating,
 		/// TO check if the sender has sufficient balance for a transfer
 		NotEnoughBalance
-
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-
 
         /* Description:
          * Extrinsic for creating tasks on the blockchain. This is called by the ..
@@ -417,108 +451,169 @@ pub mod pallet {
 			Ok(())
 		}
 
+        /* Description:
+         * Extrinsic for approving tasks that are completed by the worker on the blockchain. ..
+         * This is called by the publisher who put up the task in the first place for signifying .. 
+         * that the publisher approves the final work of the worker. Also rating to the worker ..
+         * is given while approving the task.
+        */
 		#[pallet::weight(10_000)]
-		pub fn approve_task(origin:OriginFor<T>, task_id:u128, rating_for_the_worker:u8)-> DispatchResult{
-			
+		pub fn approve_task(
+            origin: OriginFor<T>, 
+            task_id: u128, 
+            rating_for_the_worker: u8
+        ) -> DispatchResult {
+	        /// User authentication
 			let publisher = ensure_signed(origin)?;
-			ensure!(<TaskStorage<T>>::contains_key(task_id.clone()), <Error<T>>::TaskDoesNotExist);
-
+            /// Does task exist?
+			ensure!(
+                <TaskStorage<T>>::contains_key(task_id.clone()),
+                <Error<T>>::TaskDoesNotExist
+            );
+            /// Getting task details from storage
 			let mut task = Self::task(task_id.clone());
+            /// Accessing task status
 			let status = task.status;
-			ensure!(status == Status::PendingApproval, <Error<T>>::TaskIsNotPendingApproval);
+            /// Is approval pending?
+			ensure!(
+                status == Status::PendingApproval, 
+                <Error<T>>::TaskIsNotPendingApproval
+            );
+            /// Accessing publisher
 			let approver = task.publisher.clone();
-
-			ensure!(publisher == approver.clone(), <Error<T>>::UnauthorisedToApprove);
-
+            /// Is publisher the approver?
+			ensure!(
+                publisher == approver.clone(), 
+                <Error<T>>::UnauthorisedToApprove
+            );
+            /// Checking if the worker is set or not
 			let bidder = task.worker_id.clone().ok_or(<Error<T>>::WorkerNotSet)?;
-
 			// Inserting Worker Rating to RatingMap
 			let existing_bidder_ratings: User<T::AccountId> = Self::get_worker_ratings(&bidder);
-
+            /// Creating temp rating vector
 			let mut temp_rating_vec = Vec::<u8>::new();
+            /// Looping through all the existing worker ratings
 			for rating in existing_bidder_ratings.ratings_vec {
 				temp_rating_vec.push(rating);
 			}
+            /// Updating the temp rating vector with new rating
 			temp_rating_vec.push(rating_for_the_worker);
-
+            /// Creating a new user instance for updating worker details
 			let curr_bidder_ratings = User::new(bidder.clone(), UserType::Worker, temp_rating_vec);
+            /// Inserting into worker rating storage
 			<WorkerRatings<T>>::insert(bidder.clone(), curr_bidder_ratings.clone());
-
-			// Updating Task Status
+			// Updating task status
 			task.status = Status::PendingRatings;
-			<TaskStorage<T>>::insert(&task_id,task.clone());
+            /// Inserting updated task into storage
+			<TaskStorage<T>>::insert(&task_id, task.clone());
+            /// Notify user
 			Self::deposit_event(Event::TaskApproved(task_id.clone()));
+
 			Ok(())
 		}
 
+        /* Description:
+         * Extrinsic for providing rating to publisher on the blockchain. ..
+         * This is called by the worker who will judge the publisher based ..
+         * on a number of factors.
+        */
 		#[pallet::weight(10_000)]
-		pub fn provide_customer_rating(origin:OriginFor<T>, task_id:u128, rating_for_customer:u8)-> DispatchResult{
-
+		pub fn provide_customer_rating(
+            origin: OriginFor<T>, 
+            task_id: u128, 
+            rating_for_customer: u8
+        ) -> DispatchResult {
+            /// User authentication
 			let bidder = ensure_signed(origin)?;
-
+            /// Getting task details from storage
 			let mut task = Self::task(task_id.clone());
+            /// Accessing status 
 			let status = task.status;
-			ensure!(status == Status::PendingRatings, <Error<T>>::TaskIsNotPendingRating);
-
-			let worker = task.worker_id.clone().ok_or(<Error<T>>::WorkerNotSet)?;
-
-			// only the bidder/worker should be able to provide customer ratings
-			ensure!(worker == bidder.clone(), <Error<T>>::UnauthorisedToProvideCustomerRating);
-
+            /// Is rating pending from worker to publisher?
+			ensure!(
+                status == Status::PendingRatings, 
+                <Error<T>>::TaskIsNotPendingRating
+            );
+            /// Get worker id
+            let worker = task.worker_id.clone().ok_or(<Error<T>>::WorkerNotSet)?;
+			/// Is worker the bidder?
+            ensure!(
+                worker == bidder.clone(), 
+                <Error<T>>::UnauthorisedToProvideCustomerRating
+            );
+            /// Accessing reference of the publisher
 			let customer = &task.publisher;
-
+            /// Get existing customer ratings
 			let existing_customer_rating: User<T::AccountId> = Self::get_customer_ratings(&customer);
-
+            /// Creating a temp rating vector
 			let mut temp_rating_vec = Vec::<u8>::new();
+            /// Looping over all the existing customer ratings
 			for rating in existing_customer_rating.ratings_vec {
 				temp_rating_vec.push(rating);
 			}
+            /// Updating temp rating vector with new rating
 			temp_rating_vec.push(rating_for_customer);
-
+            /// Creating new user instance with new rating
 			let curr_customer_ratings = User::new(customer.clone(), UserType::Customer, temp_rating_vec);
+            /// Inserting new user instance in customer rating storage
 			<CustomerRatings<T>>::insert(customer.clone(), curr_customer_ratings.clone());
-
+            /// Accessing task cost
 			let transfer_amount = task.cost;
+            /// Removing the lock on customer's funds
 			T::Currency::remove_lock(LOCKSECRET,&customer);
+            /// Removing the lock on the bidder's funds
 			T::Currency::remove_lock(LOCKSECRET,&bidder);
-			T::Currency::transfer(&customer,&bidder, transfer_amount, ExistenceRequirement::KeepAlive)?;
-
-			// Updating Task Status
+            /// Transfering amount from customer to bidder
+			T::Currency::transfer(&customer, &bidder, transfer_amount, ExistenceRequirement::KeepAlive)?;
+			// Updating task status
 			task.status = Status::Completed;
-			TaskStorage::<T>::insert(&task_id,task.clone());
-
-			Self::deposit_event(Event::AmountTransfered(customer.clone(),bidder.clone(),transfer_amount.clone()));
-
+            /// Inserting updated task details
+			TaskStorage::<T>::insert(&task_id, task.clone());
+            /// Notify user about the transfered amount
+			Self::deposit_event(
+                Event::AmountTransfered(
+                    customer.clone(),
+                    bidder.clone(),
+                    transfer_amount.clone()
+                )
+            );
+            /// Notify the user about the task being closed
 			Self::deposit_event(Event::TaskClosed(task_id.clone()));
+
 			Ok(())
 		}
 
-		
+		/*
+         * Extrinsic for transfering funds from one account to another ..
+         * on the blockchain. This is called by the worker / publisher.
+        */
 		#[pallet::weight(10_000)]
-		pub fn transfer_money(origin:OriginFor<T>, to: T::AccountId, transfer_amount:BalanceOf<T>)-> DispatchResult{
-
-			// 1. Transfer Money
-			// 2. Check if the sender has enough funds to send money else throw Error
-			// 2. Store the details in a struct
-			// 3. Store the details in a vec
-
+		pub fn transfer_money(
+            origin: OriginFor<T>, 
+            to: T::AccountId, 
+            transfer_amount: BalanceOf<T>
+        ) -> DispatchResult {
+            /// User authentication
 			let sender = ensure_signed(origin)?;
+            /// Get total balance of sender
 			let sender_account_balance = T::Currency::total_balance(&sender);
-
+            /// Verify if sender's balance is greater than transfer amount
 			let is_valid_to_transfer = sender_account_balance.clone() < transfer_amount.clone();
+            /// Is the transfer valid based on the sender's balance
 			ensure!(!is_valid_to_transfer, <Error<T>>::NotEnoughBalance);
-
+            /// Get account balance of receiver
 			let to_account_balance = T::Currency::total_balance(&to);
-
+            /// Making the transfer
 			T::Currency::transfer(&sender, &to, transfer_amount, ExistenceRequirement::KeepAlive)?;
-
+            /// Get updated balance of sender
 			let updated_sender_account_balance = T::Currency::total_balance(&sender);
+            /// Get updated balance of receiver
 			let updated_to_account_balance = T::Currency::total_balance(&to);
+            /// Notify user about the increased transfer count
 			Self::deposit_event(Event::CountIncreased(Self::get_count()));
-
 			// Initializing a vec and storing the details is a Vec
 			let mut details: Vec<TransferDetails<T::AccountId, BalanceOf<T>>> = Vec::new();
-
+            /// Preparing the transfer details structure
 			let transfer_details = TransferDetails {
 				transfer_from: sender.clone(),
 				from_before: sender_account_balance.clone(),
@@ -527,12 +622,23 @@ pub mod pallet {
 				to_before: to_account_balance.clone(),
 				to_after: updated_to_account_balance.clone(),
 			};
+            /// Updating the vector with transfer details
 			details.push(transfer_details);
+            /// Updating storage with new transfer details
 			<Transfers<T>>::put(details);
+            /// Notify user about the transfer details
+			Self::deposit_event(
+                Event::TransferMoney(
+                    sender.clone(), 
+                    sender_account_balance.clone(), 
+                    updated_sender_account_balance.clone(), 
+                    to.clone(), 
+                    to_account_balance.clone(), 
+                    updated_to_account_balance.clone()
+                )
+            );
 
-			Self::deposit_event(Event::TransferMoney(sender.clone(), sender_account_balance.clone(), updated_sender_account_balance.clone(), to.clone(), to_account_balance.clone(), updated_to_account_balance.clone()));
 			Ok(())
-
 		}
 	}
 }
