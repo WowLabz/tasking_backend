@@ -230,6 +230,12 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 
+
+        /* Description:
+         * Extrinsic for creating tasks on the blockchain. This is called by the ..
+         * publisher who wants to post tasks on the chain that can be ..
+         * put up for bidding.
+        */
 		#[pallet::weight(10_000)]
 		pub fn create_task(
 			origin: OriginFor<T>, 
@@ -240,17 +246,18 @@ pub mod pallet {
 			task_tags: Vec<TaskTypeTags>, 
 			publisher_attachments: Option<Vec<Vec<u8>>>
 		) -> DispatchResult {
-			// Extrinsic for creating tasks on the blockchain. This is called by the ..
-			// publisher who wants to post tasks on the chain that can be ..
-			// put up for bidding.
+            /// User authentication
 			let who = ensure_signed(origin)?;
+            /// Fetching the latest task count
 			let current_task_count = Self::get_task_count();
+            /// Locking the amount from the publisher for the task
 			T::Currency::set_lock(
 				LOCKSECRET, 
 				&who, 
 				task_cost.clone(), 
 				WithdrawReasons::TRANSACTION_PAYMENT
 			);
+            /// Details related to task created for storage
 			let task_details = TaskDetails {
 				task_id: current_task_count.clone(),
 				publisher: who.clone(),
@@ -264,7 +271,9 @@ pub mod pallet {
 				task_description: task_des.clone(),
 				attachments: publisher_attachments.clone(),
 			};
+            /// Inserting the new task details to storage
 			<TaskStorage<T>>::insert(current_task_count.clone(), task_details);
+            /// Notifying the user about the transaction event
 			Self::deposit_event(
 				Event::TaskCreated(
 					who, 
@@ -275,91 +284,136 @@ pub mod pallet {
 					task_des.clone()
 				)
 			);
+            /// Incrementing the task count in storage
 			<TaskCount<T>>::put(current_task_count + 1);
+
 			Ok(())
 		}
 
+        /* Description:
+         * Extrinsic for bidding for tasks on the blockchain. This is called by ..
+         * the worker who wants to take up tasks on the chain that ..
+         * can be completed in the given span of time.
+        */
 		#[pallet::weight(10_000)]
 		pub fn bid_for_task(
 			origin:OriginFor<T>, 
 			task_id:u128, 
 			worker_name:Vec<u8>
 		) -> DispatchResult {
-			// Extrinsic for bidding for tasks on the blockchain. This is called by ..
-			// the worker who wants to take up tasks on the chain that ..
-			// can be completed in the given span of time.
+            /// User authentication
 			let bidder = ensure_signed(origin)?;
+            /// Does task exists?
 			ensure!(
 				<TaskStorage<T>>::contains_key(&task_id), 
 				<Error<T>>::TaskDoesNotExist
 			);
+            /// Getting task details
 			let mut task = Self::task(task_id.clone());
+            /// Accessing task cost
 			let task_cost = task.cost.clone();
+            /// Is there balance to bid?
 			ensure!(
 				T::Currency::free_balance(&bidder.clone()) > task_cost, 
 				<Error<T>>::NotEnoughBalanceToBid
 			);
+            /// Accessing publisher
 			let publisher = task.publisher.clone();
+            /// Is publisher the bidder?
 			ensure!(
 				publisher != bidder.clone(), 
 				<Error<T>>::UnauthorisedToBid
 			);
+            /// Accessing task status
 			let status = task.status.clone();
+            /// Is task open?
 			ensure!(status == Status::Open, <Error<T>>::TaskIsNotOpen);
+            /// Updating worker id
 			task.worker_id = Some(bidder.clone());
+            /// Updating worker name
 			task.worker_name = Some(worker_name.clone());
+            /// Updating status of task
 			task.status = Status::InProgress;
-			<TaskStorage<T>>::insert(&task_id,task);
+            /// Inserting updated task in storage
+			<TaskStorage<T>>::insert(&task_id, task);
+            /// Locking bid amount
 			T::Currency::set_lock(
 				LOCKSECRET, 
 				&bidder, 
 				task_cost.clone(), 
 				WithdrawReasons::TRANSACTION_PAYMENT
 			);		
+            /// Notifying the user
 			Self::deposit_event(
 				Event::TaskIsBid(bidder.clone(), 
 				worker_name.clone(), 
 				task_id.clone())
 			);
+
 			Ok(())
 		}
 
+        /* Description:
+         * Extrinsic for marking tasks as complete on the blockchain. ..
+         * This is called by the respective worker who wants to signify that the ..
+         * alloted task has been completed and is put up for approval 
+         * for the publisher.
+        */
 		#[pallet::weight(10_000)]
-		// NOTE: work_attachments should not be an option, should be mandatory for the jurors to review work in case of a dispute
-		pub fn task_completed(origin:OriginFor<T>, task_id:u128, worker_attachments: Option<Vec<Vec<u8>>>)-> DispatchResult{
+		pub fn task_completed(
+            origin: OriginFor<T>, 
+            task_id: u128, 
+            worker_attachments: Option<Vec<Vec<u8>>> // TODO: Mandatory
+        ) -> DispatchResult {
+            /// User authentication
 			let bidder = ensure_signed(origin)?;
-			ensure!(<TaskStorage<T>>::contains_key(task_id.clone()), <Error<T>>::TaskDoesNotExist);
-
+            /// Does task exist?
+			ensure!(
+                <TaskStorage<T>>::contains_key(task_id.clone()), 
+                <Error<T>>::TaskDoesNotExist
+            );
+            /// Get task details from storage
 			let mut task = Self::task(task_id.clone());
+            /// Accessing task status
 			let status = task.status;
-			ensure!(status == Status::InProgress, <Error<T>>::TaskIsNotInProgress);
-
+            /// Is task in progress?
+			ensure!(
+                status == Status::InProgress, 
+                <Error<T>>::TaskIsNotInProgress
+            );
+            /// Accessing publisher
 			let publisher = task.publisher.clone();
+            /// Checking if worker is set or not
 			let worker = task.worker_id.clone().ok_or(<Error<T>>::WorkerNotSet)?;
-
-			// only the worker can complete the task
+			// Is worker the biider?
             ensure!(worker == bidder.clone(), <Error<T>>::UnauthorisedToComplete);
-
+            /// Updating the status
 			task.status = Status::PendingApproval;
-
-			// Update the attachments vector to hold both publisher and worker file urls
-			let existing_attachments = task.attachments.clone();
+			// Accessing the task attachments
+            let existing_attachments = task.attachments.clone();
+            /// Creating vector for holding old and new attachents
 			let mut updated_attachments: Vec<Vec<u8>> = Vec::new();
-
-			// update only if attachments exist 
+			// Update only if old attachments exist 
             if let Some(attachments) =  existing_attachments {
                 updated_attachments.extend(attachments.clone());
             }
-
-			// update only if attachments exist 
+			// update only if new attachments exist 
             if let Some(work_attachments) =  worker_attachments {
                 updated_attachments.extend(work_attachments.clone());
             }
-
+            /// Updating the attachments for storage
 			task.attachments = Some(updated_attachments);
+            /// Inserting the updated task details
+			<TaskStorage<T>>::insert(&task_id, task.clone());
+            /// Notify user
+			Self::deposit_event(
+                Event::TaskCompleted(
+                    worker.clone(), 
+                    task_id.clone(), 
+                    publisher.clone()
+                )
+            );
 
-			<TaskStorage<T>>::insert(&task_id,task.clone());
-			Self::deposit_event(Event::TaskCompleted(worker.clone(), task_id.clone(), publisher.clone()));
 			Ok(())
 		}
 
