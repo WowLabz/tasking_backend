@@ -341,7 +341,7 @@ pub mod pallet {
 			ensure!(
 				<TaskStorage<T>>::contains_key(&task_id), 
 				<Error<T>>::TaskDoesNotExist
-            };
+			);
             // Getting task details
 			let mut task = Self::task(task_id.clone());
             // Accessing task cost
