@@ -70,6 +70,7 @@ pub mod pallet {
 	#[derive(Encode, Decode, PartialEq, Eq, Debug, Clone, TypeInfo)]
 	pub enum Status {
 		Active,
+		Replied,
 		Closed
 	}
 
@@ -109,7 +110,9 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		MessageCreated(u128,T::AccountId, T::AccountId),
-		MessageReplied(u128,T::AccountId, T::AccountId)	
+		MessageReplied(u128,T::AccountId, T::AccountId),
+		MessageClosed(u128,T::AccountId, T::AccountId),
+
 	 }
 
 	#[pallet::error]
@@ -123,9 +126,14 @@ pub mod pallet {
 		/// To make sure message exists
 		MessageDoesNotExist,
 		/// To make sure message is active
-		MessageIsClosed,
+		ReplyAlreadyExists,
 		/// To make sure only the receiver replies to the message
-		UnauthorisedToReply
+		UnauthorisedToReply,
+		/// To make sure only the original sender can  read the reply
+		UnauthorisedToClose,
+		/// To make sure a reply exists
+		ReplyDoesNotExist
+		
 		
 	}
 
@@ -160,7 +168,7 @@ pub mod pallet {
 			// }
 			// else{
 				
-			<MsgStorage<T>>::insert(&message_count,msg.new());
+			<MsgStorage<T>>::insert(&message_count,msg);
 			
 			<MessageCount<T>>::put(message_count + 1);
 
@@ -182,10 +190,10 @@ pub mod pallet {
 			ensure! (receiver == msg.receiver_id,<Error<T>>::UnauthorisedToReply);
 
 			// ensure check to make sure message is active
-			ensure! (msg.status == Status::Active,<Error<T>>::MessageIsClosed);
+			ensure! (msg.status == Status::Active,<Error<T>>::ReplyAlreadyExists);
 			
 			msg.reply = Some(reply);
-			msg.status = Status::Closed;
+			msg.status = Status::Replied;
 			
 			let original_sender = msg.sender_id.clone();
 
@@ -198,6 +206,43 @@ pub mod pallet {
 			Self::deposit_event(Event::MessageReplied( message_id, receiver, original_sender));
 			
 			Ok(())
+
+		}
+		
+		#[pallet::weight(100)]
+		pub fn mark_as_read(origin: OriginFor<T>, message_id: u128, mode: bool) -> DispatchResult {
+			
+			let sender =  ensure_signed(origin)?;
+
+			ensure! (<MsgStorage<T>>::contains_key(&message_id),<Error<T>>::MessageDoesNotExist);
+
+			let mut msg = Self::get_message(message_id.clone());
+
+			ensure! (sender == msg.sender_id,<Error<T>>::UnauthorisedToClose);
+
+			ensure! (msg.status == Status::Replied,<Error<T>>::ReplyDoesNotExist);
+
+			let receiver = msg.receiver_id.clone();
+
+			// if mode{
+			// 	msg.status = Status::Closed;
+			// }
+
+			msg.status = match mode{
+				true => Status::Closed,
+				false => Status::Replied
+			
+			};
+
+			if msg.status == Status::Closed{
+				<MsgStorage<T>>::remove(message_id);
+			}
+
+			Self::deposit_event(Event::MessageClosed(message_id, sender, receiver));
+
+			Ok(())
+
+
 
 		}
 
