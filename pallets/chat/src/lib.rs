@@ -53,21 +53,21 @@ pub mod pallet {
 
 	}
 
-	// impl<AccountId> Message<AccountId>{
-	// 	fn new(&self) -> Self{
-	// 		Self{
-	// 			message_id: self.message_id,
-	// 			sender_id: self.sender_id,
-	// 			receiver_id: self.receiver_id,
-	// 			message: self.message,
-	// 			reply: self.reply,
-	// 			status: self.status
-	// 		}
-	// 	}
-	// }
+	impl<AccountId> Message<AccountId>{
+		fn new(self) -> Self {
+			Self {
+				message_id: self.message_id,
+				sender_id: self.sender_id,
+				receiver_id: self.receiver_id,
+				message: self.message,
+				reply: self.reply,
+				status: self.status
+			}
+		}
+	}
 
 	
-	#[derive(Encode, Decode, PartialEq, Eq, Debug, Clone,  TypeInfo)]
+	#[derive(Encode, Decode, PartialEq, Eq, Debug, Clone, TypeInfo)]
 	pub enum Status {
 		Active,
 		Closed
@@ -189,8 +189,8 @@ pub mod pallet {
 
 			let message_count =  Self::get_message_count();
 
-			let msg = Message{
-				message_id:message_count,
+			let msg = Message {
+				message_id: message_count,
 				sender_id: sender,
 				receiver_id: receiver,
 				message: message,
@@ -198,8 +198,8 @@ pub mod pallet {
 				status: Status::Active
 			};
 
-			let mut msg_details: Vec<&Message<T::AccountId>> = Vec::new();
-			msg_details.push(&msg);
+			let mut msg_details: Vec<Message<T::AccountId>> = Vec::new();
+			msg_details.push(msg.new());
 
 			<MessageStorage<T>>::put(msg_details);
 
