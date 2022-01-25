@@ -42,7 +42,7 @@ pub mod pallet {
 	type Balance<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 	
-	#[derive(Encode, Decode, PartialEq, Eq, Debug, Clone, TypeInfo)]
+	#[derive(Encode, Decode, Default, PartialEq, Eq, Debug, Clone, TypeInfo)]
 	pub struct Message<AccountId> {
 		message_id: u128,
 		sender_id: AccountId,
@@ -73,42 +73,11 @@ pub mod pallet {
 		Closed
 	}
 
-	
-	// #[derive(Encode, Decode, Debug, PartialEq, Clone, Eq, Default, TypeInfo)]
-	// pub struct User<AccountId> {
-	// 	account_id: AccountId,
-	// 	user_type: UserType,
-	// 	rating: Option<u8>,
-	// 	ratings_vec: Vec<u8>,
-	// }
-
-	// impl<AccountId> User<AccountId> {
-	// 	pub fn new(account_id: AccountId, user_type: UserType, ratings_vec: Vec<u8>) -> Self {
-	// 		let rating = Some(Self::get_list_average(ratings_vec.clone()));
-			
-	// 		Self {
-	// 			account_id,
-	// 			user_type,
-	// 			rating,
-	// 			ratings_vec,
-	// 		}
-	// 	}
-
-	// 	pub fn get_list_average(list: Vec<u8>) -> u8 {
-	// 		let list_len: u8 = list.len() as u8;
-	// 		if list_len == 1 {
-	// 			return list[0];
-	// 		}
-	// 		let mut total_sum = 0;
-	// 		for item in list.iter() {
-	// 			total_sum += item;
-	// 		}
-	// 		let average = total_sum / list_len;
-			
-	// 		average
-	// 	}
-	// }
-
+	impl Default for Status {
+		fn default() -> Self {
+			Status::Active
+		}
+	}
 
 	/// Pallet configuration 
     #[pallet::config]
@@ -126,26 +95,21 @@ pub mod pallet {
     /// For storing the number of tasks
 	pub type MessageCount<T> = StorageValue<_, u128, ValueQuery>;
 
+	// #[pallet::storage]
+	// #[pallet::getter(fn get_message)]
+    // /// For storing the message details
+	// pub(super) type MessageStorage<T: Config> = StorageValue<_, Vec<Message<T::AccountId>>, ValueQuery>;
+
 	#[pallet::storage]
 	#[pallet::getter(fn get_message)]
-    /// For storing the message details
-	pub(super) type MessageStorage<T: Config> = StorageValue<_, Vec<Message<T::AccountId>>, ValueQuery>;
+	pub(super) type MsgStorage<T: Config> = StorageMap<_, Blake2_128Concat, u128, Message<T::AccountId>, ValueQuery>;
 
 	
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-	// 	TaskCreated(T::AccountId, Vec<u8>, u128, u64, BalanceOf<T>, Vec<u8>),
-	// 	TaskIsBid(T::AccountId, Vec<u8>, u128),
-	// 	TaskCompleted(T::AccountId, u128, T::AccountId),
-	// 	/// [TaskID]
-	// 	TaskApproved(u128),
-	// 	AmountTransfered(T::AccountId, T::AccountId, BalanceOf<T>),
-	// 	/// [TaskID]
-	// 	TaskClosed(u128),
-	// 	AccBalance(T::AccountId, BalanceOf<T>),
-	// 	CountIncreased(u128),
-	// 	TransferMoney(T::AccountId, BalanceOf<T>, BalanceOf<T>, T::AccountId, BalanceOf<T>, BalanceOf<T>)
+		MessageCreated(u128,T::AccountId, T::AccountId),
+		MessageReplied(u128,T::AccountId, T::AccountId)	
 	 }
 
 	#[pallet::error]
@@ -154,30 +118,15 @@ pub mod pallet {
 		NoneValue,
 		/// Errors should have helpful documentation associated with them.
 		StorageOverflow,
-		/// To ensure that the  task exists
-		TaskDoesNotExist,
-		/// To check the status and availibility of the task
-		TaskIsNotOpen,
-		/// To check balance of bidder for ability to stake amount
-		NotEnoughBalanceToBid,
-		/// To ensure publisher does not bid for the same task posted
-		UnauthorisedToBid,
-		/// To ensure that a task is bid for and is in progress
-		TaskIsNotInProgress,
-		/// To ensure a worker is chosen and is assigned to the task
-		WorkerNotSet,
-		/// To ensure only the assigned worker completes the task
-		UnauthorisedToComplete,
-		/// To ensure task status is completed and is waiting for approval from the publisher
-		TaskIsNotPendingApproval,
-		/// To ensure only the publisher approves the task
-		UnauthorisedToApprove,
-		/// To ensure task is approved by the publisher
-		TaskIsNotPendingRating,
-		/// To ensure the worker only provides the publisher rating
-		UnauthorisedToProvideCustomerRating,
-		/// TO check if the sender has sufficient balance for a transfer
-		NotEnoughBalance
+		/// Receiver should be a valid recipient and not the same as sender
+		ReceiverNotValid,
+		/// To make sure message exists
+		MessageDoesNotExist,
+		/// To make sure message is active
+		MessageIsClosed,
+		/// To make sure only the receiver replies to the message
+		UnauthorisedToReply
+		
 	}
 
 	#[pallet::call]
@@ -189,42 +138,64 @@ pub mod pallet {
 
 			let message_count =  Self::get_message_count();
 
+			// ensure sender id is not same as receiver id
+			ensure!(sender != receiver,<Error<T>>::ReceiverNotValid);
+
 			let msg = Message {
 				message_id: message_count,
-				sender_id: sender,
-				receiver_id: receiver,
+				sender_id: sender.clone(),
+				receiver_id: receiver.clone(),
 				message: message,
 				reply: None,
 				status: Status::Active
 			};
 
-			let mut msg_details: Vec<Message<T::AccountId>> = Vec::new();
-			msg_details.push(msg.new());
-
-			<MessageStorage<T>>::put(msg_details);
-
+			// // If mode = true, storagevalue element is called else storagemap
+			// if mode{
+			// 	let mut msg_details: Vec<Message<T::AccountId>> = Vec::new();
+			// 	msg_details.push(msg.new());
+				
+			// 	<MessageStorage<T>>::put(msg_details);
+				
+			// }
+			// else{
+				
+			<MsgStorage<T>>::insert(&message_count,msg.new());
+			
 			<MessageCount<T>>::put(message_count + 1);
+
+			Self::deposit_event(Event::MessageCreated(message_count,sender,receiver));
 
 			Ok(())
 		}
 
 		#[pallet::weight(100)]
-		pub fn reply_message(origin: OriginFor<T>, reply: Vec<u8>) -> DispatchResult {
+		pub fn reply_message(origin: OriginFor<T>, message_id: u128, reply: Vec<u8>) -> DispatchResult {
 			let receiver = ensure_signed(origin)?;
 
-			// ensure check to make sure there is a message to reply to
+			//ensure message id exists
+			ensure! (<MsgStorage<T>>::contains_key(&message_id),<Error<T>>::MessageDoesNotExist);
 
-			// ensure check that the receiver is only replying 
+			let mut msg = Self::get_message(message_id.clone());
 
-			let mut msg = &mut Self::get_message()[0];
+			// ensure the recipient only replies
+			ensure! (receiver == msg.receiver_id,<Error<T>>::UnauthorisedToReply);
 
+			// ensure check to make sure message is active
+			ensure! (msg.status == Status::Active,<Error<T>>::MessageIsClosed);
+			
 			msg.reply = Some(reply);
 			msg.status = Status::Closed;
+			
+			let original_sender = msg.sender_id.clone();
 
-			let mut reply_details: Vec<&Message<T::AccountId>> = Vec::new();
-			reply_details.push(&msg);
+			// let mut reply_details: Vec<&Message<T::AccountId>> = Vec::new();
+			// reply_details.push(&msg);
+			// <MessageStorage<T>>::put(reply_details);
 
-			<MessageStorage<T>>::put(reply_details);
+			<MsgStorage<T>>::insert(&message_id,msg);
+	
+			Self::deposit_event(Event::MessageReplied( message_id, receiver, original_sender));
 			
 			Ok(())
 
