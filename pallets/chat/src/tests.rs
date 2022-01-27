@@ -2,40 +2,40 @@
 use crate::{Message, Status, Error, mock::*};
 use frame_support::{assert_ok, assert_noop, dispatch::DispatchError};
 
-#[test]
-#[ignore]
-fn test_write_message() {
-    new_test_ext().execute_with(|| {
+// #[test]
+// #[ignore]
+// fn test_write_message() {
+//     new_test_ext().execute_with(|| {
 
-		assert_noop!(
-			Chat::write_message(
-				Origin::none(),
-				2, 
-				b"Hello there!".to_vec()
-			),
-			DispatchError::BadOrigin,
-		);
+// 		assert_noop!(
+// 			Chat::write_message(
+// 				Origin::none(),
+// 				2, 
+// 				b"Hello there!".to_vec()
+// 			),
+// 			DispatchError::BadOrigin,
+// 		);
 
-		assert_noop!(
-			Chat::write_message(
-				Origin::signed(1),
-				1,
-				b"Hello there!".to_vec()
-			),
-			Error::<Test>::ReceiverNotValid
-		);
+// 		assert_noop!(
+// 			Chat::write_message(
+// 				Origin::signed(1),
+// 				1,
+// 				b"Hello there!".to_vec()
+// 			),
+// 			Error::<Test>::ReceiverNotValid
+// 		);
  
-		assert_ok!(
-            Chat::write_message(
-				Origin::signed(1),
-				2,
-				b"Hello there!".to_vec()
-			)
-        );
+// 		assert_ok!(
+//             Chat::write_message(
+// 				Origin::signed(1),
+// 				2,
+// 				b"Hello there!".to_vec()
+// 			)
+//         );
 		
 		
-    });
-}
+//     });
+// }
 
 #[test]
 #[ignore]
@@ -195,6 +195,7 @@ fn test_mark_as_read() {
 // }
 
 #[test]
+#[ignore]
 fn test_storage_schema(){
 	new_test_ext().execute_with(||{
 
@@ -229,3 +230,26 @@ fn test_storage_schema(){
 	
 	});
 }
+
+/// Stress test for creating message ..
+/// from sender to receiver.
+#[test]
+fn test_write_message() {
+    new_test_ext().execute_with(|| {
+        let number_of_messages: u128 = 1000000;
+        let mut storage_msg_count: u128 = 0;
+        for _ in 0..number_of_messages {
+            Chat::write_message(
+                Origin::signed(1), 
+                2, 
+                b"Hey there!".to_vec()
+            ).unwrap();
+            storage_msg_count = Chat::get_message_count();    
+        }
+        assert_eq!(number_of_messages, storage_msg_count);
+    });
+}
+
+
+
+
