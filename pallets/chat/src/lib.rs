@@ -44,12 +44,12 @@ pub mod pallet {
 	
 	#[derive(Encode, Decode, Default, PartialEq, Eq, Debug, Clone, TypeInfo)]
 	pub struct Message<AccountId> {
-		message_id: u128,
-		sender_id: AccountId,
-		receiver_id: AccountId,
-		message: Vec<u8>,
-		reply: Option<Vec<u8>>,
-		status: Status
+		pub message_id: u128,
+		pub sender_id: AccountId,
+		pub receiver_id: AccountId,
+		pub message: Vec<u8>,
+		pub reply: Option<Vec<u8>>,
+		pub status: Status
 
 	}
 
