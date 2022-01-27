@@ -143,6 +143,7 @@ pub mod pallet {
 		#[pallet::weight(100)]
 		pub fn write_message(origin: OriginFor<T>,receiver: T::AccountId, message: Vec<u8>) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
+			log::info!("$$$$$ Receiver ID:{:?}", receiver);
 
 			let message_count =  Self::get_message_count();
 
