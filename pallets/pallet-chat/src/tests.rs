@@ -2,43 +2,41 @@
 use crate::{Message, Status, Error, mock::*};
 use frame_support::{assert_ok, assert_noop, dispatch::DispatchError};
 
-// #[test]
-// #[ignore]
-// fn test_write_message() {
-//     new_test_ext().execute_with(|| {
+#[test]
+fn test_write_message() {
+    new_test_ext().execute_with(|| {
 
-// 		assert_noop!(
-// 			Chat::write_message(
-// 				Origin::none(),
-// 				2, 
-// 				b"Hello there!".to_vec()
-// 			),
-// 			DispatchError::BadOrigin,
-// 		);
+		assert_noop!(
+			Chat::write_message(
+				Origin::none(),
+				2, 
+				b"Hello there!".to_vec()
+			),
+			DispatchError::BadOrigin,
+		);
 
-// 		assert_noop!(
-// 			Chat::write_message(
-// 				Origin::signed(1),
-// 				1,
-// 				b"Hello there!".to_vec()
-// 			),
-// 			Error::<Test>::ReceiverNotValid
-// 		);
+		assert_noop!(
+			Chat::write_message(
+				Origin::signed(1),
+				1,
+				b"Hello there!".to_vec()
+			),
+			Error::<Test>::ReceiverNotValid
+		);
  
-// 		assert_ok!(
-//             Chat::write_message(
-// 				Origin::signed(1),
-// 				2,
-// 				b"Hello there!".to_vec()
-// 			)
-//         );
+		assert_ok!(
+            Chat::write_message(
+				Origin::signed(1),
+				2,
+				b"Hello there!".to_vec()
+			)
+        );
 		
 		
-//     });
-// }
+    });
+}
 
 #[test]
-#[ignore]
 fn test_reply_message(){
 	new_test_ext().execute_with(||{
 		
@@ -115,7 +113,6 @@ fn test_reply_message(){
 }
 
 #[test]
-#[ignore]
 fn test_mark_as_read() {
 	new_test_ext().execute_with(||{
 
@@ -179,23 +176,7 @@ fn test_mark_as_read() {
 
 }
 
-// pub struct TestMessage {
-// 	pub message_id: u64,
-// 	pub sender_id: u32,
-// 	pub receiver_id: u32,
-// 	pub message: Option<Vec<u8>>,
-// 	pub reply: Vec<u8>,
-// 	pub status: TestStatus
-
-// }
-
-// pub enum TestStatus {
-// 	Blah,
-// 	Red,
-// }
-
 #[test]
-#[ignore]
 fn test_storage_schema(){
 	new_test_ext().execute_with(||{
 
@@ -234,7 +215,7 @@ fn test_storage_schema(){
 /// Stress test for creating message ..
 /// from sender to receiver.
 #[test]
-fn test_write_message() {
+fn stress_test_write_message() {
     new_test_ext().execute_with(|| {
         let number_of_messages: u128 = 1000000;
         let mut storage_msg_count: u128 = 0;
