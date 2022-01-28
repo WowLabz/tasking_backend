@@ -16,6 +16,7 @@ pub mod pallet {
 	// use log::{info, trace, warn};
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
+	use pallet_court::*;
 	use frame_support::{
 		log,
         sp_runtime::traits::Hash,
@@ -66,6 +67,8 @@ pub mod pallet {
 			Status::Open
 		}
 	}
+    
+	Random
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
 	pub struct TaskDetails<AccountId, Balance> {
