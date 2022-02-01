@@ -22,8 +22,8 @@ pub mod pallet {
 		log,
 		sp_runtime::traits::Hash,
 		traits::{
-			tokens::ExistenceRequirement, Currency, LockIdentifier, LockableCurrency,
-			SortedMembers, WithdrawReasons
+			tokens::ExistenceRequirement, Currency, LockIdentifier, LockableCurrency, 
+			SortedMembers, WithdrawReasons, Randomness
 		},
 		transactional,
 	};
@@ -32,6 +32,8 @@ pub mod pallet {
 	use frame_support::serde::{ Serialize, Deserialize };
 	
 	use sp_std::vec::Vec;
+	use rand::seq::SliceRandom;
+	use rand::Rng;
     // use serde::{ Serialize, Deserialize };
 	// use codec::{EncodeLike};
 

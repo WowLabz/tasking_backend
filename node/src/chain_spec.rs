@@ -58,8 +58,16 @@ pub fn development_config() -> Result<ChainSpec, String> {
 				vec![
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
 					get_account_id_from_seed::<sr25519::Public>("Bob"),
+					get_account_id_from_seed::<sr25519::Public>("Charlie"),
+					get_account_id_from_seed::<sr25519::Public>("Dave"),
+					get_account_id_from_seed::<sr25519::Public>("Eve"),
+					get_account_id_from_seed::<sr25519::Public>("Ferdie"),
 					get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 				],
 				true,
 			)
@@ -135,19 +143,98 @@ fn testnet_genesis(
 
 	const VALUE: Balance = 235813;
 
+	// 12 accounts
 	let accounts_to_map: Vec<AccountId> =
 		vec![
 			get_account_id_from_seed::<sr25519::Public>("Alice"),
-			// get_account_id_from_seed::<sr25519::Public>("Bob"),
-			// get_account_id_from_seed::<sr25519::Public>("Charlie"),
+			get_account_id_from_seed::<sr25519::Public>("Bob"),
+			get_account_id_from_seed::<sr25519::Public>("Charlie"),
+			get_account_id_from_seed::<sr25519::Public>("Dave"),
+			get_account_id_from_seed::<sr25519::Public>("Eve"),
+			get_account_id_from_seed::<sr25519::Public>("Ferdie"),
+			get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 		];
 
-	let account_details = AccountDetails {
-		balance: 1 << 60,
-		ratings: [3, 5, 4, 2, 4].to_vec(),
-		avg_rating: Some(4),
-		tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
-	};
+	// 12 account details
+	let account_details: Vec<AccountDetails<Balance>> = vec![
+		AccountDetails {
+			balance: 1 << 60,
+			ratings: [3, 5, 4, 2, 4].to_vec(),
+			avg_rating: Some(4),
+			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
+		},
+		AccountDetails {
+			balance: 1 << 60,
+			ratings: [3, 5, 4, 2, 4].to_vec(),
+			avg_rating: Some(4),
+			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
+		},
+		AccountDetails {
+			balance: 1 << 60,
+			ratings: [3, 5, 4, 2, 4].to_vec(),
+			avg_rating: Some(4),
+			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
+		},
+		AccountDetails {
+			balance: 1 << 60,
+			ratings: [3, 5, 4, 2, 4].to_vec(),
+			avg_rating: Some(4),
+			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
+		},
+		AccountDetails {
+			balance: 1 << 60,
+			ratings: [3, 5, 4, 2, 4].to_vec(),
+			avg_rating: Some(4),
+			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
+		},
+		AccountDetails {
+			balance: 1 << 60,
+			ratings: [3, 5, 4, 2, 4].to_vec(),
+			avg_rating: Some(4),
+			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
+		},
+		AccountDetails {
+			balance: 1 << 60,
+			ratings: [3, 5, 4, 2, 4].to_vec(),
+			avg_rating: Some(4),
+			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
+		},
+		AccountDetails {
+			balance: 1 << 60,
+			ratings: [3, 5, 4, 2, 4].to_vec(),
+			avg_rating: Some(4),
+			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
+		},
+		AccountDetails {
+			balance: 1 << 60,
+			ratings: [3, 5, 4, 2, 4].to_vec(),
+			avg_rating: Some(4),
+			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
+		},
+		AccountDetails {
+			balance: 1 << 60,
+			ratings: [3, 5, 4, 2, 4].to_vec(),
+			avg_rating: Some(4),
+			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
+		},
+		AccountDetails {
+			balance: 1 << 60,
+			ratings: [3, 5, 4, 2, 4].to_vec(),
+			avg_rating: Some(4),
+			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
+		},
+		AccountDetails {
+			balance: 1 << 60,
+			ratings: [3, 5, 4, 2, 4].to_vec(),
+			avg_rating: Some(4),
+			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
+		},
+	];
 
 	GenesisConfig {
 		system: SystemConfig {
@@ -170,7 +257,7 @@ fn testnet_genesis(
 		},
 		tasking: TaskingConfig {
 			// single_value: VALUE,
-			account_map: accounts_to_map.iter().cloned().map(|x| (x.clone(), account_details.clone())).collect(),
+			account_map: accounts_to_map.iter().zip(account_details.iter()).map(|(x, acc_details)| (x.clone(), acc_details.clone())).collect(),
 		},
 		transaction_payment: Default::default(),
 	}
