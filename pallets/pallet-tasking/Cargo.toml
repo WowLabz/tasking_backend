@@ -12,6 +12,12 @@ repository = 'https://github.com/substrate-developer-hub/substrate-node-template
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
 
+[dependencies.pallet-membership]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'monthly-2021-12'
+version = '4.0.0-dev'
+
 [dependencies.sp-std]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
@@ -24,7 +30,10 @@ features = ['derive']
 package = 'parity-scale-codec'
 version = '2.0.0'
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> a798558dddcae8de233e9184e11897cf3fde5df9
 [dependencies.frame-benchmarking]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
@@ -76,6 +85,7 @@ std = [
     'frame-support/std',
     'frame-system/std',
     'frame-benchmarking/std',
+    'pallet-membership/std',
     'sp-std/std',
 ]
 try-runtime = ['frame-support/try-runtime']

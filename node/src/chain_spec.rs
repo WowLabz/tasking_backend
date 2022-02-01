@@ -1,6 +1,6 @@
 use node_template_runtime::{
 	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig, Signature, SudoConfig,
-	SystemConfig, WASM_BINARY,
+	SystemConfig, WASM_BINARY, Balance, TaskingConfig
 };
 use sc_service::ChainType;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -8,11 +8,21 @@ use sp_core::{sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
+// const VALUE: Balance = 235813;
+
+// let accounts_to_map: Vec<AccountId> =
+//     vec![
+//         get_account_id_from_seed::<sr25519::Public>("Alice"),
+//         get_account_id_from_seed::<sr25519::Public>("Bob"),
+//         get_account_id_from_seed::<sr25519::Public>("Charlie"),
+//     ];
+
 // The URL for the telemetry server.
 // const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
+
 
 /// Generate a crypto pair from seed.
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
@@ -130,6 +140,16 @@ fn testnet_genesis(
 	endowed_accounts: Vec<AccountId>,
 	_enable_println: bool,
 ) -> GenesisConfig {
+
+	const VALUE: Balance = 235813;
+
+	let accounts_to_map: Vec<AccountId> =
+		vec![
+			get_account_id_from_seed::<sr25519::Public>("Alice"),
+			get_account_id_from_seed::<sr25519::Public>("Bob"),
+			get_account_id_from_seed::<sr25519::Public>("Charlie"),
+		];
+
 	GenesisConfig {
 		system: SystemConfig {
 			// Add Wasm runtime to storage.
@@ -148,6 +168,10 @@ fn testnet_genesis(
 		sudo: SudoConfig {
 			// Assign network admin rights.
 			key: root_key,
+		},
+		tasking: TaskingConfig {
+			single_value: VALUE,
+			account_map: accounts_to_map.iter().cloned().map(|x| (x, VALUE)).collect(),
 		},
 		transaction_payment: Default::default(),
 	}
