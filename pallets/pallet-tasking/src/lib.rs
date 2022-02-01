@@ -15,24 +15,24 @@ mod benchmarking;
 pub mod pallet {
 	// use log::{info, trace, warn};
 	use frame_support::pallet_prelude::*;
-<<<<<<< HEAD
 	use frame_system::pallet_prelude::*;
 	//use pallet_court::*;
-=======
->>>>>>> a798558dddcae8de233e9184e11897cf3fde5df9
 	use frame_support::{
 		dispatch::EncodeLike,
 		log,
 		sp_runtime::traits::Hash,
 		traits::{
-			tokens::ExistenceRequirement, Currency, LockIdentifier, LockableCurrency, Randomness,
+			tokens::ExistenceRequirement, Currency, LockIdentifier, LockableCurrency,
 			SortedMembers, WithdrawReasons
 		},
 		transactional,
 	};
-	use frame_system::pallet_prelude::*;
-	use sp_std::cmp::PartialOrd;
+
+	#[cfg(feature = "std")]
+	use frame_support::serde::{ Serialize, Deserialize };
+	
 	use sp_std::vec::Vec;
+    // use serde::{ Serialize, Deserialize };
 	// use codec::{EncodeLike};
 
 	type AccountOf<T> = <T as frame_system::Config>::AccountId;
@@ -47,6 +47,7 @@ pub mod pallet {
 	pub const LOCKSECRET: LockIdentifier = *b"mylockab";
 
 	#[derive(Encode, Decode, PartialEq, Eq, Debug, Clone, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub enum TaskTypeTags {
 		WebDevelopment,
 		MobileDevelopment,
@@ -128,6 +129,16 @@ pub mod pallet {
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	pub struct AccountDetails<Balance> {
+		pub balance: Balance,
+		pub ratings: Vec<u8>,
+		pub avg_rating: Option<u8>,
+		pub tags: Vec<TaskTypeTags>,
+	}
+
+
+	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
 	pub struct TransferDetails<AccountId, Balance> {
 		transfer_from: AccountId,
 		from_before: Balance,
@@ -149,32 +160,38 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	// -----
-	#[pallet::storage]
-	#[pallet::getter(fn something)]
-	pub type SingleValue<T: Config> = StorageValue<_, BalanceOf<T>>;
+	// #[pallet::storage]
+	// #[pallet::getter(fn something)]
+	// pub type SingleValue<T: Config> = StorageValue<_, BalanceOf<T>>;
 
 	// A map that has enumerable entries.
 	#[pallet::storage]
 	#[pallet::getter(fn accounts)]
-	pub type AccountMap<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, BalanceOf<T>>;
+	pub type AccountMap<T: Config> = StorageMap<
+		_, 
+		Blake2_128Concat, 
+		T::AccountId, 
+		AccountDetails<BalanceOf<T>>, 
+		ValueQuery
+	>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		pub single_value: BalanceOf<T>,
-		pub account_map: Vec<(T::AccountId, BalanceOf<T>)>,
+		// pub single_value: BalanceOf<T>,
+		pub account_map: Vec<(T::AccountId, AccountDetails<BalanceOf<T>>)>,
 	}
 
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			Self { single_value: Default::default(), account_map: Default::default() }
+			Self { account_map: Default::default() }
 		}
 	}
 
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
-			<SingleValue<T>>::put(&self.single_value);
+			// <SingleValue<T>>::put(&self.single_value);
 			for (a, b) in &self.account_map {
 				<AccountMap<T>>::insert(a, b);
 			}	

@@ -1,21 +1,13 @@
 use node_template_runtime::{
 	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig, Signature, SudoConfig,
-	SystemConfig, WASM_BINARY, Balance, TaskingConfig
+	SystemConfig, WASM_BINARY, Balance, TaskingConfig, pallet_tasking::AccountDetails, 
+	pallet_tasking::TaskTypeTags
 };
 use sc_service::ChainType;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
-
-// const VALUE: Balance = 235813;
-
-// let accounts_to_map: Vec<AccountId> =
-//     vec![
-//         get_account_id_from_seed::<sr25519::Public>("Alice"),
-//         get_account_id_from_seed::<sr25519::Public>("Bob"),
-//         get_account_id_from_seed::<sr25519::Public>("Charlie"),
-//     ];
 
 // The URL for the telemetry server.
 // const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
@@ -146,9 +138,16 @@ fn testnet_genesis(
 	let accounts_to_map: Vec<AccountId> =
 		vec![
 			get_account_id_from_seed::<sr25519::Public>("Alice"),
-			get_account_id_from_seed::<sr25519::Public>("Bob"),
-			get_account_id_from_seed::<sr25519::Public>("Charlie"),
+			// get_account_id_from_seed::<sr25519::Public>("Bob"),
+			// get_account_id_from_seed::<sr25519::Public>("Charlie"),
 		];
+
+	let account_details = AccountDetails {
+		balance: 1 << 60,
+		ratings: [3, 5, 4, 2, 4].to_vec(),
+		avg_rating: Some(4),
+		tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
+	};
 
 	GenesisConfig {
 		system: SystemConfig {
@@ -170,8 +169,8 @@ fn testnet_genesis(
 			key: root_key,
 		},
 		tasking: TaskingConfig {
-			single_value: VALUE,
-			account_map: accounts_to_map.iter().cloned().map(|x| (x, VALUE)).collect(),
+			// single_value: VALUE,
+			account_map: accounts_to_map.iter().cloned().map(|x| (x.clone(), account_details.clone())).collect(),
 		},
 		transaction_payment: Default::default(),
 	}
