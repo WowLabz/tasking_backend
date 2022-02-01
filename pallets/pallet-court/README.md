@@ -10,9 +10,9 @@ Worker gets the money for the task
 2. If a worker feels the rating provided is unsatisfactory - Summon the court in provide customer rating
 3. If a customer feels the rating provided is unsatisfactory - Sumon the court in a new function
 
--> Ratings is provided more importance than tokens because ratings affect other oppotunities as well in the long terms
+<!-- -> Ratings is provided more importance than tokens because ratings affect other oppotunities as well in the long terms
 For increase in rating -> (% above mjority * 0.5) + actual rating received
-No deductions in rating for the osing side as of now
+No deductions in rating for the losing side as of now -->
 
 If a customer gets unjust ratings from the worker:
 1. Chances of becoming a juror is affected
@@ -24,11 +24,27 @@ If a worker gets unjust ratings from the customer:
 
 
 Points of contention:
-1. How to affect the ratings in Court Summons 2&3
-2. How to affect/access balances when the whole transaction involves more tokens than what is present in the escrow
+1. How to affect the ratings in Court Summons 2&3 - solved
+   Take ratings from jurors and average, if rating alredy exists, average that with with juror rating
+   Issue -  Floating point for vec u8
+
+2. How to affect/access balances when the whole transaction involves more tokens than what is present in the escrow - solved
+   Both sides have to pay court fee, take tokens from escrow only
+   
+
 3. How to make sure jurors are domian experts/capable 
+   users ave tags already so not to worry about that
 
 Escrow should be released once customer ratings has been provided by the worker
 
 Primary Escrow  - Price  + Bid for task - Released after provide customer ratings
+It's okay for both sides to lose money for court fee
+
+<!-- Not necessary
 Secondary Escrow  - Court fee from publisher + Court fee from worker - Released after customer accepts provided rating
+
+Single escrow 
+Price + Bid money - 100 + 100 units -->
+
+Points of issues:
+1. 
