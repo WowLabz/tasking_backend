@@ -105,8 +105,8 @@ pub mod pallet {
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
 	pub struct CourtDispute<AccountId, Balance> {
 		task_details: TaskDetails<AccountId, Balance>,
-		qualified_jurors: Vec<AccountId>,
-		final_jurors: Option<Vec<AccountId>>,
+		potential_jurors: Vec<AccountId>,
+		final_jurors: Vec<AccountId>,
 		winner: Option<UserType>,
 		status: Status,
 		votes_for_worker: Option<u8>,
@@ -282,6 +282,7 @@ pub mod pallet {
 			BalanceOf<T>,
 		),
 		CourtSummoned(Option<T::AccountId>, Option<T::AccountId>),
+		NewJurorAdded(u128,T::AccountId),
 	}
 
 	#[pallet::error]
@@ -312,8 +313,13 @@ pub mod pallet {
 		TaskIsNotPendingRating,
 		/// To ensure the worker only provides the publisher rating
 		UnauthorisedToProvideCustomerRating,
-		/// TO check if the sender has sufficient balance for a transfer
+		/// To check if the sender has sufficient balance for a transfer
 		NotEnoughBalance,
+		// To check if an account is qualified to be a juror
+		NotPotentialJuror,
+		// To ensure final nuber of jurors does not exceed a certain value
+		CannotAddMoreJurors,
+		
 	}
 
 	#[pallet::call]
@@ -328,18 +334,22 @@ pub mod pallet {
 
 			let publisher = ensure_signed(origin)?;
 
+			//ensure task exists and is active
+
 			let mut task_details = Self::task(task_id.clone());
+
+			//ensure the customer is the one disapproving the task
 
 			let worker_id = task_details.worker_id.clone();
 
 			task_details.status = Status::CourtInMotion;
 			
-			let qualified_jurors = Self::qualified_jurors(task_details.clone());
+			let potential_jurors = Self::potential_jurors(task_details.clone());
 
 			let dispute = CourtDispute {
 				task_details: task_details,
-				qualified_jurors: qualified_jurors,
-				final_jurors: None,
+				potential_jurors: potential_jurors,
+				final_jurors: Vec::new(),
 				winner: None,
 				status: Status::CourtInMotion,
 				votes_for_worker: None,
@@ -356,6 +366,29 @@ pub mod pallet {
 					worker_id
 				)
 			);
+			
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn accept_jury_duty(
+			origin: OriginFor<T>,
+			task_id: u128
+		) -> DispatchResult{
+
+			let juror = ensure_signed(origin)?;
+
+			let mut dispute_details = Self::get_disupte_details(task_id.clone());
+
+			ensure!(dispute_details.potential_jurors.contains(&juror), <Error<T>>::NotPotentialJuror);
+
+			ensure!(dispute_details.final_jurors.len()<= 2, <Error<T>>::CannotAddMoreJurors);
+
+			dispute_details.final_jurors.push(juror.clone());
+
+			Self::deposit_event(Event::NewJurorAdded(task_id.clone(), juror));
+
+			<Courtroom<T>>::insert(&task_id, dispute_details.clone());
 			
 			Ok(())
 		}
@@ -717,7 +750,7 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 
-		pub fn qualified_jurors(
+		pub fn potential_jurors(
 			task_details: TaskDetails<T::AccountId,BalanceOf<T>>
 		) -> Vec<T::AccountId>{
 
