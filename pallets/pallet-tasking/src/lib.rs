@@ -309,41 +309,21 @@ pub mod pallet {
 			let mut task_details = Self::task(task_id.clone());
 			task_details.status = Status::CourtInMotion;
 			let all_account_details = <AccountMap<T>>::iter();
-			
-
 			let mut jurors = Vec::new();
 
-			for (acc_id,acc_details) in all_account_details{
+			for (acc_id, acc_details) in all_account_details{
 				if acc_details.avg_rating >= Some(4){
-					let mut is_juror = false;
-					for task_tag in &task_details.task_tags{
-						for acc_tag in &acc_details.tags{
-
-							if acc_tag ==  task_tag{
-								if acc_id.clone() != task_details.publisher && Some(acc_id.clone()) != task_details.worker_id{
-
-									jurors.push(acc_id.clone());
-									is_juror = true;
-									break;
-								}
-															
-																
-							}
-
-
-						}
-
-						if is_juror{
+					for task_tag in &task_details.task_tags {
+						if acc_details.tags.contains(&task_tag) && 
+						   acc_id.clone() != task_details.publisher &&
+						   Some(acc_id.clone()) != task_details.worker_id 
+						{		
+							jurors.push(acc_id.clone());
 							break;
 						}
-
 					}
-
 				}
-				
-				
-			} 
-
+			}
 			
 			log::info!("$$$$$$$$$$$$$ {:?}", jurors);
 			Ok(())
