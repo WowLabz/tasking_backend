@@ -103,9 +103,9 @@ pub mod pallet {
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
-	pub struct CourtDispute<AccountId,Balance> {
+	pub struct CourtDispute<AccountId, Balance> {
 		task_details: TaskDetails<AccountId, Balance>,
-		probable_jurors: Vec<AccountId>,
+		qualified_jurors: Vec<AccountId>,
 		final_jurors: Option<Vec<AccountId>>,
 		winner: Option<UserType>,
 		status: Status,
@@ -258,7 +258,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn get_disupte_details)]
 	pub(super) type Courtroom<T: Config> = 
-		StorageMap<_, Blake2_128Concat, u128,>
+		StorageMap<_, Blake2_128Concat, u128, CourtDispute<T::AccountId, BalanceOf<T>>, ValueQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -281,6 +281,7 @@ pub mod pallet {
 			BalanceOf<T>,
 			BalanceOf<T>,
 		),
+		CourtSummoned(Option<T::AccountId>, Option<T::AccountId>),
 	}
 
 	#[pallet::error]
@@ -324,29 +325,38 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			task_id: u128
 		) -> DispatchResult {
+
 			let publisher = ensure_signed(origin)?;
+
 			let mut task_details = Self::task(task_id.clone());
 
-			task_details.status = Status::CourtInMotion;
-			// let all_account_details = <AccountMap<T>>::iter();
-			
-			let jurors = Self::potential_jurors(task_details.clone());
+			let worker_id = task_details.worker_id.clone();
 
-			// for (acc_id, acc_details) in all_account_details{
-			// 	if acc_details.avg_rating >= Some(4){
-			// 		for task_tag in &task_details.task_tags {
-			// 			if acc_details.tags.contains(&task_tag) && 
-			// 			   acc_id.clone() != task_details.publisher &&
-			// 			   Some(acc_id.clone()) != task_details.worker_id 
-			// 			{		
-			// 				jurors.push(acc_id.clone());
-			// 				break;
-			// 			}
-			// 		}
-			// 	}
-			// }
+			task_details.status = Status::CourtInMotion;
 			
-			log::info!("$$$$$$$$$$$$$ {:?}", jurors);
+			let qualified_jurors = Self::qualified_jurors(task_details.clone());
+
+			let dispute = CourtDispute {
+				task_details: task_details,
+				qualified_jurors: qualified_jurors,
+				final_jurors: None,
+				winner: None,
+				status: Status::CourtInMotion,
+				votes_for_worker: None,
+				votes_for_customer: None,
+				avg_worker_rating: None,
+				avg_publisher_rating: None
+			};
+
+			<Courtroom<T>>::insert(task_id.clone(), dispute);
+
+			Self::deposit_event(
+				Event::CourtSummoned(
+					Some(publisher),
+					worker_id
+				)
+			);
+			
 			Ok(())
 		}
 
@@ -707,7 +717,7 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 
-		pub fn potential_jurors(
+		pub fn qualified_jurors(
 			task_details: TaskDetails<T::AccountId,BalanceOf<T>>
 		) -> Vec<T::AccountId>{
 
