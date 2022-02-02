@@ -32,8 +32,8 @@ pub mod pallet {
 	use frame_support::serde::{ Serialize, Deserialize };
 	
 	use sp_std::vec::Vec;
-	use rand::seq::SliceRandom;
-	use rand::Rng;
+	
+	
     // use serde::{ Serialize, Deserialize };
 	// use codec::{EncodeLike};
 
@@ -65,7 +65,7 @@ pub mod pallet {
 		InProgress,
 		PendingApproval,
 		PendingRatings,
-		CourtSummoned,
+		CourtInMotion,
 		Completed,
 	}
 
@@ -300,18 +300,54 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 
 		
-		// #[pallet::weight(10_000)]
-		// pub fn disapprove_task(
-		// 	origin: OriginFor<T>,
-		// 	task_id: u128
-		// ) -> DispatchResult {
-		// 	let publisher = ensure_signed(origin)?;
-		// 	let mut task_details = Self::task(task_id.clone());
-		// 	task_details.status = Status::CourtSummoned;
-		// 	let sorted_members: ;
-		// 	log::info!("$$$$$$$$$$$$$ {:?}", sorted_members);
-		// 	Ok(())
-		// }
+		#[pallet::weight(10_000)]
+		pub fn disapprove_task(
+			origin: OriginFor<T>,
+			task_id: u128
+		) -> DispatchResult {
+			let publisher = ensure_signed(origin)?;
+			let mut task_details = Self::task(task_id.clone());
+			task_details.status = Status::CourtInMotion;
+			let all_account_details = <AccountMap<T>>::iter();
+			
+
+			let mut jurors = Vec::new();
+
+			for (acc_id,acc_details) in all_account_details{
+				if acc_details.avg_rating >= Some(4){
+					let mut is_juror = false;
+					for task_tag in &task_details.task_tags{
+						for acc_tag in &acc_details.tags{
+
+							if acc_tag ==  task_tag{
+								if acc_id.clone() != task_details.publisher && Some(acc_id.clone()) != task_details.worker_id{
+
+									jurors.push(acc_id.clone());
+									is_juror = true;
+									break;
+								}
+															
+																
+							}
+
+
+						}
+
+						if is_juror{
+							break;
+						}
+
+					}
+
+				}
+				
+				
+			} 
+
+			
+			log::info!("$$$$$$$$$$$$$ {:?}", jurors);
+			Ok(())
+		}
 
 
 		/* Description:
@@ -410,14 +446,17 @@ pub mod pallet {
 			// Updating status of task
 			task.status = Status::InProgress;
 			// Inserting updated task in storage
-			<TaskStorage<T>>::insert(&task_id, task);
+			<TaskStorage<T>>::insert(&task_id, task.clone());
 			// Locking bid amount
 			T::Currency::set_lock(
 				LOCKSECRET,
 				&bidder,
 				task_cost.clone(),
-				WithdrawReasons::TRANSACTION_PAYMENT,
+				WithdrawReasons::TRANSACTION_PAYMENT, 
 			);
+
+			log::info!("$$$$$$$$$$$$$ {:?}", task.worker_id.clone());
+			log::info!("$$$$$$$$$$$$$ {:?}", task.publisher.clone());
 			// Notifying the user
 			Self::deposit_event(Event::TaskIsBid(
 				bidder.clone(),

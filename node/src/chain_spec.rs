@@ -170,8 +170,44 @@ fn testnet_genesis(
 		},
 		AccountDetails {
 			balance: 1 << 60,
-			ratings: [3, 5, 4, 2, 4].to_vec(),
+			ratings: [3, 5, 5, 2, 5].to_vec(),
 			avg_rating: Some(4),
+			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
+		},
+		AccountDetails {
+			balance: 1 << 60,
+			ratings: [4, 4, 4, 4, 4].to_vec(),
+			avg_rating: Some(4),
+			tags: [TaskTypeTags::FullStackDevelopment, TaskTypeTags::WebDevelopment].to_vec()
+		},
+		AccountDetails {
+			balance: 1 << 60,
+			ratings: [3, 1, 3, 2, 4].to_vec(),
+			avg_rating: Some(3),
+			tags: [TaskTypeTags::CoreBlockchainDevelopment, TaskTypeTags::WebDevelopment].to_vec()
+		},
+		AccountDetails {
+			balance: 1 << 60,
+			ratings: [3, 5, 5, 2, 5].to_vec(),
+			avg_rating: Some(4),
+			tags: [TaskTypeTags::FullStackDevelopment, TaskTypeTags::WebDevelopment].to_vec()
+		},
+		AccountDetails {
+			balance: 1 << 60,
+			ratings: [3, 3, 4, 5, 4].to_vec(),
+			avg_rating: Some(4),
+			tags: [TaskTypeTags::MobileDevelopment].to_vec()
+		},
+		AccountDetails {
+			balance: 1 << 60,
+			ratings: [5, 5, 5, 5, 5].to_vec(),
+			avg_rating: Some(5),
+			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
+		},
+		AccountDetails {
+			balance: 1 << 60,
+			ratings: [3, 5, 3, 3, 3].to_vec(),
+			avg_rating: Some(3),
 			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
 		},
 		AccountDetails {
@@ -182,57 +218,21 @@ fn testnet_genesis(
 		},
 		AccountDetails {
 			balance: 1 << 60,
-			ratings: [3, 5, 4, 2, 4].to_vec(),
-			avg_rating: Some(4),
-			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
+			ratings: [4, 5, 5, 5, 4].to_vec(),
+			avg_rating: Some(5),
+			tags: [TaskTypeTags::FullStackDevelopment, TaskTypeTags::MobileDevelopment].to_vec()
 		},
 		AccountDetails {
 			balance: 1 << 60,
 			ratings: [3, 5, 4, 2, 4].to_vec(),
 			avg_rating: Some(4),
-			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
+			tags: [TaskTypeTags::CoreBlockchainDevelopment, TaskTypeTags::MachineLearning].to_vec()
 		},
 		AccountDetails {
 			balance: 1 << 60,
-			ratings: [3, 5, 4, 2, 4].to_vec(),
-			avg_rating: Some(4),
-			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
-		},
-		AccountDetails {
-			balance: 1 << 60,
-			ratings: [3, 5, 4, 2, 4].to_vec(),
-			avg_rating: Some(4),
-			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
-		},
-		AccountDetails {
-			balance: 1 << 60,
-			ratings: [3, 5, 4, 2, 4].to_vec(),
-			avg_rating: Some(4),
-			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
-		},
-		AccountDetails {
-			balance: 1 << 60,
-			ratings: [3, 5, 4, 2, 4].to_vec(),
-			avg_rating: Some(4),
-			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
-		},
-		AccountDetails {
-			balance: 1 << 60,
-			ratings: [3, 5, 4, 2, 4].to_vec(),
-			avg_rating: Some(4),
-			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
-		},
-		AccountDetails {
-			balance: 1 << 60,
-			ratings: [3, 5, 4, 2, 4].to_vec(),
-			avg_rating: Some(4),
-			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
-		},
-		AccountDetails {
-			balance: 1 << 60,
-			ratings: [3, 5, 4, 2, 4].to_vec(),
-			avg_rating: Some(4),
-			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec()
+			ratings: [3, 5, 1, 2, 3].to_vec(),
+			avg_rating: Some(3),
+			tags: [TaskTypeTags::CoreBlockchainDevelopment, TaskTypeTags::WebDevelopment].to_vec()
 		},
 	];
 

@@ -47,4 +47,35 @@ Single escrow
 Price + Bid money - 100 + 100 units -->
 
 Points of issues:
-1. 
+1. What if there are not enough people in a domain for jurors
+
+Components:
+
+1. Disapprove task extrinsic
+Extrnisic for customer to disapprove the task 
+Calls the probable juror list helper function
+
+2. Disapprove customer_rating extrinsic 
+Extrnisic for customer to disapprove the rating
+Calls the probable juror list helper function
+
+3. Disapprove  worker_rating extrinsic 
+Extrnisic for worker to disapprove the rating
+Calls the probable juror list helper function
+
+4. Probable_juror helper function
+Returs a list of all the jurors with rating >4 and matching tags to the task tag excluding the publisher and the worker
+
+5. Accept jury_duty extrinsic 
+Extrisic for probable jurors to accept whether they want to judge this particular dispute
+updates dispute storage with final list of jurors
+
+6. Voting for dispute extrinsic 
+Extrinsic for jurors to cast votes and ratings of worker and publisher
+updates dispute storage with necessary details
+once all votes are cast, escrow is released and ratings are updated and status changed to closed by court
+
+
+
+
+

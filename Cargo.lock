@@ -3955,7 +3955,6 @@ dependencies = [
  "frame-system",
  "pallet-membership",
  "parity-scale-codec",
- "rand 0.8.4",
  "scale-info",
  "serde",
  "sp-core",
