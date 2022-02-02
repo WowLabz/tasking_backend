@@ -89,6 +89,7 @@ pub mod pallet {
 		attachments: Option<Vec<Vec<u8>>>,
 	}
 
+
 	#[derive(Encode, Decode, PartialEq, Eq, Debug, Clone, TypeInfo)]
 	pub enum UserType {
 		Customer,
@@ -99,6 +100,19 @@ pub mod pallet {
 		fn default() -> Self {
 			UserType::Worker
 		}
+	}
+
+	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
+	pub struct CourtDispute<AccountId,Balance> {
+		task_details: TaskDetails<AccountId, Balance>,
+		probable_jurors: Vec<AccountId>,
+		final_jurors: Option<Vec<AccountId>>,
+		winner: Option<UserType>,
+		status: Status,
+		votes_for_worker: Option<u8>,
+		votes_for_customer: Option<u8>,
+		avg_worker_rating: Option<u8>,
+		avg_publisher_rating: Option<u8>
 	}
 
 	#[derive(Encode, Decode, Debug, PartialEq, Clone, Eq, Default, TypeInfo)]
@@ -238,8 +252,13 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn get_transfers)]
 	/// For fetching the transfer details
-	pub(super) type Transfers<T: Config> =
+	pub(super) type Transfers<T: Config> =	
 		StorageValue<_, Vec<TransferDetails<T::AccountId, BalanceOf<T>>>, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_disupte_details)]
+	pub(super) type Courtroom<T: Config> = 
+		StorageMap<_, Blake2_128Concat, u128,>
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -307,23 +326,25 @@ pub mod pallet {
 		) -> DispatchResult {
 			let publisher = ensure_signed(origin)?;
 			let mut task_details = Self::task(task_id.clone());
-			task_details.status = Status::CourtInMotion;
-			let all_account_details = <AccountMap<T>>::iter();
-			let mut jurors = Vec::new();
 
-			for (acc_id, acc_details) in all_account_details{
-				if acc_details.avg_rating >= Some(4){
-					for task_tag in &task_details.task_tags {
-						if acc_details.tags.contains(&task_tag) && 
-						   acc_id.clone() != task_details.publisher &&
-						   Some(acc_id.clone()) != task_details.worker_id 
-						{		
-							jurors.push(acc_id.clone());
-							break;
-						}
-					}
-				}
-			}
+			task_details.status = Status::CourtInMotion;
+			// let all_account_details = <AccountMap<T>>::iter();
+			
+			let jurors = Self::potential_jurors(task_details.clone());
+
+			// for (acc_id, acc_details) in all_account_details{
+			// 	if acc_details.avg_rating >= Some(4){
+			// 		for task_tag in &task_details.task_tags {
+			// 			if acc_details.tags.contains(&task_tag) && 
+			// 			   acc_id.clone() != task_details.publisher &&
+			// 			   Some(acc_id.clone()) != task_details.worker_id 
+			// 			{		
+			// 				jurors.push(acc_id.clone());
+			// 				break;
+			// 			}
+			// 		}
+			// 	}
+			// }
 			
 			log::info!("$$$$$$$$$$$$$ {:?}", jurors);
 			Ok(())
@@ -681,4 +702,37 @@ pub mod pallet {
 			Ok(())
 		}
 	}
+
+	//Helper functions for our pallet
+
+	impl<T: Config> Pallet<T> {
+
+		pub fn potential_jurors(
+			task_details: TaskDetails<T::AccountId,BalanceOf<T>>
+		) -> Vec<T::AccountId>{
+
+			let all_account_details = <AccountMap<T>>::iter();
+			let mut jurors: Vec<T::AccountId> = Vec::new();
+
+			for (acc_id, acc_details) in all_account_details{
+				if acc_details.avg_rating >= Some(4){
+					for task_tag in &task_details.task_tags {
+						if acc_details.tags.contains(&task_tag) && 
+						   acc_id.clone() != task_details.publisher &&
+						   Some(acc_id.clone()) != task_details.worker_id 
+						{		
+							jurors.push(acc_id.clone());
+							break;
+						}
+					}
+				}
+			}
+
+			jurors
+
+
+		}
+
+	}
 }
+
