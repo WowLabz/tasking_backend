@@ -452,8 +452,14 @@ pub mod pallet {
 			let mut votes_for_worker = dispute_details.votes_for_worker.unwrap_or_else(|| 0);
 
 			match voted_for {
-				UserType::Customer => { votes_for_customer += 1; }, 
-				UserType::Worker => { votes_for_worker += 1; },	
+				UserType::Customer => { 
+					votes_for_customer += 1;
+					dispute_details.votes_for_customer = Some(votes_for_customer.clone());
+				}, 
+				UserType::Worker => { 
+					votes_for_worker += 1;
+					dispute_details.votes_for_worker = Some(votes_for_worker.clone());
+				},	
 			}
 
 			let total_votes = votes_for_customer + votes_for_worker;
