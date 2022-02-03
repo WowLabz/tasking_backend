@@ -32,7 +32,8 @@ pub mod pallet {
 	use frame_support::serde::{ Serialize, Deserialize };
 	
 	use sp_std::vec::Vec;
-	
+	use sp_std::collections::btree_map::BTreeMap;
+	use num_traits::float::Float;
 	
     // use serde::{ Serialize, Deserialize };
 	// use codec::{EncodeLike};
@@ -103,10 +104,18 @@ pub mod pallet {
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
+	pub struct JurorDecisionDetails {
+		voted_for: Option<UserType>,
+		publisher_rating: Option<u8>,
+		worker_rating: Option<u8>
+	}
+
+	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
 	pub struct CourtDispute<AccountId, Balance> {
 		task_details: TaskDetails<AccountId, Balance>,
 		potential_jurors: Vec<AccountId>,
-		final_jurors: Vec<AccountId>,
+		// In vector: 1. Worker / Publisher, 2. Publisher rating, 3. Worker rating
+		final_jurors: BTreeMap<AccountId, JurorDecisionDetails>,
 		winner: Option<UserType>,
 		status: Status,
 		votes_for_worker: Option<u8>,
@@ -282,7 +291,7 @@ pub mod pallet {
 			BalanceOf<T>,
 		),
 		CourtSummoned(Option<T::AccountId>, Option<T::AccountId>),
-		NewJurorAdded(u128,T::AccountId),
+		NewJurorAdded(u128, T::AccountId),
 	}
 
 	#[pallet::error]
@@ -319,12 +328,16 @@ pub mod pallet {
 		NotPotentialJuror,
 		// To ensure final nuber of jurors does not exceed a certain value
 		CannotAddMoreJurors,
-		
+		/// To ensure if the dispute exists in storage
+		DisputeDoesNotExist,
+		/// To ensure approval is pending
+		TaskInProgress,
+		/// To ensure publisher is the one disapproving
+		UnauthorisedToDisapprove
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-
 		
 		#[pallet::weight(10_000)]
 		pub fn disapprove_task(
@@ -335,10 +348,19 @@ pub mod pallet {
 			let publisher = ensure_signed(origin)?;
 
 			//ensure task exists and is active
+			ensure!(<TaskStorage<T>>::contains_key(&task_id), <Error<T>>::TaskDoesNotExist);
 
 			let mut task_details = Self::task(task_id.clone());
 
+			let status = task_details.status.clone();
+
+			let customer = task_details.publisher.clone();
+
+			ensure!(status == Status::PendingApproval, <Error<T>>::TaskInProgress);
+
 			//ensure the customer is the one disapproving the task
+
+			ensure!(publisher == customer, <Error<T>>::UnauthorisedToDisapprove);
 
 			let worker_id = task_details.worker_id.clone();
 
@@ -349,7 +371,7 @@ pub mod pallet {
 			let dispute = CourtDispute {
 				task_details: task_details,
 				potential_jurors: potential_jurors,
-				final_jurors: Vec::new(),
+				final_jurors: BTreeMap::new(),
 				winner: None,
 				status: Status::CourtInMotion,
 				votes_for_worker: None,
@@ -374,22 +396,90 @@ pub mod pallet {
 		pub fn accept_jury_duty(
 			origin: OriginFor<T>,
 			task_id: u128
-		) -> DispatchResult{
+		) -> DispatchResult {
 
 			let juror = ensure_signed(origin)?;
+
+			ensure!(<Courtroom<T>>::contains_key(&task_id), <Error<T>>::DisputeDoesNotExist);
 
 			let mut dispute_details = Self::get_disupte_details(task_id.clone());
 
 			ensure!(dispute_details.potential_jurors.contains(&juror), <Error<T>>::NotPotentialJuror);
 
-			ensure!(dispute_details.final_jurors.len()<= 2, <Error<T>>::CannotAddMoreJurors);
+			ensure!(dispute_details.final_jurors.len() <= 2, <Error<T>>::CannotAddMoreJurors);
 
-			dispute_details.final_jurors.push(juror.clone());
+			let juror_details = JurorDecisionDetails {
+				voted_for: None,
+				publisher_rating: None,
+				worker_rating: None
+			};
+
+			dispute_details.final_jurors.insert(juror.clone(), juror_details);
 
 			Self::deposit_event(Event::NewJurorAdded(task_id.clone(), juror));
 
 			<Courtroom<T>>::insert(&task_id, dispute_details.clone());
 			
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn cast_vote(
+			origin: OriginFor<T>, 
+			task_id: u128, 
+			voted_for: UserType,
+			customer_rating: u8,
+			worker_rating: u8
+		) -> DispatchResult {
+
+			let juror = ensure_signed(origin)?;
+
+			let mut dispute_details = Self::get_disupte_details(&task_id);
+
+			log::info!("{:#?}", dispute_details);
+
+			let mut juror_decision_details = dispute_details.final_jurors.get(&juror).cloned().unwrap();
+
+			log::info!("{:#?}", juror_decision_details);
+
+			juror_decision_details.voted_for = Some(voted_for.clone());
+			juror_decision_details.publisher_rating = Some(customer_rating);
+			juror_decision_details.worker_rating = Some(worker_rating);
+
+			dispute_details.final_jurors.insert(juror.clone(), juror_decision_details);
+
+			let mut votes_for_customer = dispute_details.votes_for_customer.unwrap_or_else(|| 0);
+			let mut votes_for_worker = dispute_details.votes_for_worker.unwrap_or_else(|| 0);
+
+			match voted_for {
+				UserType::Customer => { votes_for_customer += 1; }, 
+				UserType::Worker => { votes_for_worker += 1; },	
+			}
+
+			let total_votes = votes_for_customer + votes_for_worker;
+			
+			// NOTE: This will execute with the first vote (Need to change)
+			if dispute_details.final_jurors.len() as u8 == total_votes {
+				let mut total_publisher_rating: u8 = 0;
+				let mut total_worker_rating: u8 = 0;
+				let dispute_details_of_final_jurors: Vec<JurorDecisionDetails> = dispute_details.final_jurors.values().cloned().collect();
+				for juror_decision in dispute_details_of_final_jurors {
+					total_publisher_rating += juror_decision.publisher_rating.unwrap_or_else(|| 0);
+					total_worker_rating += juror_decision.worker_rating.unwrap_or_else(|| 0);
+				}
+				let avg_publisher_rating = Self::roundoff(total_publisher_rating, total_votes.clone());
+				let avg_worker_rating = Self::roundoff(total_worker_rating, total_votes.clone());
+				dispute_details.avg_publisher_rating = Some(avg_publisher_rating);
+				dispute_details.avg_worker_rating = Some(avg_worker_rating);
+				if votes_for_customer > votes_for_worker {
+					dispute_details.winner = Some(UserType::Customer);
+				} else {
+					dispute_details.winner = Some(UserType::Worker);
+				}
+			}
+
+			<Courtroom<T>>::insert(&task_id, dispute_details);
+
 			Ok(())
 		}
 
@@ -772,8 +862,19 @@ pub mod pallet {
 			}
 
 			jurors
+		}
 
+		fn roundoff(total_rating: u8, number_of_users: u8) -> u8 {
+			let output: u8;
+			let avg_rating: f32 = total_rating as f32 / number_of_users as f32;
+			let rounded_avg_rating: u8 = avg_rating as u8;
+			if avg_rating.fract() > 0.5 {
+				output = rounded_avg_rating + 1;
+			} else {
+				output = rounded_avg_rating - 1;
+			}
 
+			output
 		}
 
 	}
