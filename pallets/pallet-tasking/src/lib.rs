@@ -22,26 +22,27 @@ pub mod pallet {
 		log,
 		sp_runtime::traits::Hash,
 		traits::{
-			tokens::ExistenceRequirement, Currency, LockIdentifier, LockableCurrency, 
-			SortedMembers, WithdrawReasons, Randomness
+			tokens::ExistenceRequirement, Currency, LockIdentifier, LockableCurrency, Randomness,
+			SortedMembers, WithdrawReasons,
 		},
 		transactional,
 	};
 
 	#[cfg(feature = "std")]
-	use frame_support::serde::{ Serialize, Deserialize };
-	
-	use sp_std::vec::Vec;
-	use sp_std::collections::btree_map::BTreeMap;
+	use frame_support::serde::{Deserialize, Serialize};
 	use num_traits::float::Float;
-	
-    // use serde::{ Serialize, Deserialize };
+	// use pallet_scheduler;
+	use sp_std::collections::btree_map::BTreeMap;
+	use sp_std::vec::Vec;
+
+	// use serde::{ Serialize, Deserialize };
 	// use codec::{EncodeLike};
 
 	type AccountOf<T> = <T as frame_system::Config>::AccountId;
 	type BalanceOf<T> =
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
+	pub type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
 	// NOTE: Need to refactor, duplicate code for testing purposes
 	type AccountId<T> = <T as frame_system::Config>::AccountId;
 	type Balance<T> =
@@ -90,7 +91,6 @@ pub mod pallet {
 		attachments: Option<Vec<Vec<u8>>>,
 	}
 
-
 	#[derive(Encode, Decode, PartialEq, Eq, Debug, Clone, TypeInfo)]
 	pub enum UserType {
 		Customer,
@@ -107,7 +107,7 @@ pub mod pallet {
 	pub struct JurorDecisionDetails {
 		voted_for: Option<UserType>,
 		publisher_rating: Option<u8>,
-		worker_rating: Option<u8>
+		worker_rating: Option<u8>,
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
@@ -121,7 +121,9 @@ pub mod pallet {
 		votes_for_worker: Option<u8>,
 		votes_for_customer: Option<u8>,
 		avg_worker_rating: Option<u8>,
-		avg_publisher_rating: Option<u8>
+		avg_publisher_rating: Option<u8>,
+		// jury_acceptance_period: BlockNumber, // initial = current block number + 14_400 (1 era)
+		// case_closed: BlockNumber // initial + 28_800 (2 eras)
 	}
 
 	#[derive(Encode, Decode, Debug, PartialEq, Clone, Eq, Default, TypeInfo)]
@@ -162,7 +164,6 @@ pub mod pallet {
 		pub tags: Vec<TaskTypeTags>,
 	}
 
-
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
 	pub struct TransferDetails<AccountId, Balance> {
 		transfer_from: AccountId,
@@ -192,13 +193,8 @@ pub mod pallet {
 	// A map that has enumerable entries.
 	#[pallet::storage]
 	#[pallet::getter(fn accounts)]
-	pub type AccountMap<T: Config> = StorageMap<
-		_, 
-		Blake2_128Concat, 
-		T::AccountId, 
-		AccountDetails<BalanceOf<T>>, 
-		ValueQuery
-	>;
+	pub type AccountMap<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::AccountId, AccountDetails<BalanceOf<T>>, ValueQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
@@ -219,7 +215,7 @@ pub mod pallet {
 			// <SingleValue<T>>::put(&self.single_value);
 			for (a, b) in &self.account_map {
 				<AccountMap<T>>::insert(a, b);
-			}	
+			}
 		}
 	}
 	// -----
@@ -261,12 +257,12 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn get_transfers)]
 	/// For fetching the transfer details
-	pub(super) type Transfers<T: Config> =	
+	pub(super) type Transfers<T: Config> =
 		StorageValue<_, Vec<TransferDetails<T::AccountId, BalanceOf<T>>>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_disupte_details)]
-	pub(super) type Courtroom<T: Config> = 
+	pub(super) type Courtroom<T: Config> =
 		StorageMap<_, Blake2_128Concat, u128, CourtDispute<T::AccountId, BalanceOf<T>>, ValueQuery>;
 
 	#[pallet::event]
@@ -333,18 +329,15 @@ pub mod pallet {
 		/// To ensure approval is pending
 		TaskInProgress,
 		/// To ensure publisher is the one disapproving
-		UnauthorisedToDisapprove
+		UnauthorisedToDisapprove,
+		/// To ensure if the juror hasn't already voted
+		JurorHasVoted,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		
 		#[pallet::weight(10_000)]
-		pub fn disapprove_task(
-			origin: OriginFor<T>,
-			task_id: u128
-		) -> DispatchResult {
-
+		pub fn disapprove_task(origin: OriginFor<T>, task_id: u128) -> DispatchResult {
 			let publisher = ensure_signed(origin)?;
 
 			//ensure task exists and is active
@@ -365,53 +358,45 @@ pub mod pallet {
 			let worker_id = task_details.worker_id.clone();
 
 			task_details.status = Status::CourtInMotion;
-			
 			let potential_jurors = Self::potential_jurors(task_details.clone());
 
 			let dispute = CourtDispute {
-				task_details: task_details,
-				potential_jurors: potential_jurors,
+				task_details,
+				potential_jurors,
 				final_jurors: BTreeMap::new(),
 				winner: None,
 				status: Status::CourtInMotion,
 				votes_for_worker: None,
 				votes_for_customer: None,
 				avg_worker_rating: None,
-				avg_publisher_rating: None
+				avg_publisher_rating: None,
 			};
 
 			<Courtroom<T>>::insert(task_id.clone(), dispute);
 
-			Self::deposit_event(
-				Event::CourtSummoned(
-					Some(publisher),
-					worker_id
-				)
-			);
-			
+			Self::deposit_event(Event::CourtSummoned(Some(publisher), worker_id));
 			Ok(())
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn accept_jury_duty(
-			origin: OriginFor<T>,
-			task_id: u128
-		) -> DispatchResult {
-
+		pub fn accept_jury_duty(origin: OriginFor<T>, task_id: u128) -> DispatchResult {
 			let juror = ensure_signed(origin)?;
 
 			ensure!(<Courtroom<T>>::contains_key(&task_id), <Error<T>>::DisputeDoesNotExist);
 
 			let mut dispute_details = Self::get_disupte_details(task_id.clone());
 
-			ensure!(dispute_details.potential_jurors.contains(&juror), <Error<T>>::NotPotentialJuror);
+			ensure!(
+				dispute_details.potential_jurors.contains(&juror),
+				<Error<T>>::NotPotentialJuror
+			);
 
 			ensure!(dispute_details.final_jurors.len() <= 2, <Error<T>>::CannotAddMoreJurors);
 
 			let juror_details = JurorDecisionDetails {
 				voted_for: None,
 				publisher_rating: None,
-				worker_rating: None
+				worker_rating: None,
 			};
 
 			dispute_details.final_jurors.insert(juror.clone(), juror_details);
@@ -419,28 +404,32 @@ pub mod pallet {
 			Self::deposit_event(Event::NewJurorAdded(task_id.clone(), juror));
 
 			<Courtroom<T>>::insert(&task_id, dispute_details.clone());
-			
 			Ok(())
 		}
 
 		#[pallet::weight(10_000)]
 		pub fn cast_vote(
-			origin: OriginFor<T>, 
-			task_id: u128, 
+			origin: OriginFor<T>,
+			task_id: u128,
 			voted_for: UserType,
 			customer_rating: u8,
-			worker_rating: u8
+			worker_rating: u8,
 		) -> DispatchResult {
-
 			let juror = ensure_signed(origin)?;
 
 			let mut dispute_details = Self::get_disupte_details(&task_id);
 
 			log::info!("{:#?}", dispute_details);
 
-			let mut juror_decision_details = dispute_details.final_jurors.get(&juror).cloned().unwrap();
+			let mut juror_decision_details =
+				dispute_details.final_jurors.get(&juror).cloned().unwrap();
+
+			// Ensuring qualified juror doesn't vote more than once
+			ensure!(juror_decision_details.voted_for == None, <Error<T>>::JurorHasVoted);
 
 			log::info!("{:#?}", juror_decision_details);
+			// Aim for settling dispute to begin with
+			// let mut settle_dispute: bool = true;
 
 			juror_decision_details.voted_for = Some(voted_for.clone());
 			juror_decision_details.publisher_rating = Some(customer_rating);
@@ -452,28 +441,39 @@ pub mod pallet {
 			let mut votes_for_worker = dispute_details.votes_for_worker.unwrap_or_else(|| 0);
 
 			match voted_for {
-				UserType::Customer => { 
+				UserType::Customer => {
 					votes_for_customer += 1;
 					dispute_details.votes_for_customer = Some(votes_for_customer.clone());
-				}, 
-				UserType::Worker => { 
+				}
+				UserType::Worker => {
 					votes_for_worker += 1;
 					dispute_details.votes_for_worker = Some(votes_for_worker.clone());
-				},	
+				}
 			}
 
 			let total_votes = votes_for_customer + votes_for_worker;
-			
+
+			let dispute_details_of_final_jurors: Vec<JurorDecisionDetails> =
+				dispute_details.final_jurors.values().cloned().collect();
+
+			// for juror_decision in dispute_details_of_final_jurors.clone() {
+			// 	if juror_decision.voted_for == None {
+			// 		settle_dispute = false;
+			// 		break;
+			// 	}
+			// }
+
 			// NOTE: This will execute with the first vote (Need to change)
-			if dispute_details.final_jurors.len() as u8 == total_votes {
+			// Time based event (24 hours) [1 epoch]
+			if dispute_details.potential_jurors.len() == dispute_details.final_jurors.len() {
 				let mut total_publisher_rating: u8 = 0;
 				let mut total_worker_rating: u8 = 0;
-				let dispute_details_of_final_jurors: Vec<JurorDecisionDetails> = dispute_details.final_jurors.values().cloned().collect();
 				for juror_decision in dispute_details_of_final_jurors {
 					total_publisher_rating += juror_decision.publisher_rating.unwrap_or_else(|| 0);
 					total_worker_rating += juror_decision.worker_rating.unwrap_or_else(|| 0);
 				}
-				let avg_publisher_rating = Self::roundoff(total_publisher_rating, total_votes.clone());
+				let avg_publisher_rating =
+					Self::roundoff(total_publisher_rating, total_votes.clone());
 				let avg_worker_rating = Self::roundoff(total_worker_rating, total_votes.clone());
 				dispute_details.avg_publisher_rating = Some(avg_publisher_rating);
 				dispute_details.avg_worker_rating = Some(avg_worker_rating);
@@ -484,11 +484,12 @@ pub mod pallet {
 				}
 			}
 
+			log::info!("{:#?}", dispute_details);
+
 			<Courtroom<T>>::insert(&task_id, dispute_details);
 
 			Ok(())
 		}
-
 
 		/* Description:
 		 * Extrinsic for creating tasks on the blockchain. This is called by the ..
@@ -592,11 +593,8 @@ pub mod pallet {
 				LOCKSECRET,
 				&bidder,
 				task_cost.clone(),
-				WithdrawReasons::TRANSACTION_PAYMENT, 
+				WithdrawReasons::TRANSACTION_PAYMENT,
 			);
-
-			log::info!("$$$$$$$$$$$$$ {:?}", task.worker_id.clone());
-			log::info!("$$$$$$$$$$$$$ {:?}", task.publisher.clone());
 			// Notifying the user
 			Self::deposit_event(Event::TaskIsBid(
 				bidder.clone(),
@@ -691,7 +689,7 @@ pub mod pallet {
 			ensure!(publisher == approver.clone(), <Error<T>>::UnauthorisedToApprove);
 			// Checking if the worker is set or not
 			let bidder = task.worker_id.clone().ok_or(<Error<T>>::WorkerNotSet)?;
-			// Inserting Worker Rating to RatingMap
+			// Getting Worker Rating from RatingMap
 			let existing_bidder_ratings: User<T::AccountId> = Self::get_worker_ratings(&bidder);
 			// Creating temp rating vector
 			let mut temp_rating_vec = Vec::<u8>::new();
@@ -845,21 +843,19 @@ pub mod pallet {
 	//Helper functions for our pallet
 
 	impl<T: Config> Pallet<T> {
-
 		pub fn potential_jurors(
-			task_details: TaskDetails<T::AccountId,BalanceOf<T>>
-		) -> Vec<T::AccountId>{
-
+			task_details: TaskDetails<T::AccountId, BalanceOf<T>>,
+		) -> Vec<T::AccountId> {
 			let all_account_details = <AccountMap<T>>::iter();
 			let mut jurors: Vec<T::AccountId> = Vec::new();
 
-			for (acc_id, acc_details) in all_account_details{
-				if acc_details.avg_rating >= Some(4){
+			for (acc_id, acc_details) in all_account_details {
+				if acc_details.avg_rating >= Some(4) {
 					for task_tag in &task_details.task_tags {
-						if acc_details.tags.contains(&task_tag) && 
-						   acc_id.clone() != task_details.publisher &&
-						   Some(acc_id.clone()) != task_details.worker_id 
-						{		
+						if acc_details.tags.contains(&task_tag)
+							&& acc_id.clone() != task_details.publisher
+							&& Some(acc_id.clone()) != task_details.worker_id
+						{
 							jurors.push(acc_id.clone());
 							break;
 						}
@@ -882,7 +878,5 @@ pub mod pallet {
 
 			output
 		}
-
 	}
 }
-

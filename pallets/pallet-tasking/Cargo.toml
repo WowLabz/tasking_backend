@@ -20,6 +20,7 @@ features = ["libm"]
 [dependencies.serde]
 version = '1.0.129'
 
+
 [dependencies.pallet-membership]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
