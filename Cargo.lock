@@ -3954,6 +3954,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "num-traits",
+ "pallet-balances",
  "pallet-membership",
  "parity-scale-codec",
  "scale-info",
