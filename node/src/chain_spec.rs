@@ -139,8 +139,6 @@ fn testnet_genesis(
 	endowed_accounts: Vec<AccountId>,
 	_enable_println: bool,
 ) -> GenesisConfig {
-	const VALUE: Balance = 235813;
-
 	// 12 accounts
 	let accounts_to_map: Vec<AccountId> = vec![
 		get_account_id_from_seed::<sr25519::Public>("Alice"),

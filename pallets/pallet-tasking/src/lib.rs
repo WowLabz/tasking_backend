@@ -18,20 +18,24 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	//use pallet_court::*;
 	use frame_support::{
+		dispatch::Dispatchable,
 		dispatch::EncodeLike,
 		log,
 		sp_runtime::traits::Hash,
 		traits::{
-			tokens::ExistenceRequirement, Currency, LockIdentifier, LockableCurrency, Randomness,
-			SortedMembers, WithdrawReasons,
+			tokens::ExistenceRequirement, Currency, LockIdentifier, LockableCurrency, OriginTrait,
+			WithdrawReasons,
 		},
 		transactional,
+		weights::{GetDispatchInfo, PostDispatchInfo},
 	};
 
 	#[cfg(feature = "std")]
 	use frame_support::serde::{Deserialize, Serialize};
 	use num_traits::float::Float;
 	// use pallet_scheduler;
+	use codec::{Codec, Decode, Encode};
+	use sp_std::boxed::Box;
 	use sp_std::collections::btree_map::BTreeMap;
 	use sp_std::vec::Vec;
 
@@ -43,6 +47,9 @@ pub mod pallet {
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 	pub type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
+
+	// pub type CallOrHashOf<T> = <T as Config>::Call;
+
 	// NOTE: Need to refactor, duplicate code for testing purposes
 	type AccountId<T> = <T as frame_system::Config>::AccountId;
 	type Balance<T> =
@@ -108,6 +115,13 @@ pub mod pallet {
 		voted_for: Option<UserType>,
 		publisher_rating: Option<u8>,
 		worker_rating: Option<u8>,
+	}
+
+	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
+	pub struct DisputeTimeframe<BlockNumber> {
+		task_id: u128,
+		jury_acceptance_period: BlockNumber,
+		case_closed: BlockNumber,
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
@@ -179,6 +193,21 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		type Currency: LockableCurrency<Self::AccountId>;
+		// type Origin: OriginTrait<PalletsOrigin = Self::PalletsOrigin>
+		// 	+ From<Self::PalletsOrigin>
+		// 	+ IsType<<Self as frame_system::Config>::Origin>;
+
+		// type PalletsOrigin: From<frame_system::RawOrigin<Self::AccountId>>
+		// 	+ Codec
+		// 	+ Clone
+		// 	+ Eq
+		// 	+ TypeInfo;
+		// type Call: Parameter
+		// 	+ Dispatchable<
+		// 		Origin = <Self as frame_system::Config>::Origin,
+		// 		PostInfo = PostDispatchInfo,
+		// 	> + GetDispatchInfo
+		// 	+ From<frame_system::Call<Self>>;
 	}
 
 	#[pallet::pallet]
@@ -261,6 +290,12 @@ pub mod pallet {
 		StorageValue<_, Vec<TransferDetails<T::AccountId, BalanceOf<T>>>, ValueQuery>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn get_dispute_timeframes)]
+	/// For fetching the dispute timeframes
+	pub(super) type Timeframes<T: Config> =
+		StorageValue<_, Vec<DisputeTimeframe<BlockNumberOf<T>>>, ValueQuery>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn get_disupte_details)]
 	pub(super) type Courtroom<T: Config> =
 		StorageMap<_, Blake2_128Concat, u128, CourtDispute<T::AccountId, BalanceOf<T>>, ValueQuery>;
@@ -334,8 +369,22 @@ pub mod pallet {
 		JurorHasVoted,
 	}
 
+	#[pallet::hooks]
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_initialize(now: T::BlockNumber) -> Weight {
+			let total_weight: Weight = 10;
+			Self::settle_dispute(now);
+			total_weight
+		}
+	}
+
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		// #[pallet::weight(10_000)]
+		// pub fn example(origin: OriginFor<T>, call: CallOrHashOf<T>) -> DispatchResult {
+		// 	Ok(())
+		// }
+
 		#[pallet::weight(10_000)]
 		pub fn disapprove_task(origin: OriginFor<T>, task_id: u128) -> DispatchResult {
 			let publisher = ensure_signed(origin)?;
@@ -357,7 +406,24 @@ pub mod pallet {
 
 			let worker_id = task_details.worker_id.clone();
 
+			// For dispute timeframe storage
+			// TODO: Making a helper function
+			// -----
+			let task_id_for_timeframe = task_details.task_id.clone();
+			let jury_acceptance_period = <frame_system::Pallet<T>>::block_number() + 10u32.into();
+			let case_closed_date = jury_acceptance_period + 10u32.into();
+			let dispute_timeframe = DisputeTimeframe {
+				task_id: task_id_for_timeframe,
+				jury_acceptance_period,
+				case_closed: case_closed_date,
+			};
+			let mut temp_timeframe_storage = Self::get_dispute_timeframes();
+			temp_timeframe_storage.push(dispute_timeframe);
+			<Timeframes<T>>::put(temp_timeframe_storage);
+			// -----
+
 			task_details.status = Status::CourtInMotion;
+
 			let potential_jurors = Self::potential_jurors(task_details.clone());
 
 			let dispute = CourtDispute {
@@ -375,6 +441,7 @@ pub mod pallet {
 			<Courtroom<T>>::insert(task_id.clone(), dispute);
 
 			Self::deposit_event(Event::CourtSummoned(Some(publisher), worker_id));
+
 			Ok(())
 		}
 
@@ -383,6 +450,8 @@ pub mod pallet {
 			let juror = ensure_signed(origin)?;
 
 			ensure!(<Courtroom<T>>::contains_key(&task_id), <Error<T>>::DisputeDoesNotExist);
+
+			// TODO: Ensure for status == JurySelectionComplete
 
 			let mut dispute_details = Self::get_disupte_details(task_id.clone());
 
@@ -843,6 +912,23 @@ pub mod pallet {
 	//Helper functions for our pallet
 
 	impl<T: Config> Pallet<T> {
+		pub fn settle_dispute(block_number: BlockNumberOf<T>) {
+			let dispute_timeframes = Self::get_dispute_timeframes();
+			for dispute_timeframe in dispute_timeframes.iter() {
+				// Case: where no one has voted (If there are zero votes)
+				// Checking for number of votes
+				// If 0 we force close it
+				// If not 0, we check the number of votes
+				if block_number == dispute_timeframe.case_closed {
+					let mut dispute_details =
+						Self::get_disupte_details(dispute_timeframe.task_id.clone());
+					dispute_details.avg_publisher_rating = Some(3);
+					dispute_details.avg_worker_rating = Some(3);
+					<Courtroom<T>>::insert(&dispute_timeframe.task_id, dispute_details.clone());
+				}
+			}
+		}
+
 		pub fn potential_jurors(
 			task_details: TaskDetails<T::AccountId, BalanceOf<T>>,
 		) -> Vec<T::AccountId> {
