@@ -74,7 +74,12 @@ pub mod pallet {
 		InProgress,
 		PendingApproval,
 		PendingRatings,
-		CourtInMotion,
+		/// -> Change
+		DisputeRaised,
+		VotingPeriod,
+		JuryDecisionReached,
+		CompletedByDefault,
+		/// -> Change
 		Completed,
 	}
 
@@ -409,20 +414,26 @@ pub mod pallet {
 			// For dispute timeframe storage
 			// TODO: Making a helper function
 			// -----
-			let task_id_for_timeframe = task_details.task_id.clone();
-			let jury_acceptance_period = <frame_system::Pallet<T>>::block_number() + 10u32.into();
-			let case_closed_date = jury_acceptance_period + 10u32.into();
-			let dispute_timeframe = DisputeTimeframe {
-				task_id: task_id_for_timeframe,
-				jury_acceptance_period,
-				case_closed: case_closed_date,
-			};
-			let mut temp_timeframe_storage = Self::get_dispute_timeframes();
-			temp_timeframe_storage.push(dispute_timeframe);
-			<Timeframes<T>>::put(temp_timeframe_storage);
+			// let task_id_for_timeframe = task_details.task_id.clone();
+			// let jury_acceptance_period = <frame_system::Pallet<T>>::block_number() + 10u32.into();
+			// let case_closed_date = jury_acceptance_period + 10u32.into();
+			// let dispute_timeframe = DisputeTimeframe {
+			// 	task_id: task_id_for_timeframe,
+			// 	jury_acceptance_period,
+			// 	case_closed: case_closed_date,
+			// };
+			// let mut temp_timeframe_storage = Self::get_dispute_timeframes();
+			// temp_timeframe_storage.push(dispute_timeframe);
+			// <Timeframes<T>>::put(temp_timeframe_storage);
 			// -----
 
-			task_details.status = Status::CourtInMotion;
+			// -> Change
+
+			Self::calculate_triggers(task_details.clone());
+
+			// -> Change
+
+			task_details.status = Status::DisputeRaised;
 
 			let potential_jurors = Self::potential_jurors(task_details.clone());
 
@@ -431,7 +442,7 @@ pub mod pallet {
 				potential_jurors,
 				final_jurors: BTreeMap::new(),
 				winner: None,
-				status: Status::CourtInMotion,
+				status: Status::DisputeRaised,
 				votes_for_worker: None,
 				votes_for_customer: None,
 				avg_worker_rating: None,
@@ -451,9 +462,19 @@ pub mod pallet {
 
 			ensure!(<Courtroom<T>>::contains_key(&task_id), <Error<T>>::DisputeDoesNotExist);
 
-			// TODO: Ensure for status == JurySelectionComplete
+			// TODO: Ensure for status == JurySelectionComplete - Done
+
 
 			let mut dispute_details = Self::get_disupte_details(task_id.clone());
+
+			// -> Change
+
+			ensure!(
+				dispute_details.status == Status::DisputeRaised, 
+				<Error<T>>::CannotAddMoreJurors );
+
+			// -> Change
+
 
 			ensure!(
 				dispute_details.potential_jurors.contains(&juror),
@@ -951,6 +972,28 @@ pub mod pallet {
 
 			jurors
 		}
+
+		// -> Change
+
+		pub fn calculate_triggers(
+			task_details: TaskDetails<T::AccountId, BalanceOf<T>>
+		){
+
+			let task_id_for_timeframe = task_details.task_id.clone();
+			let jury_acceptance_period = <frame_system::Pallet<T>>::block_number() + 10u32.into();
+			let case_closed_date = jury_acceptance_period + 10u32.into();
+			let dispute_timeframe = DisputeTimeframe {
+				task_id: task_id_for_timeframe,
+				jury_acceptance_period,
+				case_closed: case_closed_date,
+			};
+			let mut temp_timeframe_storage = Self::get_dispute_timeframes();
+			temp_timeframe_storage.push(dispute_timeframe);
+			<Timeframes<T>>::put(temp_timeframe_storage);
+		
+		}
+
+		// -> Change
 
 		fn roundoff(total_rating: u8, number_of_users: u8) -> u8 {
 			let output: u8;
