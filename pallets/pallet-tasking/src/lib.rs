@@ -21,7 +21,7 @@ pub mod pallet {
 		dispatch::Dispatchable,
 		dispatch::EncodeLike,
 		log,
-		sp_runtime::traits::Hash,
+		sp_runtime::traits::{Hash,SaturatedConversion},
 		traits::{
 			tokens::ExistenceRequirement, Currency, LockIdentifier, LockableCurrency, OriginTrait,
 			WithdrawReasons,
@@ -469,6 +469,8 @@ pub mod pallet {
 				<Error<T>>::NotPotentialJuror
 			);
 
+			// TODO -> Currently able to add more than 2 jurors
+
 			ensure!(dispute_details.final_jurors.len() <= 2, <Error<T>>::CannotAddMoreJurors);
 
 			let juror_details = JurorDecisionDetails {
@@ -480,6 +482,8 @@ pub mod pallet {
 			dispute_details.final_jurors.insert(juror.clone(), juror_details);
 
 			Self::deposit_event(Event::NewJurorAdded(task_id.clone(), juror));
+
+			// TODO -> Update status to voting period after 1 era via scheduler
 
 			<Courtroom<T>>::insert(&task_id, dispute_details.clone());
 			Ok(())
@@ -506,7 +510,7 @@ pub mod pallet {
 
 			log::info!("{:#?}", dispute_details);
 
-			ensure!(dispute_details.status == Status::VotingPeriod, <Error<T>>::CaseClosed);
+			//ensure!(dispute_details.status == Status::VotingPeriod, <Error<T>>::CaseClosed);
 
 			let mut juror_decision_details =
 				dispute_details.final_jurors.get(&juror).cloned().unwrap();
@@ -531,11 +535,15 @@ pub mod pallet {
 				UserType::Customer => {
 					votes_for_customer += 1;
 					dispute_details.votes_for_customer = Some(votes_for_customer.clone());
-				}
+				},
 				UserType::Worker => {
 					votes_for_worker += 1;
 					dispute_details.votes_for_worker = Some(votes_for_worker.clone());
 				}
+			}
+
+			for juror_details in dispute_details.final_jurors{
+				log::info!("Hello, this is juror details:#?}", juror_details);
 			}
 
 			// let total_votes = votes_for_customer + votes_for_worker;
@@ -551,6 +559,8 @@ pub mod pallet {
 					break;
 				}
 			}
+
+
 
 			// For providing ratings and releasing funds after ..
 			// all final juror votes are cast.
@@ -577,11 +587,49 @@ pub mod pallet {
 					dispute_details.winner = Some(UserType::Worker);
 				}
 
+				let winner_account_id = match dispute_details.winner.clone() {
+					Some(UserType::Customer) => {
+						dispute_details.task_details.publisher
+					},
+					Some(UserType::Worker) => {
+						dispute_details.task_details.worker_id.unwrap()
+					}
+				};
+
 				let task_cost = dispute_details.task_details.cost;
-				let court_fee = (task_cost/100)*60;
+				let some = task_cost.saturated_into::<u128>();
+				let court_fee = (some * 60)/100 as u128;
+				let juror_fee: u32 = (court_fee as u32)/(final_jurors_count as u32);
 
+				// let mut juror_decision_details =
+				// dispute_details.final_jurors.get(&juror).cloned().unwrap();
 
+				let juror_account_ids: Vec<_> = dispute_details.final_jurors.keys().cloned().collect();
 
+				for juror_account_id in juror_account_ids{
+
+					T::Currency::transfer(
+						//placholderforescrow,
+						&juror_account_id,
+						juror_fee.into(),
+						ExistenceRequirement::KeepAlive,
+					)?;
+
+				}
+
+				T::Currency::transfer(
+					//placeholderforescrow,
+					&winner_account_id,
+					// remaining blance in escrow,
+					ExistenceRequirement::KeepAlive,
+				)?;
+
+				//TODO -> Account Map storage update
+				//TODO -> Courtroom storage Update 
+				//TODO -> Task details update
+				//TODO -> Delete instance from timeframe once case is closed
+
+				log::info!("Hello, this is court fee{:#?}", court_fee);
 
 			}
 
@@ -592,6 +640,7 @@ pub mod pallet {
 			// // Removing the lock on the bidder's funds
 			// T::Currency::remove_lock(LOCKSECRET, &bidder);
 			// // Transfering amount from customer to bidder
+			
 			// T::Currency::transfer(
 			// 	&customer,
 			// 	&bidder,
@@ -646,6 +695,12 @@ pub mod pallet {
 				task_description: task_des.clone(),
 				attachments: publisher_attachments.clone(),
 			};
+
+			let some = task_details.cost.clone().saturated_into::<u128>();
+			let court_fee = (some * 60)/100 as u128;
+
+			log::info!("Hello, this is court fee{:#?}", court_fee);
+
 			// Inserting the new task details to storage
 			<TaskStorage<T>>::insert(current_task_count.clone(), task_details);
 			// Notifying the user about the transaction event
