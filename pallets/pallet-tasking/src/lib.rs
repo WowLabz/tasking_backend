@@ -122,6 +122,7 @@ pub mod pallet {
 		worker_rating: Option<u8>,
 	}
 
+	// Storage elements are deleted after usage
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
 	pub struct DisputeTimeframe<BlockNumber> {
 		task_id: u128,
@@ -130,7 +131,7 @@ pub mod pallet {
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
-	pub struct CourtDispute<AccountId, Balance> {
+	pub struct CourtDispute<AccountId, Balance, BlockNumber> {
 		task_details: TaskDetails<AccountId, Balance>,
 		potential_jurors: Vec<AccountId>,
 		// In vector: 1. Worker / Publisher, 2. Publisher rating, 3. Worker rating
@@ -141,8 +142,8 @@ pub mod pallet {
 		votes_for_customer: Option<u8>,
 		avg_worker_rating: Option<u8>,
 		avg_publisher_rating: Option<u8>,
-		// jury_acceptance_period: BlockNumber, // initial = current block number + 14_400 (1 era)
-		// case_closed: BlockNumber // initial + 28_800 (2 eras)
+		jury_acceptance_period: BlockNumber,
+		total_case_period: BlockNumber,
 	}
 
 	#[derive(Encode, Decode, Debug, PartialEq, Clone, Eq, Default, TypeInfo)]
@@ -447,6 +448,8 @@ pub mod pallet {
 				votes_for_customer: None,
 				avg_worker_rating: None,
 				avg_publisher_rating: None,
+				jury_acceptance_period: case_period.0,
+				total_case_period: case_period.1,
 			};
 
 			<Courtroom<T>>::insert(task_id.clone(), dispute);
