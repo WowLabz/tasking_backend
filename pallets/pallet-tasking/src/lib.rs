@@ -126,7 +126,7 @@ pub mod pallet {
 	pub struct DisputeTimeframe<BlockNumber> {
 		task_id: u128,
 		jury_acceptance_period: BlockNumber,
-		case_closed: BlockNumber,
+		total_case_period: BlockNumber,
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
@@ -429,7 +429,7 @@ pub mod pallet {
 
 			// -> Change
 
-			Self::calculate_triggers(task_details.clone());
+			let case_period = Self::calculate_case_period(task_details.clone());
 
 			// -> Change
 
@@ -464,17 +464,16 @@ pub mod pallet {
 
 			// TODO: Ensure for status == JurySelectionComplete - Done
 
-
 			let mut dispute_details = Self::get_disupte_details(task_id.clone());
 
 			// -> Change
 
 			ensure!(
-				dispute_details.status == Status::DisputeRaised, 
-				<Error<T>>::CannotAddMoreJurors );
+				dispute_details.status == Status::DisputeRaised,
+				<Error<T>>::CannotAddMoreJurors
+			);
 
 			// -> Change
-
 
 			ensure!(
 				dispute_details.potential_jurors.contains(&juror),
@@ -975,22 +974,28 @@ pub mod pallet {
 
 		// -> Change
 
-		pub fn calculate_triggers(
-			task_details: TaskDetails<T::AccountId, BalanceOf<T>>
-		){
+		pub fn calculate_case_period(
+			task_details: TaskDetails<T::AccountId, BalanceOf<T>>,
+		) -> (BlockNumberOf<T>, BlockNumberOf<T>) {
+			// One era is one day
+			const ONE_ERA: u32 = 10;
+			// Retrieving complete task details
+			let task_id = task_details.task_id.clone();
+			// Time span for participant to become jurors
+			let jury_acceptance_period = <frame_system::Pallet<T>>::block_number() + ONE_ERA.into();
+			// Total case time
+			let total_case_period = jury_acceptance_period + (ONE_ERA * 2).into();
+			// Structure for time frame storage
+			let dispute_timeframe =
+				DisputeTimeframe { task_id, jury_acceptance_period, total_case_period };
+			// Get the time frame storage vector
+			let mut dispute_timeframe_storage = Self::get_dispute_timeframes();
+			// Updating the timeframe storage vector
+			dispute_timeframe_storage.push(dispute_timeframe);
+			// Updating the timeframe storage
+			<Timeframes<T>>::put(dispute_timeframe_storage);
 
-			let task_id_for_timeframe = task_details.task_id.clone();
-			let jury_acceptance_period = <frame_system::Pallet<T>>::block_number() + 10u32.into();
-			let case_closed_date = jury_acceptance_period + 10u32.into();
-			let dispute_timeframe = DisputeTimeframe {
-				task_id: task_id_for_timeframe,
-				jury_acceptance_period,
-				case_closed: case_closed_date,
-			};
-			let mut temp_timeframe_storage = Self::get_dispute_timeframes();
-			temp_timeframe_storage.push(dispute_timeframe);
-			<Timeframes<T>>::put(temp_timeframe_storage);
-		
+			(jury_acceptance_period, total_case_period)
 		}
 
 		// -> Change
