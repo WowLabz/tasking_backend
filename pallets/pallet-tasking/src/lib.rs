@@ -382,6 +382,8 @@ pub mod pallet {
 		JurySelectionPeriodElapsed,
 		/// To stop jurors to vote before the actual voting period
 		JurySelectionInProcess,
+		/// To ensure jurors can't vote beyond the voting period
+		CaseClosed,
 	}
 
 	#[pallet::hooks]
@@ -395,11 +397,7 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		// #[pallet::weight(10_000)]
-		// pub fn example(origin: OriginFor<T>, call: CallOrHashOf<T>) -> DispatchResult {
-		// 	Ok(())
-		// }
-
+		
 		#[pallet::weight(10_000)]
 		pub fn disapprove_task(origin: OriginFor<T>, task_id: u128) -> DispatchResult {
 			let publisher = ensure_signed(origin)?;
@@ -421,27 +419,7 @@ pub mod pallet {
 
 			let worker_id = task_details.worker_id.clone();
 
-			// For dispute timeframe storage
-			// TODO: Making a helper function
-			// -----
-			// let task_id_for_timeframe = task_details.task_id.clone();
-			// let jury_acceptance_period = <frame_system::Pallet<T>>::block_number() + 10u32.into();
-			// let case_closed_date = jury_acceptance_period + 10u32.into();
-			// let dispute_timeframe = DisputeTimeframe {
-			// 	task_id: task_id_for_timeframe,
-			// 	jury_acceptance_period,
-			// 	case_closed: case_closed_date,
-			// };
-			// let mut temp_timeframe_storage = Self::get_dispute_timeframes();
-			// temp_timeframe_storage.push(dispute_timeframe);
-			// <Timeframes<T>>::put(temp_timeframe_storage);
-			// -----
-
-			// -> Change
-
 			let case_period = Self::calculate_case_period(task_details.clone());
-
-			// -> Change
 
 			task_details.status = Status::DisputeRaised;
 
@@ -474,11 +452,7 @@ pub mod pallet {
 
 			ensure!(<Courtroom<T>>::contains_key(&task_id), <Error<T>>::DisputeDoesNotExist);
 
-			// TODO: Ensure for status == JurySelectionComplete - Done
-
 			let mut dispute_details = Self::get_disupte_details(task_id.clone());
-
-			// -> Change
 
 			// To stop accepting participants for jury after elapsed time
 			// -----
@@ -489,14 +463,6 @@ pub mod pallet {
 				<Error<T>>::JurySelectionPeriodElapsed
 			);
 			// -----
-
-			// NOTE: Need to revisit
-			ensure!(
-				dispute_details.status == Status::DisputeRaised,
-				<Error<T>>::CannotAddMoreJurors
-			);
-
-			// -> Change
 
 			ensure!(
 				dispute_details.potential_jurors.contains(&juror),
@@ -539,6 +505,8 @@ pub mod pallet {
 			// -----
 
 			log::info!("{:#?}", dispute_details);
+
+			ensure!(dispute_details.status == Status::VotingPeriod, <Error<T>>::CaseClosed);
 
 			let mut juror_decision_details =
 				dispute_details.final_jurors.get(&juror).cloned().unwrap();
@@ -583,27 +551,53 @@ pub mod pallet {
 					break;
 				}
 			}
+
 			// For providing ratings and releasing funds after ..
 			// all final juror votes are cast.
 			if dispute_closed {
 				let mut total_publisher_rating: u8 = 0;
 				let mut total_worker_rating: u8 = 0;
+
 				for juror_decision in dispute_details_of_final_jurors {
 					total_publisher_rating += juror_decision.publisher_rating.unwrap_or_else(|| 0);
 					total_worker_rating += juror_decision.worker_rating.unwrap_or_else(|| 0);
 				}
+
 				let avg_publisher_rating =
 					Self::roundoff(total_publisher_rating, final_jurors_count.clone());
+				dispute_details.avg_publisher_rating = Some(avg_publisher_rating);
+
 				let avg_worker_rating =
 					Self::roundoff(total_worker_rating, final_jurors_count.clone());
-				dispute_details.avg_publisher_rating = Some(avg_publisher_rating);
 				dispute_details.avg_worker_rating = Some(avg_worker_rating);
+
 				if votes_for_customer > votes_for_worker {
 					dispute_details.winner = Some(UserType::Customer);
 				} else {
 					dispute_details.winner = Some(UserType::Worker);
 				}
+
+				let task_cost = dispute_details.task_details.cost;
+				let court_fee = (task_cost/100)*60;
+
+
+
+
 			}
+
+
+			// let transfer_amount = task.cost;
+			// // Removing the lock on customer's funds
+			// T::Currency::remove_lock(LOCKSECRET, &customer);
+			// // Removing the lock on the bidder's funds
+			// T::Currency::remove_lock(LOCKSECRET, &bidder);
+			// // Transfering amount from customer to bidder
+			// T::Currency::transfer(
+			// 	&customer,
+			// 	&bidder,
+			// 	transfer_amount,
+			// 	ExistenceRequirement::KeepAlive,
+			// )?;
 
 			log::info!("{:#?}", dispute_details);
 
@@ -710,6 +704,7 @@ pub mod pallet {
 			// Inserting updated task in storage
 			<TaskStorage<T>>::insert(&task_id, task.clone());
 			// Locking bid amount
+			// Note: TO be changed to the amount worker actually bid
 			T::Currency::set_lock(
 				LOCKSECRET,
 				&bidder,
