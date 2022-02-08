@@ -303,8 +303,13 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_disupte_details)]
-	pub(super) type Courtroom<T: Config> =
-		StorageMap<_, Blake2_128Concat, u128, CourtDispute<T::AccountId, BalanceOf<T>>, ValueQuery>;
+	pub(super) type Courtroom<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		u128,
+		CourtDispute<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
+		ValueQuery,
+	>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -373,6 +378,8 @@ pub mod pallet {
 		UnauthorisedToDisapprove,
 		/// To ensure if the juror hasn't already voted
 		JurorHasVoted,
+		/// To stop accepting participants for jury after elapsed time
+		JurySelectionPeriodElapsed,
 	}
 
 	#[pallet::hooks]
@@ -471,6 +478,17 @@ pub mod pallet {
 
 			// -> Change
 
+			// To stop accepting participants for jury after elapsed time
+			// -----
+			let current_period = <frame_system::Pallet<T>>::block_number();
+			let jury_acceptance_period = dispute_details.jury_acceptance_period.clone();
+			ensure!(
+				current_period < jury_acceptance_period,
+				<Error<T>>::JurySelectionPeriodElapsed
+			);
+			// -----
+
+			// NOTE: Need to revisit
 			ensure!(
 				dispute_details.status == Status::DisputeRaised,
 				<Error<T>>::CannotAddMoreJurors
@@ -942,7 +960,7 @@ pub mod pallet {
 				// Checking for number of votes
 				// If 0 we force close it
 				// If not 0, we check the number of votes
-				if block_number == dispute_timeframe.case_closed {
+				if block_number == dispute_timeframe.total_case_period {
 					let mut dispute_details =
 						Self::get_disupte_details(dispute_timeframe.task_id.clone());
 					dispute_details.avg_publisher_rating = Some(3);
