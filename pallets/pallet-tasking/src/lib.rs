@@ -548,7 +548,7 @@ pub mod pallet {
 
 			log::info!("{:#?}", juror_decision_details);
 			// Aim for settling dispute to begin with
-			// let mut settle_dispute: bool = true;
+			let mut dispute_closed: bool = true;
 
 			juror_decision_details.voted_for = Some(voted_for.clone());
 			juror_decision_details.publisher_rating = Some(customer_rating);
@@ -570,21 +570,22 @@ pub mod pallet {
 				}
 			}
 
-			let total_votes = votes_for_customer + votes_for_worker;
+			// let total_votes = votes_for_customer + votes_for_worker;
+			let final_jurors_count = dispute_details.final_jurors.len() as u8;
 
 			let dispute_details_of_final_jurors: Vec<JurorDecisionDetails> =
 				dispute_details.final_jurors.values().cloned().collect();
 
-			// for juror_decision in dispute_details_of_final_jurors.clone() {
-			// 	if juror_decision.voted_for == None {
-			// 		settle_dispute = false;
-			// 		break;
-			// 	}
-			// }
-
-			// NOTE: This will execute with the first vote (Need to change)
-			// Time based event (24 hours) [1 epoch]
-			if dispute_details.potential_jurors.len() == dispute_details.final_jurors.len() {
+			// NOTE: Can be refactored?
+			for juror_decision in dispute_details_of_final_jurors.clone() {
+				if juror_decision.voted_for == None {
+					dispute_closed = false;
+					break;
+				}
+			}
+			// For providing ratings and releasing funds after ..
+			// all final juror votes are cast.
+			if dispute_closed {
 				let mut total_publisher_rating: u8 = 0;
 				let mut total_worker_rating: u8 = 0;
 				for juror_decision in dispute_details_of_final_jurors {
@@ -592,8 +593,9 @@ pub mod pallet {
 					total_worker_rating += juror_decision.worker_rating.unwrap_or_else(|| 0);
 				}
 				let avg_publisher_rating =
-					Self::roundoff(total_publisher_rating, total_votes.clone());
-				let avg_worker_rating = Self::roundoff(total_worker_rating, total_votes.clone());
+					Self::roundoff(total_publisher_rating, final_jurors_count.clone());
+				let avg_worker_rating =
+					Self::roundoff(total_worker_rating, final_jurors_count.clone());
 				dispute_details.avg_publisher_rating = Some(avg_publisher_rating);
 				dispute_details.avg_worker_rating = Some(avg_worker_rating);
 				if votes_for_customer > votes_for_worker {
