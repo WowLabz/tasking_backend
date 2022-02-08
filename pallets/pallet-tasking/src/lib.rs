@@ -380,6 +380,8 @@ pub mod pallet {
 		JurorHasVoted,
 		/// To stop accepting participants for jury after elapsed time
 		JurySelectionPeriodElapsed,
+		/// To stop jurors to vote before the actual voting period
+		JurySelectionInProcess,
 	}
 
 	#[pallet::hooks]
@@ -528,6 +530,13 @@ pub mod pallet {
 			let juror = ensure_signed(origin)?;
 
 			let mut dispute_details = Self::get_disupte_details(&task_id);
+
+			// To stop jurors to vote before the actual voting period
+			// -----
+			let current_period = <frame_system::Pallet<T>>::block_number();
+			let jury_acceptance_period = dispute_details.jury_acceptance_period.clone();
+			ensure!(current_period > jury_acceptance_period, <Error<T>>::JurySelectionInProcess);
+			// -----
 
 			log::info!("{:#?}", dispute_details);
 
