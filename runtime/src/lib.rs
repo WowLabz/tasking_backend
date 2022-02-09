@@ -26,6 +26,7 @@ use sp_version::RuntimeVersion;
 
 // A few exports that help ease life for downstream crates.
 use frame_support::traits::EqualPrivilegeOnly;
+use frame_support::PalletId;
 pub use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{schedule::Named, KeyOwnerProofSystem, PrivilegeCmp, Randomness, StorageInfo},
@@ -313,10 +314,15 @@ impl pallet_sudo::Config for Runtime {
 	type Call = Call;
 }
 
+parameter_types! {
+	pub const MyPalletId: PalletId = PalletId(*b"acescrow");
+}
+
 /// Configure the pallet-template in pallets/template.
 impl pallet_tasking::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
+	type PalletId = MyPalletId;
 }
 
 impl pallet_chat::Config for Runtime {

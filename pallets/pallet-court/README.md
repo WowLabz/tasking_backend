@@ -76,6 +76,17 @@ updates dispute storage with necessary details
 once all votes are cast, escrow is released and ratings are updated and status changed to closed by court
 
 
+Edge Cases:
+1. In case of too many cases to handle where there are no jurors volunteering from the user pool
+Possible Fix: 
+a) Have a set of default jurors where their only role on chain is to be a juror 
+b) Have a automated master council where we build an algorthm to distribute ratings and funds by taking into account factors like previous task detais, previous dispute details etc.
+(For the moment a simple algoritm to give the worker slighlty more advantage in terms of funds and provide equal ratings on both sides)
+
+
+2. 
+
+
 
 
 
