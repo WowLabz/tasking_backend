@@ -84,7 +84,10 @@ b) Have a automated master council where we build an algorthm to distribute rati
 (For the moment a simple algoritm to give the worker slighlty more advantage in terms of funds and provide equal ratings on both sides)
 
 
-2. 
+TODO:
+1. What if it is a tie after final votes 
+2. What if no jurors vote after accepting jury duty
+3. What if not all accepted jurors vote
 
 
 
