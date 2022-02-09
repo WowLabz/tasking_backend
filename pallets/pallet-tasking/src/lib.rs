@@ -6,7 +6,6 @@ pub use pallet::*;
 mod mock;
 
 #[cfg(test)]
-use frame_support::PalletId;
 mod tests;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -20,42 +19,27 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	//use pallet_court::*;
 	use frame_support::{
-		dispatch::Dispatchable,
-		dispatch::EncodeLike,
 		log,
-		sp_runtime::traits::{AccountIdConversion, Hash, SaturatedConversion},
+		sp_runtime::traits::{AccountIdConversion, SaturatedConversion},
 		traits::{
-			tokens::ExistenceRequirement, Currency, LockIdentifier, LockableCurrency, OriginTrait,
-			WithdrawReasons,
+			tokens::ExistenceRequirement, Currency, LockIdentifier, LockableCurrency,WithdrawReasons,
 		},
-		transactional,
-		weights::{GetDispatchInfo, PostDispatchInfo},
 	};
 
 	#[cfg(feature = "std")]
 	use frame_support::serde::{Deserialize, Serialize};
 	use num_traits::float::Float;
 	// use pallet_scheduler;
-	use codec::{Codec, Decode, Encode};
-	use sp_std::boxed::Box;
+	use codec::{Decode, Encode};
 	use sp_std::collections::btree_map::BTreeMap;
 	use sp_std::vec::Vec;
 
-	// use serde::{ Serialize, Deserialize };
-	// use codec::{EncodeLike};
 
-	type AccountOf<T> = <T as frame_system::Config>::AccountId;
+	//type AccountOf<T> = <T as frame_system::Config>::AccountId;
 	type BalanceOf<T> =
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 	pub type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
-
-	// pub type CallOrHashOf<T> = <T as Config>::Call;
-
-	// NOTE: Need to refactor, duplicate code for testing purposes
-	type AccountId<T> = <T as frame_system::Config>::AccountId;
-	type Balance<T> =
-		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 	pub const LOCKSECRET: LockIdentifier = *b"mylockab";
 
@@ -203,31 +187,12 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		type Currency: LockableCurrency<Self::AccountId>;
 		type PalletId: Get<PalletId>;
-		// type Origin: OriginTrait<PalletsOrigin = Self::PalletsOrigin>
-		// 	+ From<Self::PalletsOrigin>
-		// 	+ IsType<<Self as frame_system::Config>::Origin>;
-
-		// type PalletsOrigin: From<frame_system::RawOrigin<Self::AccountId>>
-		// 	+ Codec
-		// 	+ Clone
-		// 	+ Eq
-		// 	+ TypeInfo;
-		// type Call: Parameter
-		// 	+ Dispatchable<
-		// 		Origin = <Self as frame_system::Config>::Origin,
-		// 		PostInfo = PostDispatchInfo,
-		// 	> + GetDispatchInfo
-		// 	+ From<frame_system::Call<Self>>;
 	}
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
-	// -----
-	// #[pallet::storage]
-	// #[pallet::getter(fn something)]
-	// pub type SingleValue<T: Config> = StorageValue<_, BalanceOf<T>>;
 
 	// A map that has enumerable entries.
 	#[pallet::storage]
@@ -592,22 +557,24 @@ pub mod pallet {
 					dispute_details.winner = Some(UserType::Worker);
 				}
 
-				let winner_account_id = match dispute_details.winner.clone() {
-					Some(UserType::Customer) => dispute_details.task_details.publisher.clone(),
+				let mut winner_account_id: Vec<T::AccountId> = Vec::new();
+
+				match dispute_details.winner.clone() {
+					Some(UserType::Customer) => {
+						winner_account_id.push(dispute_details.task_details.worker_id.clone().unwrap());
+						winner_account_id.push(dispute_details.task_details.publisher.clone());						
+					},
 					Some(UserType::Worker) => {
-						dispute_details.task_details.worker_id.clone().unwrap()
+						winner_account_id.push(dispute_details.task_details.worker_id.clone().unwrap());
 					}
 					// If there is no winner, money is returned to escrow
-					None => escrow_id.clone(),
+					None => winner_account_id.push(escrow_id.clone()),
 				};
 
 				let task_cost = dispute_details.task_details.cost;
-				let some = task_cost.saturated_into::<u128>();
-				let court_fee = (some * 60) / 100 as u128;
+				let task_cost_converted = task_cost.saturated_into::<u128>();
+				let court_fee = (task_cost_converted * 60) / 100 as u128;
 				let juror_fee: u32 = (court_fee as u32) / (final_jurors_count as u32);
-
-				// let mut juror_decision_details =
-				// dispute_details.final_jurors.get(&juror).cloned().unwrap();
 
 				let juror_account_ids: Vec<_> =
 					dispute_details.final_jurors.keys().cloned().collect();
@@ -621,15 +588,31 @@ pub mod pallet {
 					)?;
 				}
 
-				let remaining_amount = (some * 140) / 100 as u128;
-				let remaining_amount_converted = remaining_amount as u32;
+				let remaining_amount = (task_cost_converted * 140) / 100 as u128;
+				let mut remaining_amount_converted = remaining_amount as u32;
+
+				if dispute_details.winner == Some(UserType::Customer){
+					// Note - Value should ideally be task cost and not remaining amount/2
+					let remaining_amount_for_customer = remaining_amount/2;
+					let remaining_amount_converted_for_customer = remaining_amount_for_customer as u32;
+					remaining_amount_converted = remaining_amount_converted_for_customer;
+					T::Currency::transfer(
+						&escrow_id,
+						&winner_account_id[1],
+						remaining_amount_converted_for_customer.into(),
+						ExistenceRequirement::KeepAlive,
+					)?;
+
+					
+				}
 
 				T::Currency::transfer(
 					&escrow_id,
-					&winner_account_id,
+					&winner_account_id[0],
 					remaining_amount_converted.into(),
 					ExistenceRequirement::AllowDeath,
 				)?;
+
 
 				dispute_details.task_details.status = Status::CaseClosed;
 
