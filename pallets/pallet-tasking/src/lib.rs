@@ -5,7 +5,8 @@ pub use pallet::*;
 #[cfg(test)]
 mod mock;
 
-#[cfg(test)]use frame_support::PalletId;
+#[cfg(test)]
+use frame_support::PalletId;
 mod tests;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -15,14 +16,14 @@ mod benchmarking;
 pub mod pallet {
 	// use log::{info, trace, warn};
 	use frame_support::pallet_prelude::*;
-	use frame_system::pallet_prelude::*;
 	use frame_support::PalletId;
+	use frame_system::pallet_prelude::*;
 	//use pallet_court::*;
 	use frame_support::{
 		dispatch::Dispatchable,
 		dispatch::EncodeLike,
 		log,
-		sp_runtime::traits::{Hash,SaturatedConversion,AccountIdConversion},
+		sp_runtime::traits::{AccountIdConversion, Hash, SaturatedConversion},
 		traits::{
 			tokens::ExistenceRequirement, Currency, LockIdentifier, LockableCurrency, OriginTrait,
 			WithdrawReasons,
@@ -80,6 +81,7 @@ pub mod pallet {
 		VotingPeriod,
 		JuryDecisionReached,
 		CompletedByDefault,
+		CaseClosed,
 		/// -> Change
 		Completed,
 	}
@@ -399,7 +401,6 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		
 		#[pallet::weight(10_000)]
 		pub fn disapprove_task(origin: OriginFor<T>, task_id: u128) -> DispatchResult {
 			let publisher = ensure_signed(origin)?;
@@ -471,9 +472,8 @@ pub mod pallet {
 				<Error<T>>::NotPotentialJuror
 			);
 
-			// TODO -> Currently able to add more than 2 jurors
-
-			ensure!(dispute_details.final_jurors.len() <= 2 as usize, <Error<T>>::CannotAddMoreJurors);
+			// Less than 2 is 2 people as we are ensuring first and then storing
+			ensure!(dispute_details.final_jurors.len() < 2, <Error<T>>::CannotAddMoreJurors);
 
 			let juror_details = JurorDecisionDetails {
 				voted_for: None,
@@ -514,7 +514,10 @@ pub mod pallet {
 
 			log::info!("{:#?}", dispute_details);
 
-			ensure!(dispute_details.task_details.status == Status::VotingPeriod, <Error<T>>::CaseClosed);
+			ensure!(
+				dispute_details.task_details.status == Status::VotingPeriod,
+				<Error<T>>::CaseClosed
+			);
 
 			let mut juror_decision_details =
 				dispute_details.final_jurors.get(&juror).cloned().unwrap();
@@ -539,7 +542,7 @@ pub mod pallet {
 				UserType::Customer => {
 					votes_for_customer += 1;
 					dispute_details.votes_for_customer = Some(votes_for_customer.clone());
-				},
+				}
 				UserType::Worker => {
 					votes_for_worker += 1;
 					dispute_details.votes_for_worker = Some(votes_for_worker.clone());
@@ -554,19 +557,21 @@ pub mod pallet {
 
 			// NOTE: Can be refactored?
 			for juror_decision in dispute_details_of_final_jurors.clone() {
+				log::info!("####### Should be settled");
 				if juror_decision.voted_for == None {
+					log::info!("####### Should not be settled");
 					dispute_closed = false;
 					break;
 				}
 			}
 
-			
 			// For providing ratings and releasing funds after ..
 			// all final juror votes are cast.
 			if dispute_closed {
+				log::info!("####### Have settled");
 				let mut total_publisher_rating: u8 = 0;
 				let mut total_worker_rating: u8 = 0;
-				let escrow_id = Self::escrow_account_id();
+				let escrow_id = Self::escrow_account_id(task_id.clone() as u32);
 
 				for juror_decision in dispute_details_of_final_jurors {
 					total_publisher_rating += juror_decision.publisher_rating.unwrap_or_else(|| 0);
@@ -588,55 +593,52 @@ pub mod pallet {
 				}
 
 				let winner_account_id = match dispute_details.winner.clone() {
-					Some(UserType::Customer) => {
-						dispute_details.task_details.publisher.clone()
-					},
+					Some(UserType::Customer) => dispute_details.task_details.publisher.clone(),
 					Some(UserType::Worker) => {
 						dispute_details.task_details.worker_id.clone().unwrap()
-					},
+					}
 					// If there is no winner, money is returned to escrow
-					None => escrow_id.clone()
-
+					None => escrow_id.clone(),
 				};
 
 				let task_cost = dispute_details.task_details.cost;
 				let some = task_cost.saturated_into::<u128>();
-				let court_fee = (some * 60)/100 as u128;
-				let juror_fee: u32 = (court_fee as u32)/(final_jurors_count as u32);
+				let court_fee = (some * 60) / 100 as u128;
+				let juror_fee: u32 = (court_fee as u32) / (final_jurors_count as u32);
 
 				// let mut juror_decision_details =
 				// dispute_details.final_jurors.get(&juror).cloned().unwrap();
 
-				let juror_account_ids: Vec<_> = dispute_details.final_jurors.keys().cloned().collect();
+				let juror_account_ids: Vec<_> =
+					dispute_details.final_jurors.keys().cloned().collect();
 
-				for juror_account_id in juror_account_ids{
-
+				for juror_account_id in juror_account_ids {
 					T::Currency::transfer(
 						&escrow_id,
 						&juror_account_id,
 						juror_fee.into(),
 						ExistenceRequirement::KeepAlive,
 					)?;
-
 				}
 
-				let remaining_amount = (some * 140)/100 as u128;
+				let remaining_amount = (some * 140) / 100 as u128;
 				let remaining_amount_converted = remaining_amount as u32;
 
 				T::Currency::transfer(
 					&escrow_id,
 					&winner_account_id,
 					remaining_amount_converted.into(),
-					ExistenceRequirement::KeepAlive,
+					ExistenceRequirement::AllowDeath,
 				)?;
 
+				dispute_details.task_details.status = Status::CaseClosed;
+
 				//TODO -> Account Map storage update
-				//TODO -> Courtroom storage Update 
+				//TODO -> Courtroom storage Update
 				//TODO -> Task details update
 				//TODO -> Delete instance from timeframe once case is closed
 
 				log::info!("Hello, this is court fee{:#?}", court_fee);
-
 			}
 
 			//log::info!("{:#?}", dispute_details.clone());
@@ -665,13 +667,14 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 			// Fetching the latest task count
 			let current_task_count = Self::get_task_count();
-			let escrow_id = Self::escrow_account_id();
+			let escrow_id = Self::escrow_account_id(current_task_count.clone() as u32);
 			// Locking the amount from the publisher for the task
 			T::Currency::transfer(
 				&who,
 				&escrow_id,
 				task_cost.clone(),
-				ExistenceRequirement::KeepAlive)?;
+				ExistenceRequirement::KeepAlive,
+			)?;
 
 			log::info!("Hello, this escrow  balance{:#?}", T::Currency::free_balance(&escrow_id));
 
@@ -748,15 +751,15 @@ pub mod pallet {
 			// Inserting updated task in storage
 			<TaskStorage<T>>::insert(&task_id, task.clone());
 
-			let escrow_id = Self::escrow_account_id();
+			let escrow_id = Self::escrow_account_id(task_id.clone() as u32);
 			// Locking the amount from the publisher for the task
 			T::Currency::transfer(
 				&bidder,
 				&escrow_id,
 				// NOTE: Have to add te amount bid by the worker and not task cost
 				task_cost.clone(),
-				ExistenceRequirement::KeepAlive)?;
-
+				ExistenceRequirement::KeepAlive,
+			)?;
 
 			// Notifying the user
 			Self::deposit_event(Event::TaskIsBid(
@@ -1006,7 +1009,6 @@ pub mod pallet {
 	//Helper functions for our pallet
 
 	impl<T: Config> Pallet<T> {
-		
 		pub fn settle_dispute(block_number: BlockNumberOf<T>) {
 			let dispute_timeframes = Self::get_dispute_timeframes();
 			for dispute_timeframe in dispute_timeframes.iter() {
@@ -1015,7 +1017,6 @@ pub mod pallet {
 						Self::get_disupte_details(dispute_timeframe.task_id.clone());
 					dispute_details.task_details.status = Status::VotingPeriod;
 					<Courtroom<T>>::insert(&dispute_timeframe.task_id, dispute_details.clone());
-
 				}
 				// Case: where no one has voted (If there are zero votes)
 				// Checking for number of votes
@@ -1054,8 +1055,8 @@ pub mod pallet {
 			jurors
 		}
 
-		pub fn escrow_account_id() -> T::AccountId {
-			T::PalletId::get().into_account()
+		pub fn escrow_account_id(id: u32) -> T::AccountId {
+			T::PalletId::get().into_sub_account(id)
 		}
 
 		// -> Change
@@ -1064,7 +1065,7 @@ pub mod pallet {
 			task_details: TaskDetails<T::AccountId, BalanceOf<T>>,
 		) -> (BlockNumberOf<T>, BlockNumberOf<T>) {
 			// One era is one day
-			const ONE_ERA: u32 = 10;
+			const ONE_ERA: u32 = 20;
 			// Retrieving complete task details
 			let task_id = task_details.task_id.clone();
 			// Time span for participant to become jurors
