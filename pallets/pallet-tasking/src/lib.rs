@@ -59,7 +59,7 @@ pub mod pallet {
 		Open,
 		InProgress,
 		PendingApproval,
-		PendingRatings,
+		CustomerRatingPending,
 		/// -> Change
 		DisputeRaised,
 		VotingPeriod,
@@ -138,7 +138,6 @@ pub mod pallet {
 		// In vector: 1. Worker / Publisher, 2. Publisher rating, 3. Worker rating
 		final_jurors: BTreeMap<AccountId, JurorDecisionDetails>,
 		winner: Option<UserType>,
-		//status: Status,
 		votes_for_worker: Option<u8>,
 		votes_for_customer: Option<u8>,
 		avg_worker_rating: Option<u8>,
@@ -278,9 +277,9 @@ pub mod pallet {
 		StorageValue<_, Vec<TransferDetails<T::AccountId, BalanceOf<T>>>, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn get_dispute_timeframes)]
-	/// For fetching the dispute timeframes
-	pub(super) type Timeframes<T: Config> =
+	#[pallet::getter(fn get_dispute_hearings)]
+	/// For fetching the dispute hearings
+	pub(super) type Hearings<T: Config> =
 		StorageValue<_, Vec<DisputeTimeframe<BlockNumberOf<T>>>, ValueQuery>;
 
 	#[pallet::storage]
@@ -401,7 +400,7 @@ pub mod pallet {
 
 			let status = task_details.status.clone();
 
-			ensure!(status == Status::PendingRatings, <Error<T>>::TaskIsNotPendingRating);
+			ensure!(status == Status::CustomerRatingPending, <Error<T>>::TaskIsNotPendingRating);
 
 			Self::register_dispute(task_id.clone(), task_details);
 
@@ -582,24 +581,26 @@ pub mod pallet {
 
 				if votes_for_customer > votes_for_worker {
 					dispute_details.winner = Some(UserType::Customer);
-				} else {
+				} else if votes_for_customer < votes_for_worker  {
 					dispute_details.winner = Some(UserType::Worker);
+				} else {
+					dispute_details.winner = None;
 				}
 
 				let mut winner_account_id: Vec<T::AccountId> = Vec::new();
 
 				match dispute_details.winner.clone() {
 					Some(UserType::Customer) => {
-						winner_account_id
-							.push(dispute_details.task_details.worker_id.clone().unwrap());
+						winner_account_id.push(dispute_details.task_details.worker_id.clone().unwrap());
 						winner_account_id.push(dispute_details.task_details.publisher.clone());
 					}
 					Some(UserType::Worker) => {
-						winner_account_id
-							.push(dispute_details.task_details.worker_id.clone().unwrap());
+						winner_account_id.push(dispute_details.task_details.worker_id.clone().unwrap());
 					}
 					// If there is no winner, money is returned to escrow
-					None => winner_account_id.push(escrow_id.clone()),
+					None => {
+						winner_account_id.push(dispute_details.task_details.worker_id.clone().unwrap());
+						winner_account_id.push(dispute_details.task_details.publisher.clone());}
 				};
 
 				let task_cost = dispute_details.task_details.cost;
@@ -622,7 +623,7 @@ pub mod pallet {
 				let remaining_amount = (task_cost_converted * 140) / 100 as u128;
 				let mut remaining_amount_converted = remaining_amount as u32;
 
-				if dispute_details.winner == Some(UserType::Customer) {
+				if dispute_details.winner == Some(UserType::Customer) || dispute_details.winner == None {
 					// Note - Value should ideally be task cost and not remaining amount/2
 					let remaining_amount_for_customer = remaining_amount / 2;
 					let remaining_amount_converted_for_customer =
@@ -882,7 +883,7 @@ pub mod pallet {
 			// Inserting into worker rating storage
 			<WorkerRatings<T>>::insert(bidder.clone(), curr_bidder_ratings.clone());
 			// Updating task status
-			task.status = Status::PendingRatings;
+			task.status = Status::CustomerRatingPending;
 			// Inserting updated task into storage
 			<TaskStorage<T>>::insert(&task_id, task.clone());
 			// Notify user
@@ -910,7 +911,7 @@ pub mod pallet {
 			// Accessing status
 			let status = task.status;
 			// Is rating pending from worker to publisher?
-			ensure!(status == Status::PendingRatings, <Error<T>>::TaskIsNotPendingRating);
+			ensure!(status == Status::CustomerRatingPending, <Error<T>>::TaskIsNotPendingRating);
 
 			// Get worker id
 			let worker = task.worker_id.clone().ok_or(<Error<T>>::WorkerNotSet)?;
@@ -1011,37 +1012,43 @@ pub mod pallet {
 	//Helper functions for our pallet
 
 	impl<T: Config> Pallet<T> {
+
 		pub fn end_task(block_number: BlockNumberOf<T>) -> DispatchResult {
 			let task_autocompletions = Self::get_task_completions();
 			for task_autocompletion in task_autocompletions.iter() {
 				if block_number == task_autocompletion.task_will_complete_at {
 					let task_id = task_autocompletion.task_id;
 					let mut task_details = Self::task(task_id.clone());
-					let publisher_id = task_details.publisher.clone();
-					let worker_id = task_details.worker_id.clone().unwrap();
-					let escrow_id = Self::escrow_account_id(task_id.clone() as u32);
-					let transfer_amount = T::Currency::free_balance(&escrow_id);
+					if task_details.status == Status::CustomerRatingPending{
+						
+						let publisher_id = task_details.publisher.clone();
+						let worker_id = task_details.worker_id.clone().unwrap();
+						let escrow_id = Self::escrow_account_id(task_id.clone() as u32);
+						let transfer_amount = T::Currency::free_balance(&escrow_id);
 
-					T::Currency::transfer(
-						&escrow_id,
-						&worker_id,
-						transfer_amount,
-						ExistenceRequirement::AllowDeath,
-					)?;
+						T::Currency::transfer(
+							&escrow_id,
+							&worker_id,
+							transfer_amount,
+							ExistenceRequirement::AllowDeath,
+						)?;
 
-					task_details.status = Status::Completed;
+						task_details.status = Status::Completed;
 
-					// Inserting updated task details
-					TaskStorage::<T>::insert(&task_id, task_details);
+						// Inserting updated task details
+						TaskStorage::<T>::insert(&task_id, task_details);
 
-					// Notify user about the transfered amount
-					Self::deposit_event(Event::AmountTransfered(
-						publisher_id,
-						worker_id,
-						transfer_amount.clone(),
-					));
-					// Notify the user about the task being closed
-					Self::deposit_event(Event::TaskClosed(task_id.clone()));
+						// Notify user about the transfered amount
+						Self::deposit_event(Event::AmountTransfered(
+							publisher_id,
+							worker_id,
+							transfer_amount.clone(),
+						));
+						// Notify the user about the task being closed
+						Self::deposit_event(Event::TaskClosed(task_id.clone()));
+
+					}
+					
 				}
 			}
 
@@ -1071,11 +1078,12 @@ pub mod pallet {
 			};
 
 			<Courtroom<T>>::insert(task_id, dispute);
+			<TaskStorage<T>>::insert(task_id.clone(), task_details.clone());
 		}
 
 		pub fn settle_dispute(block_number: BlockNumberOf<T>) {
-			let dispute_timeframes = Self::get_dispute_timeframes();
-			for dispute_timeframe in dispute_timeframes.iter() {
+			let dispute_hearings = Self::get_dispute_hearings();
+			for dispute_timeframe in dispute_hearings.iter() {
 				if block_number == dispute_timeframe.jury_acceptance_period {
 					let mut dispute_details =
 						Self::get_disupte_details(dispute_timeframe.task_id.clone());
@@ -1140,11 +1148,11 @@ pub mod pallet {
 			let dispute_timeframe =
 				DisputeTimeframe { task_id, jury_acceptance_period, total_case_period };
 			// Get the time frame storage vector
-			let mut dispute_timeframe_storage = Self::get_dispute_timeframes();
+			let mut dispute_timeframe_storage = Self::get_dispute_hearings();
 			// Updating the timeframe storage vector
 			dispute_timeframe_storage.push(dispute_timeframe);
 			// Updating the timeframe storage
-			<Timeframes<T>>::put(dispute_timeframe_storage);
+			<Hearings<T>>::put(dispute_timeframe_storage);
 
 			(jury_acceptance_period, total_case_period)
 		}

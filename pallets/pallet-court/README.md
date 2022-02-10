@@ -85,16 +85,18 @@ b) Have a automated master council where we build an algorthm to distribute rati
 
 
 TODO:
-1. Update Storage 
-2. Move Court Dispute to Task Details 
+1. Move Court Dispute to Task Details
+2. Update Storage  
+   1.a hearing storage to be deleted after dispute is over 
+   1.b task autocompletion storage to be deleted
 3. Resolve Cases
-4. Code Coverage - Test Cases
-5. Web3 Grat Documentation
-6. timeframe storage to be deleted after dispute is over
-7. Need to change name timeframes to possibly hearings
+4. Cast vote elements as  helper function - Make parts of the cast vote extrinsic to helper function
+5. Code Coverage - Test Cases
+6. Web3 Grat Documentation
+7. Need to change name timeframes to possibly hearings - Done
 
 Cases:
-1. What if it is a tie after final votes 
+1. What if it is a tie after final votes - Done
 2. What if no jurors vote after accepting jury duty
 3. What if not all accepted jurors vote
 
