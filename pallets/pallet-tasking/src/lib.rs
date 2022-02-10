@@ -581,7 +581,7 @@ pub mod pallet {
 
 				if votes_for_customer > votes_for_worker {
 					dispute_details.winner = Some(UserType::Customer);
-				} else if votes_for_customer < votes_for_worker  {
+				} else if votes_for_customer < votes_for_worker {
 					dispute_details.winner = Some(UserType::Worker);
 				} else {
 					dispute_details.winner = None;
@@ -591,16 +591,20 @@ pub mod pallet {
 
 				match dispute_details.winner.clone() {
 					Some(UserType::Customer) => {
-						winner_account_id.push(dispute_details.task_details.worker_id.clone().unwrap());
+						winner_account_id
+							.push(dispute_details.task_details.worker_id.clone().unwrap());
 						winner_account_id.push(dispute_details.task_details.publisher.clone());
 					}
 					Some(UserType::Worker) => {
-						winner_account_id.push(dispute_details.task_details.worker_id.clone().unwrap());
+						winner_account_id
+							.push(dispute_details.task_details.worker_id.clone().unwrap());
 					}
 					// If there is no winner, money is returned to escrow
 					None => {
-						winner_account_id.push(dispute_details.task_details.worker_id.clone().unwrap());
-						winner_account_id.push(dispute_details.task_details.publisher.clone());}
+						winner_account_id
+							.push(dispute_details.task_details.worker_id.clone().unwrap());
+						winner_account_id.push(dispute_details.task_details.publisher.clone());
+					}
 				};
 
 				let task_cost = dispute_details.task_details.cost;
@@ -623,7 +627,9 @@ pub mod pallet {
 				let remaining_amount = (task_cost_converted * 140) / 100 as u128;
 				let mut remaining_amount_converted = remaining_amount as u32;
 
-				if dispute_details.winner == Some(UserType::Customer) || dispute_details.winner == None {
+				if dispute_details.winner == Some(UserType::Customer)
+					|| dispute_details.winner == None
+				{
 					// Note - Value should ideally be task cost and not remaining amount/2
 					let remaining_amount_for_customer = remaining_amount / 2;
 					let remaining_amount_converted_for_customer =
@@ -1012,15 +1018,13 @@ pub mod pallet {
 	//Helper functions for our pallet
 
 	impl<T: Config> Pallet<T> {
-
 		pub fn end_task(block_number: BlockNumberOf<T>) -> DispatchResult {
 			let task_autocompletions = Self::get_task_completions();
 			for task_autocompletion in task_autocompletions.iter() {
 				if block_number == task_autocompletion.task_will_complete_at {
 					let task_id = task_autocompletion.task_id;
 					let mut task_details = Self::task(task_id.clone());
-					if task_details.status == Status::CustomerRatingPending{
-						
+					if task_details.status == Status::CustomerRatingPending {
 						let publisher_id = task_details.publisher.clone();
 						let worker_id = task_details.worker_id.clone().unwrap();
 						let escrow_id = Self::escrow_account_id(task_id.clone() as u32);
@@ -1046,9 +1050,7 @@ pub mod pallet {
 						));
 						// Notify the user about the task being closed
 						Self::deposit_event(Event::TaskClosed(task_id.clone()));
-
 					}
-					
 				}
 			}
 
@@ -1065,7 +1067,7 @@ pub mod pallet {
 			let potential_jurors = Self::potential_jurors(task_details.clone());
 
 			let dispute = CourtDispute {
-				task_details,
+				task_details: task_details.clone(),
 				potential_jurors,
 				final_jurors: BTreeMap::new(),
 				winner: None,
@@ -1078,7 +1080,7 @@ pub mod pallet {
 			};
 
 			<Courtroom<T>>::insert(task_id, dispute);
-			<TaskStorage<T>>::insert(task_id.clone(), task_details.clone());
+			<TaskStorage<T>>::insert(task_id.clone(), task_details);
 		}
 
 		pub fn settle_dispute(block_number: BlockNumberOf<T>) {
