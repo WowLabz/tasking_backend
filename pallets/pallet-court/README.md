@@ -90,6 +90,8 @@ TODO:
 3. Resolve Cases
 4. Code Coverage - Test Cases
 5. Web3 Grat Documentation
+6. timeframe storage to be deleted after dispute is over
+7. Need to change name timeframes to possibly hearings
 
 Cases:
 1. What if it is a tie after final votes 

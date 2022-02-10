@@ -126,6 +126,15 @@ pub mod pallet {
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
+	pub struct TaskCompletion<BlockNumber> {
+		task_id: u128,
+		task_will_complete_at: BlockNumber,
+	}
+
+
+
+  
+	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
 	pub struct CourtDispute<AccountId, Balance, BlockNumber> {
 		task_details: TaskDetails<AccountId, Balance>,
 		potential_jurors: Vec<AccountId>,
@@ -278,6 +287,11 @@ pub mod pallet {
 		StorageValue<_, Vec<DisputeTimeframe<BlockNumberOf<T>>>, ValueQuery>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn get_task_completions)]	
+	pub(super) type TaskCompletions<T: Config> =
+		StorageValue<_, Vec<TaskCompletion<BlockNumberOf<T>>>, ValueQuery>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn get_disupte_details)]
 	pub(super) type Courtroom<T: Config> = StorageMap<
 		_,
@@ -310,6 +324,7 @@ pub mod pallet {
 		),
 		CourtSummoned(u128, Reason, UserType, T::AccountId),
 		NewJurorAdded(u128, T::AccountId),
+		CustomerRatingProvided(u128),
 	}
 
 	#[pallet::error]
@@ -367,6 +382,7 @@ pub mod pallet {
 		fn on_initialize(now: T::BlockNumber) -> Weight {
 			let total_weight: Weight = 10;
 			Self::settle_dispute(now);
+			Self::end_task(now);
 			total_weight
 		}
 	}
@@ -493,7 +509,7 @@ pub mod pallet {
 				dispute_details.task_details.status == Status::VotingPeriod,
 				<Error<T>>::CaseClosed
 			);
-
+ 
 			let mut juror_decision_details =
 				dispute_details.final_jurors.get(&juror).cloned().unwrap();
 
@@ -508,6 +524,7 @@ pub mod pallet {
 			juror_decision_details.publisher_rating = Some(customer_rating);
 			juror_decision_details.worker_rating = Some(worker_rating);
 
+			// Updating decision details in storage
 			dispute_details.final_jurors.insert(juror.clone(), juror_decision_details);
 
 			let mut votes_for_customer = dispute_details.votes_for_customer.unwrap_or_else(|| 0);
@@ -524,8 +541,7 @@ pub mod pallet {
 				}
 			}
 
-			// let total_votes = votes_for_customer + votes_for_worker;
-			let final_jurors_count = dispute_details.final_jurors.len() as u8;
+
 
 			let dispute_details_of_final_jurors: Vec<JurorDecisionDetails> =
 				dispute_details.final_jurors.values().cloned().collect();
@@ -547,6 +563,8 @@ pub mod pallet {
 				let mut total_publisher_rating: u8 = 0;
 				let mut total_worker_rating: u8 = 0;
 				let escrow_id = Self::escrow_account_id(task_id.clone() as u32);
+
+				let final_jurors_count = dispute_details.final_jurors.len() as u8;
 
 				for juror_decision in dispute_details_of_final_jurors {
 					total_publisher_rating += juror_decision.publisher_rating.unwrap_or_else(|| 0);
@@ -684,6 +702,7 @@ pub mod pallet {
 				status: Default::default(),
 				task_description: task_des.clone(),
 				attachments: publisher_attachments.clone(),
+				
 			};
 
 			// Inserting the new task details to storage
@@ -885,16 +904,19 @@ pub mod pallet {
 		) -> DispatchResult {
 			// User authentication
 			let bidder = ensure_signed(origin)?;
+
 			// Getting task details from storage
 			let mut task = Self::task(task_id.clone());
 			// Accessing status
 			let status = task.status;
 			// Is rating pending from worker to publisher?
 			ensure!(status == Status::PendingRatings, <Error<T>>::TaskIsNotPendingRating);
+
 			// Get worker id
 			let worker = task.worker_id.clone().ok_or(<Error<T>>::WorkerNotSet)?;
 			// Is worker the bidder?
 			ensure!(worker == bidder.clone(), <Error<T>>::UnauthorisedToProvideCustomerRating);
+
 			// Accessing reference of the publisher
 			let customer = &task.publisher;
 			// Get existing customer ratings
@@ -902,10 +924,12 @@ pub mod pallet {
 				Self::get_customer_ratings(&customer);
 			// Creating a temp rating vector
 			let mut temp_rating_vec = Vec::<u8>::new();
+
 			// Looping over all the existing customer ratings
 			for rating in existing_customer_rating.ratings_vec {
 				temp_rating_vec.push(rating);
 			}
+
 			// Updating temp rating vector with new rating
 			temp_rating_vec.push(rating_for_customer);
 			// Creating new user instance with new rating
@@ -913,33 +937,20 @@ pub mod pallet {
 				User::new(customer.clone(), UserType::Customer, temp_rating_vec);
 			// Inserting new user instance in customer rating storage
 			<CustomerRatings<T>>::insert(customer.clone(), curr_customer_ratings.clone());
-			// Accessing task cost
-			let transfer_amount = task.cost;
-			// Getting escrow account id of the task
-			let escrow_id = Self::escrow_account_id(task_id.clone() as u32);
-			// Transfering amount from customer to bidder
-			T::Currency::transfer(
-				&escrow_id,
-				&bidder,
-				transfer_amount,
-				ExistenceRequirement::KeepAlive,
-			)?;
-			// Updating task status
-			task.status = Status::Completed;
-			// Inserting updated task details
-			TaskStorage::<T>::insert(&task_id, task.clone());
-			// Notify user about the transfered amount
-			Self::deposit_event(Event::AmountTransfered(
-				customer.clone(),
-				bidder.clone(),
-				transfer_amount.clone(),
-			));
+
+			let block_number = <frame_system::Pallet<T>>::block_number();
+			let task_will_complete_at = Some(block_number + 5u32.into());
+			let mut task_completions = Self::get_task_completions();
+			let task_autocomplete =	TaskCompletion { task_id, task_will_complete_at };
+			task_completions.push(task_autocomplete);
+			<TaskCompletions<T>>::put(task_completions);
+
 			// Notify the user about the task being closed
-			Self::deposit_event(Event::TaskClosed(task_id.clone()));
+			Self::deposit_event(Event::CustomerRatingProvided(task_id.clone()));
 
-			Ok(())
-		}
-
+			Ok(())  
+		}     
+                        
 		/* Description:
 		 * Extrinsic for transfering funds from one account to another ..
 		 * on the blockchain. This is called by the worker / publisher.
@@ -999,7 +1010,47 @@ pub mod pallet {
 
 	//Helper functions for our pallet
 
-	impl<T: Config> Pallet<T> {
+	impl<T: Config> Pallet<T> {  
+		pub fn end_task(
+			block_number: BlockNumberOf<T>
+		){ 
+			let task_autocompletions = Self::get_task_completions();
+			for task_autocompletion in task_autocompletions.iter(){
+				if block_number == task_autocompletions.task_will_complete_at{
+					let task_id = task_autocompletions.task_id;
+					let task_details = Self::task(task_id.clone());
+					let publisher_id = task_details.publisher;
+					let worker_id = task_details.worker_id.unwrap();
+					let escrow_id = Self::escrow_account_id(task_id.clone() as u32);
+					let transfer_amount = T::Currency::free_balance(&escrow_id);
+					
+					T::Currency::transfer(
+						&escrow_id,
+						&worker_id,
+						transfer_amount,
+						ExistenceRequirement::AllowDeath,
+					)?;
+
+					task_details.status = Status::Completed; 
+
+					// Inserting updated task details
+					TaskStorage::<T>::insert(&task_id, task_details);
+
+					// Notify user about the transfered amount
+					Self::deposit_event(Event::AmountTransfered(
+						publisher_id,
+						worker_id,
+						transfer_amount.clone(),
+					));
+					// Notify the user about the task being closed
+					Self::deposit_event(Event::TaskClosed(task_id.clone()));
+
+
+
+				}
+			}
+		
+		}
 		pub fn register_dispute(
 			task_id: u128,
 			mut task_details: TaskDetails<T::AccountId, BalanceOf<T>>,
@@ -1014,7 +1065,7 @@ pub mod pallet {
 				let dispute = CourtDispute {
 					task_details,
 					potential_jurors,
-					final_jurors: BTreeMap::new(),
+					final_jurors: BTreeMap::new(),               
 					winner: None,
 					votes_for_worker: None,
 					votes_for_customer: None,
