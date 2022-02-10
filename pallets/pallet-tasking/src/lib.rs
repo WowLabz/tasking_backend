@@ -22,7 +22,8 @@ pub mod pallet {
 		log,
 		sp_runtime::traits::{AccountIdConversion, SaturatedConversion},
 		traits::{
-			tokens::ExistenceRequirement, Currency, LockIdentifier, LockableCurrency,WithdrawReasons,
+			tokens::ExistenceRequirement, Currency, LockIdentifier, LockableCurrency,
+			WithdrawReasons,
 		},
 	};
 
@@ -33,7 +34,6 @@ pub mod pallet {
 	use codec::{Decode, Encode};
 	use sp_std::collections::btree_map::BTreeMap;
 	use sp_std::vec::Vec;
-
 
 	//type AccountOf<T> = <T as frame_system::Config>::AccountId;
 	type BalanceOf<T> =
@@ -192,7 +192,6 @@ pub mod pallet {
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
-
 
 	// A map that has enumerable entries.
 	#[pallet::storage]
@@ -561,11 +560,13 @@ pub mod pallet {
 
 				match dispute_details.winner.clone() {
 					Some(UserType::Customer) => {
-						winner_account_id.push(dispute_details.task_details.worker_id.clone().unwrap());
-						winner_account_id.push(dispute_details.task_details.publisher.clone());						
-					},
+						winner_account_id
+							.push(dispute_details.task_details.worker_id.clone().unwrap());
+						winner_account_id.push(dispute_details.task_details.publisher.clone());
+					}
 					Some(UserType::Worker) => {
-						winner_account_id.push(dispute_details.task_details.worker_id.clone().unwrap());
+						winner_account_id
+							.push(dispute_details.task_details.worker_id.clone().unwrap());
 					}
 					// If there is no winner, money is returned to escrow
 					None => winner_account_id.push(escrow_id.clone()),
@@ -591,10 +592,11 @@ pub mod pallet {
 				let remaining_amount = (task_cost_converted * 140) / 100 as u128;
 				let mut remaining_amount_converted = remaining_amount as u32;
 
-				if dispute_details.winner == Some(UserType::Customer){
+				if dispute_details.winner == Some(UserType::Customer) {
 					// Note - Value should ideally be task cost and not remaining amount/2
-					let remaining_amount_for_customer = remaining_amount/2;
-					let remaining_amount_converted_for_customer = remaining_amount_for_customer as u32;
+					let remaining_amount_for_customer = remaining_amount / 2;
+					let remaining_amount_converted_for_customer =
+						remaining_amount_for_customer as u32;
 					remaining_amount_converted = remaining_amount_converted_for_customer;
 					T::Currency::transfer(
 						&escrow_id,
@@ -602,8 +604,6 @@ pub mod pallet {
 						remaining_amount_converted_for_customer.into(),
 						ExistenceRequirement::KeepAlive,
 					)?;
-
-					
 				}
 
 				T::Currency::transfer(
@@ -612,7 +612,6 @@ pub mod pallet {
 					remaining_amount_converted.into(),
 					ExistenceRequirement::AllowDeath,
 				)?;
-
 
 				dispute_details.task_details.status = Status::CaseClosed;
 
@@ -905,13 +904,11 @@ pub mod pallet {
 			<CustomerRatings<T>>::insert(customer.clone(), curr_customer_ratings.clone());
 			// Accessing task cost
 			let transfer_amount = task.cost;
-			// Removing the lock on customer's funds
-			T::Currency::remove_lock(LOCKSECRET, &customer);
-			// Removing the lock on the bidder's funds
-			T::Currency::remove_lock(LOCKSECRET, &bidder);
+			// Getting escrow account id of the task
+			let escrow_id = Self::escrow_account_id(task_id.clone() as u32);
 			// Transfering amount from customer to bidder
 			T::Currency::transfer(
-				&customer,
+				&escrow_id,
 				&bidder,
 				transfer_amount,
 				ExistenceRequirement::KeepAlive,
