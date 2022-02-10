@@ -75,6 +75,14 @@ pub mod pallet {
 			Status::Open
 		}
 	}
+
+	#[derive(Encode, Decode, PartialEq, Eq, Debug, Clone, TypeInfo)]
+	pub enum Reason {
+		DisapproveTask,
+		UnsatisfiedWorkerRating,
+		UnsatisfiedPublisherRating
+	}
+
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
 	pub struct TaskDetails<AccountId, Balance> {
 		task_id: u128,
@@ -300,7 +308,7 @@ pub mod pallet {
 			BalanceOf<T>,
 			BalanceOf<T>,
 		),
-		CourtSummoned(Option<T::AccountId>, Option<T::AccountId>),
+		CourtSummoned(u128, Reason, UserType, T::AccountId),
 		NewJurorAdded(u128, T::AccountId),
 	}
 
@@ -365,6 +373,52 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+
+		#[pallet::weight(10_000)]
+		pub fn disapprove_rating(origin: OriginFor<T>, task_id: u128, user_type: UserType) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			//ensure task exists and is active
+			ensure!(<TaskStorage<T>>::contains_key(&task_id), <Error<T>>::TaskDoesNotExist);
+
+			let mut task_details = Self::task(task_id.clone());
+
+			let status = task_details.status.clone();
+
+			ensure!(status == Status::PendingApproval, <Error<T>>::TaskInProgress);
+
+			let case_period = Self::calculate_case_period(task_details.clone());
+
+			task_details.status = Status::DisputeRaised;
+
+			let potential_jurors = Self::potential_jurors(task_details.clone());
+
+			let dispute = CourtDispute {
+				task_details,
+				potential_jurors,
+				final_jurors: BTreeMap::new(),
+				winner: None,
+				votes_for_worker: None,
+				votes_for_customer: None,
+				avg_worker_rating: None,
+				avg_publisher_rating: None,
+				jury_acceptance_period: case_period.0,
+				total_case_period: case_period.1,
+			};
+
+			let reason = match user_type {
+				UserType::Customer => Reason::UnsatisfiedPublisherRating,
+				UserType::Worker => Reason::UnsatisfiedWorkerRating
+			};
+
+			<Courtroom<T>>::insert(task_id.clone(), dispute);
+
+			Self::deposit_event(Event::CourtSummoned(task_id, reason, user_type, who));
+
+			Ok(())
+
+		}
+
 		#[pallet::weight(10_000)]
 		pub fn disapprove_task(origin: OriginFor<T>, task_id: u128) -> DispatchResult {
 			let publisher = ensure_signed(origin)?;
@@ -384,8 +438,6 @@ pub mod pallet {
 
 			ensure!(publisher == customer, <Error<T>>::UnauthorisedToDisapprove);
 
-			let worker_id = task_details.worker_id.clone();
-
 			let case_period = Self::calculate_case_period(task_details.clone());
 
 			task_details.status = Status::DisputeRaised;
@@ -397,7 +449,6 @@ pub mod pallet {
 				potential_jurors,
 				final_jurors: BTreeMap::new(),
 				winner: None,
-				//status: Status::DisputeRaised,
 				votes_for_worker: None,
 				votes_for_customer: None,
 				avg_worker_rating: None,
@@ -408,7 +459,7 @@ pub mod pallet {
 
 			<Courtroom<T>>::insert(task_id.clone(), dispute);
 
-			Self::deposit_event(Event::CourtSummoned(Some(publisher), worker_id));
+			Self::deposit_event(Event::CourtSummoned(task_id, Reason::DisapproveTask, UserType::Customer , publisher));
 
 			Ok(())
 		}
@@ -449,8 +500,6 @@ pub mod pallet {
 
 			Self::deposit_event(Event::NewJurorAdded(task_id.clone(), juror));
 
-			// TODO -> Update status to voting period after 1 era via scheduler - Done
-
 			<Courtroom<T>>::insert(&task_id, dispute_details.clone());
 			Ok(())
 		}
@@ -467,7 +516,7 @@ pub mod pallet {
 
 			let mut dispute_details = Self::get_disupte_details(&task_id);
 
-			//TODO -> Move Dispute details to task details
+			//TODO -> Move Dispute details to task details 
 
 			// To stop jurors to vote before the actual voting period
 			// -----

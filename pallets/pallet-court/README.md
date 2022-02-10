@@ -85,9 +85,18 @@ b) Have a automated master council where we build an algorthm to distribute rati
 
 
 TODO:
+1. Update Storage 
+2. Move Court Dispute to Task Details 
+3. Resolve Cases
+4. Code Coverage - Test Cases
+5. Web3 Grat Documentation
+
+Cases:
 1. What if it is a tie after final votes 
 2. What if no jurors vote after accepting jury duty
 3. What if not all accepted jurors vote
+
+
 
 
 
