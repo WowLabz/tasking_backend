@@ -381,37 +381,18 @@ pub mod pallet {
 			//ensure task exists and is active
 			ensure!(<TaskStorage<T>>::contains_key(&task_id), <Error<T>>::TaskDoesNotExist);
 
-			let mut task_details = Self::task(task_id.clone());
+			let task_details = Self::task(task_id.clone());
 
 			let status = task_details.status.clone();
 
-			ensure!(status == Status::PendingApproval, <Error<T>>::TaskInProgress);
+			ensure!(status == Status::PendingRatings, <Error<T>>::TaskIsNotPendingRating);
 
-			let case_period = Self::calculate_case_period(task_details.clone());
-
-			task_details.status = Status::DisputeRaised;
-
-			let potential_jurors = Self::potential_jurors(task_details.clone());
-
-			let dispute = CourtDispute {
-				task_details,
-				potential_jurors,
-				final_jurors: BTreeMap::new(),
-				winner: None,
-				votes_for_worker: None,
-				votes_for_customer: None,
-				avg_worker_rating: None,
-				avg_publisher_rating: None,
-				jury_acceptance_period: case_period.0,
-				total_case_period: case_period.1,
-			};
+			Self::register_dispute(task_id.clone(), task_details);
 
 			let reason = match user_type {
 				UserType::Customer => Reason::UnsatisfiedPublisherRating,
 				UserType::Worker => Reason::UnsatisfiedWorkerRating
 			};
-
-			<Courtroom<T>>::insert(task_id.clone(), dispute);
 
 			Self::deposit_event(Event::CourtSummoned(task_id, reason, user_type, who));
 
@@ -426,7 +407,7 @@ pub mod pallet {
 			//ensure task exists and is active
 			ensure!(<TaskStorage<T>>::contains_key(&task_id), <Error<T>>::TaskDoesNotExist);
 
-			let mut task_details = Self::task(task_id.clone());
+			let task_details = Self::task(task_id.clone());
 
 			let status = task_details.status.clone();
 
@@ -438,26 +419,7 @@ pub mod pallet {
 
 			ensure!(publisher == customer, <Error<T>>::UnauthorisedToDisapprove);
 
-			let case_period = Self::calculate_case_period(task_details.clone());
-
-			task_details.status = Status::DisputeRaised;
-
-			let potential_jurors = Self::potential_jurors(task_details.clone());
-
-			let dispute = CourtDispute {
-				task_details,
-				potential_jurors,
-				final_jurors: BTreeMap::new(),
-				winner: None,
-				votes_for_worker: None,
-				votes_for_customer: None,
-				avg_worker_rating: None,
-				avg_publisher_rating: None,
-				jury_acceptance_period: case_period.0,
-				total_case_period: case_period.1,
-			};
-
-			<Courtroom<T>>::insert(task_id.clone(), dispute);
+			Self::register_dispute(task_id.clone(), task_details);
 
 			Self::deposit_event(Event::CourtSummoned(task_id, Reason::DisapproveTask, UserType::Customer , publisher));
 
@@ -1038,6 +1000,33 @@ pub mod pallet {
 	//Helper functions for our pallet
 
 	impl<T: Config> Pallet<T> {
+		pub fn register_dispute(
+			task_id: u128,
+			mut task_details: TaskDetails<T::AccountId, BalanceOf<T>>,
+		) {
+
+				let case_period = Self::calculate_case_period(task_details.clone());
+
+				task_details.status = Status::DisputeRaised;
+	
+				let potential_jurors = Self::potential_jurors(task_details.clone());
+	
+				let dispute = CourtDispute {
+					task_details,
+					potential_jurors,
+					final_jurors: BTreeMap::new(),
+					winner: None,
+					votes_for_worker: None,
+					votes_for_customer: None,
+					avg_worker_rating: None,
+					avg_publisher_rating: None,
+					jury_acceptance_period: case_period.0,
+					total_case_period: case_period.1,
+				};
+	
+				<Courtroom<T>>::insert(task_id, dispute);
+			}
+
 		pub fn settle_dispute(block_number: BlockNumberOf<T>) {
 			let dispute_timeframes = Self::get_dispute_timeframes();
 			for dispute_timeframe in dispute_timeframes.iter() {
