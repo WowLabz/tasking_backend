@@ -559,11 +559,12 @@ pub mod pallet {
 			// For providing ratings and releasing funds after ..
 			// all final juror votes are cast.
 			if dispute_closed {
-				log::info!("####### Have settled");
 				let mut total_publisher_rating: u8 = 0;
 				let mut total_worker_rating: u8 = 0;
+				let mut winner_account_id: Vec<T::AccountId> = Vec::new();
+				let worker_id = dispute_details.task_details.worker_id.clone().unwrap();
+				let publisher_id = dispute_details.task_details.publisher.clone();
 				let escrow_id = Self::escrow_account_id(task_id.clone() as u32);
-
 				let final_jurors_count = dispute_details.final_jurors.len() as u8;
 
 				for juror_decision in dispute_details_of_final_jurors {
@@ -584,26 +585,22 @@ pub mod pallet {
 				} else if votes_for_customer < votes_for_worker {
 					dispute_details.winner = Some(UserType::Worker);
 				} else {
+					// If votes are even
 					dispute_details.winner = None;
 				}
 
-				let mut winner_account_id: Vec<T::AccountId> = Vec::new();
-
 				match dispute_details.winner.clone() {
 					Some(UserType::Customer) => {
-						winner_account_id
-							.push(dispute_details.task_details.worker_id.clone().unwrap());
-						winner_account_id.push(dispute_details.task_details.publisher.clone());
+						winner_account_id.push(worker_id.clone());
+						winner_account_id.push(publisher_id.clone());
 					}
 					Some(UserType::Worker) => {
-						winner_account_id
-							.push(dispute_details.task_details.worker_id.clone().unwrap());
+						winner_account_id.push(worker_id.clone());
 					}
-					// If there is no winner, money is returned to escrow
+					// If there is no winner
 					None => {
-						winner_account_id
-							.push(dispute_details.task_details.worker_id.clone().unwrap());
-						winner_account_id.push(dispute_details.task_details.publisher.clone());
+						winner_account_id.push(worker_id.clone());
+						winner_account_id.push(publisher_id.clone());
 					}
 				};
 
