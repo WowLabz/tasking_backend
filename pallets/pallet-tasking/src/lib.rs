@@ -35,13 +35,11 @@ pub mod pallet {
 	use sp_std::collections::btree_map::BTreeMap;
 	use sp_std::vec::Vec;
 
-	type AccountOf<T> = <T as frame_system::Config>::AccountId;
+	// type AccountOf<T> = <T as frame_system::Config>::AccountId;
 	type BalanceOf<T> =
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 	pub type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
-
-	pub const LOCKSECRET: LockIdentifier = *b"mylockab";
 
 	#[derive(Encode, Decode, PartialEq, Eq, Debug, Clone, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -118,25 +116,22 @@ pub mod pallet {
 		worker_rating: Option<u8>,
 	}
 
-	// Storage elements are deleted after usage
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
-	pub struct DisputeTimeframe<BlockNumber> {
+	pub struct Hearing<BlockNumber> {
 		task_id: u128,
 		jury_acceptance_period: BlockNumber,
 		total_case_period: BlockNumber,
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
-	pub struct TaskCompletion<BlockNumber> {
+	pub struct TaskAutocompletion<BlockNumber> {
 		task_id: u128,
 		task_will_complete_at: BlockNumber,
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
 	pub struct CourtDispute<AccountId, BlockNumber> {
-		// task_details: TaskDetails<AccountId, Balance, BlockNumber>,
 		potential_jurors: Vec<AccountId>,
-		// In vector: 1. Worker / Publisher, 2. Publisher rating, 3. Worker rating
 		final_jurors: BTreeMap<AccountId, JurorDecisionDetails>,
 		winner: Option<UserType>,
 		votes_for_worker: Option<u8>,
@@ -207,15 +202,15 @@ pub mod pallet {
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
-	// A map that has enumerable entries.
+	// ----- ON-CHAIN storages
 	#[pallet::storage]
 	#[pallet::getter(fn accounts)]
 	pub type AccountMap<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, AccountDetails<BalanceOf<T>>, ValueQuery>;
 
+	// * Genesis configuration
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		// pub single_value: BalanceOf<T>,
 		pub account_map: Vec<(T::AccountId, AccountDetails<BalanceOf<T>>)>,
 	}
 
@@ -229,74 +224,56 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
-			// <SingleValue<T>>::put(&self.single_value);
+			// Creating new accounts
 			for (a, b) in &self.account_map {
 				<AccountMap<T>>::insert(a, b);
 			}
 		}
 	}
-	// -----
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_task_count)]
-	/// For storing the number of tasks
 	pub type TaskCount<T> = StorageValue<_, u128, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn task)]
-	/// For storing the task details
 	pub(super) type TaskStorage<T: Config> =
 		StorageMap<_, Blake2_128Concat, u128, TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_worker_ratings)]
-	/// For storing the worker ratings
 	pub(super) type WorkerRatings<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, User<T::AccountId>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_customer_ratings)]
-	/// For storing customer ratings
 	pub(super) type CustomerRatings<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, User<T::AccountId>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_account_balances)]
-	/// For storing account balances
 	pub(super) type AccountBalances<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, BalanceOf<T>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_count)]
-	/// For fetching the count of transfers
 	pub(super) type Count<T> = StorageValue<_, u128, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_transfers)]
-	/// For fetching the transfer details
 	pub(super) type Transfers<T: Config> =
 		StorageValue<_, Vec<TransferDetails<T::AccountId, BalanceOf<T>>>, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn get_dispute_hearings)]
-	/// For fetching the dispute hearings
+	#[pallet::getter(fn get_hearings)]
 	pub(super) type Hearings<T: Config> =
-		StorageValue<_, Vec<DisputeTimeframe<BlockNumberOf<T>>>, ValueQuery>;
+		StorageValue<_, Vec<Hearing<BlockNumberOf<T>>>, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn get_task_completions)]
-	pub(super) type TaskCompletions<T: Config> =
-		StorageValue<_, Vec<TaskCompletion<BlockNumberOf<T>>>, ValueQuery>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn get_dispute_details)]
-	pub(super) type Courtroom<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		u128,
-		CourtDispute<T::AccountId, BlockNumberOf<T>>,
-		ValueQuery,
-	>;
+	#[pallet::getter(fn get_task_autocompletions)]
+	pub(super) type TaskAutocompletions<T: Config> =
+		StorageValue<_, Vec<TaskAutocompletion<BlockNumberOf<T>>>, ValueQuery>;
+	// -----
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -304,21 +281,12 @@ pub mod pallet {
 		TaskCreated(T::AccountId, Vec<u8>, u128, u64, BalanceOf<T>, Vec<u8>),
 		TaskIsBid(u128, T::AccountId, Vec<u8>),
 		TaskCompleted(u128, T::AccountId, T::AccountId),
-		/// [TaskID]
 		TaskApproved(u128),
 		AmountTransfered(T::AccountId, T::AccountId, BalanceOf<T>),
-		/// [TaskID]
 		TaskClosed(u128),
 		AccBalance(T::AccountId, BalanceOf<T>),
 		CountIncreased(u128),
-		TransferMoney(
-			T::AccountId,
-			BalanceOf<T>,
-			BalanceOf<T>,
-			T::AccountId,
-			BalanceOf<T>,
-			BalanceOf<T>,
-		),
+		TransferMoney(T::AccountId, BalanceOf<T>, BalanceOf<T>, T::AccountId, BalanceOf<T>, BalanceOf<T>),
 		CourtSummoned(u128, Reason, UserType, T::AccountId),
 		NewJurorAdded(u128, T::AccountId),
 		CustomerRatingProvided(u128),
@@ -455,10 +423,6 @@ pub mod pallet {
 			let mut task_details = Self::task(task_id.clone());
 			// Ensuring if dispute is raised
 			ensure!(task_details.dispute != None, <Error<T>>::DisputeDoesNotExist);
-
-			// ensure!(<Courtroom<T>>::contains_key(&task_id), <Error<T>>::DisputeDoesNotExist);
-			// let mut dispute_details = Self::get_dispute_details(task_id.clone());
-
 			// Accessing the dispute details related to the task 
 			let mut dispute_details = task_details.dispute.unwrap();
 
@@ -489,8 +453,6 @@ pub mod pallet {
 			Self::deposit_event(Event::NewJurorAdded(task_id.clone(), juror));
 			// Updating task details storage
 			<TaskStorage<T>>::insert(&task_id, task_details);
-
-			// <Courtroom<T>>::insert(&task_id, dispute_details.clone());
 
 			Ok(())
 		}
@@ -558,140 +520,9 @@ pub mod pallet {
 			// Updating the task details storage
 			<TaskStorage<T>>::insert(&task_id, task_details);
 
-			// <Courtroom<T>>::insert(&task_id, dispute_details);
-
-			// let total_votes = votes_for_customer + votes_for_worker;
-			// let final_jurors_count = dispute_details.final_jurors.len() as u8;
-
-			// if total_votes == final_jurors_count {
-			// 	Self::conclude_case_by_all_votes(task_id, dispute_details)?;
-			// }
-
-			// let dispute_details_of_final_jurors: Vec<JurorDecisionDetails> =
-			// 	dispute_details.final_jurors.values().cloned().collect();
-
-			// NOTE: Can be refactored?
-			// for juror_decision in dispute_details_of_final_jurors.clone() {
-			// 	log::info!("####### Should be settled");
-			// 	if juror_decision.voted_for == None {
-			// 		log::info!("####### Should not be settled");
-			// 		dispute_closed = false;
-			// 		break;
-			// 	}
-			// }
-
-			// For providing ratings and releasing funds after ..
-			// all final juror votes are cast.
-			// -----
-			// if dispute_closed {
-			// 	let mut total_publisher_rating: u8 = 0;
-			// 	let mut total_worker_rating: u8 = 0;
-			// 	let mut winner_account_id: Vec<T::AccountId> = Vec::new();
-			// 	let worker_id = dispute_details.task_details.worker_id.clone().unwrap();
-			// 	let publisher_id = dispute_details.task_details.publisher.clone();
-			// 	let escrow_id = Self::escrow_account_id(task_id.clone() as u32);
-			// 	let final_jurors_count = dispute_details.final_jurors.len() as u8;
-
-			// 	for juror_decision in dispute_details_of_final_jurors {
-			// 		total_publisher_rating += juror_decision.publisher_rating.unwrap_or_else(|| 0);
-			// 		total_worker_rating += juror_decision.worker_rating.unwrap_or_else(|| 0);
-			// 	}
-
-			// 	let avg_publisher_rating =
-			// 		Self::roundoff(total_publisher_rating, final_jurors_count.clone());
-			// 	dispute_details.avg_publisher_rating = Some(avg_publisher_rating);
-
-			// 	let avg_worker_rating =
-			// 		Self::roundoff(total_worker_rating, final_jurors_count.clone());
-			// 	dispute_details.avg_worker_rating = Some(avg_worker_rating);
-
-			// 	if votes_for_customer > votes_for_worker {
-			// 		dispute_details.winner = Some(UserType::Customer);
-			// 	} else if votes_for_customer < votes_for_worker {
-			// 		dispute_details.winner = Some(UserType::Worker);
-			// 	} else {
-			// 		// If votes are even
-			// 		dispute_details.winner = None;
-			// 	}
-
-			// 	match dispute_details.winner.clone() {
-			// 		Some(UserType::Customer) => {
-			// 			winner_account_id.push(worker_id.clone());
-			// 			winner_account_id.push(publisher_id.clone());
-			// 		}
-			// 		Some(UserType::Worker) => {
-			// 			winner_account_id.push(worker_id.clone());
-			// 		}
-			// 		// If there is no winner
-			// 		None => {
-			// 			winner_account_id.push(worker_id.clone());
-			// 			winner_account_id.push(publisher_id.clone());
-			// 		}
-			// 	};
-
-			// 	let task_cost = dispute_details.task_details.cost;
-			// 	let task_cost_converted = task_cost.saturated_into::<u128>();
-			// 	let court_fee = (task_cost_converted * 60) / 100 as u128;
-			// 	let juror_fee: u32 = (court_fee as u32) / (final_jurors_count as u32);
-
-			// 	let juror_account_ids: Vec<_> =
-			// 		dispute_details.final_jurors.keys().cloned().collect();
-
-			// 	for juror_account_id in juror_account_ids {
-			// 		T::Currency::transfer(
-			// 			&escrow_id,
-			// 			&juror_account_id,
-			// 			juror_fee.into(),
-			// 			ExistenceRequirement::KeepAlive,
-			// 		)?;
-			// 	}
-
-			// 	let remaining_amount = (task_cost_converted * 140) / 100 as u128;
-			// 	let mut remaining_amount_converted = remaining_amount as u32;
-
-			// 	if dispute_details.winner == Some(UserType::Customer)
-			// 		|| dispute_details.winner == None
-			// 	{
-			// 		// Note - Value should ideally be task cost and not remaining amount/2
-			// 		let remaining_amount_for_customer = remaining_amount / 2;
-			// 		let remaining_amount_converted_for_customer =
-			// 			remaining_amount_for_customer as u32;
-			// 		remaining_amount_converted = remaining_amount_converted_for_customer;
-			// 		T::Currency::transfer(
-			// 			&escrow_id,
-			// 			&winner_account_id[1],
-			// 			remaining_amount_converted_for_customer.into(),
-			// 			ExistenceRequirement::KeepAlive,
-			// 		)?;
-			// 	}
-
-			// 	T::Currency::transfer(
-			// 		&escrow_id,
-			// 		&winner_account_id[0],
-			// 		remaining_amount_converted.into(),
-			// 		ExistenceRequirement::AllowDeath,
-			// 	)?;
-
-			// 	dispute_details.task_details.status = Status::CaseClosed;
-
-			//TODO -> Account Map storage update
-			//TODO -> Courtroom storage Update
-			//TODO -> Task details update
-			//TODO -> Delete instance from timeframe once case is closed
-
-			// log::info!("Hello, this is court fee{:#?}", court_fee);
-			// }
-
-			//log::info!("{:#?}", dispute_details.clone());
-
 			Ok(())
 		}
 
-		/* Description:
-		 * Extrinsic for creating tasks on the blockchain. This is called by the ..
-		 * publisher who wants to post tasks on the chain that can be ..
-		 * put up for bidding.
-		 */
 		#[pallet::weight(10_000)]
 		pub fn create_task(
 			origin: OriginFor<T>,
@@ -746,11 +577,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/* Description:
-		 * Extrinsic for bidding for tasks on the blockchain. This is called by ..
-		 * the worker who wants to take up tasks on the chain that ..
-		 * can be completed in the given span of time.
-		 */
 		#[pallet::weight(10_000)]
 		pub fn bid_for_task(
 			origin: OriginFor<T>,
@@ -806,12 +632,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/* Description:
-		 * Extrinsic for marking tasks as complete on the blockchain. ..
-		 * This is called by the respective worker who wants to signify that the ..
-		 * alloted task has been completed and is put up for approval
-		 * for the publisher.
-		 */
 		#[pallet::weight(10_000)]
 		pub fn task_completed(
 			origin: OriginFor<T>,
@@ -862,12 +682,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/* Description:
-		 * Extrinsic for approving tasks that are completed by the worker on the blockchain. ..
-		 * This is called by the publisher who put up the task in the first place for signifying ..
-		 * that the publisher approves the final work of the worker. Also rating to the worker ..
-		 * is given while approving the task.
-		 */
 		#[pallet::weight(10_000)]
 		pub fn approve_task(
 			origin: OriginFor<T>,
@@ -914,11 +728,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/* Description:
-		 * Extrinsic for providing rating to publisher on the blockchain. ..
-		 * This is called by the worker who will judge the publisher based ..
-		 * on a number of factors.
-		 */
 		#[pallet::weight(10_000)]
 		pub fn provide_customer_rating(
 			origin: OriginFor<T>,
@@ -927,6 +736,8 @@ pub mod pallet {
 		) -> DispatchResult {
 			// User authentication
 			let bidder = ensure_signed(origin)?;
+			// Does task exist?
+			ensure!(<TaskStorage<T>>::contains_key(task_id.clone()), <Error<T>>::TaskDoesNotExist);
 			// Getting task details from storage
 			let task = Self::task(task_id.clone());
 			// Accessing status
@@ -960,11 +771,11 @@ pub mod pallet {
 			let block_number = <frame_system::Pallet<T>>::block_number();
 			// NOTE: Task completion block (4hrs = 2_400 slots)
 			let task_will_complete_at = block_number + 10u32.into();
-			let mut task_completions = Self::get_task_completions();
-			let task_autocomplete: TaskCompletion<BlockNumberOf<T>> =
-				TaskCompletion { task_id, task_will_complete_at };
+			let mut task_completions = Self::get_task_autocompletions();
+			let task_autocomplete: TaskAutocompletion<BlockNumberOf<T>> =
+				TaskAutocompletion { task_id, task_will_complete_at };
 			task_completions.push(task_autocomplete);
-			<TaskCompletions<T>>::put(task_completions);
+			<TaskAutocompletions<T>>::put(task_completions);
 			// -----
 
 			// Notify the user about the task being closed
@@ -973,10 +784,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/* Description:
-		 * Extrinsic for transfering funds from one account to another ..
-		 * on the blockchain. This is called by the worker / publisher.
-		 */
 		#[pallet::weight(10_000)]
 		pub fn transfer_money(
 			origin: OriginFor<T>,
@@ -1034,10 +841,7 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 
-		pub fn adjourn_court(
-			task_id: u128,
-			// mut task_details: TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
-		) -> DispatchResult {
+		pub fn adjourn_court(task_id: u128) -> DispatchResult {
 			// ----- Initializations
 			let mut total_publisher_rating: u8 = 0;
 			let mut total_worker_rating: u8 = 0;
@@ -1158,14 +962,13 @@ pub mod pallet {
 			task_details.dispute = Some(dispute_details);
 			// Updating the task details storage
 			<TaskStorage<T>>::insert(&task_id, task_details);
-			// <Courtroom<T>>::insert(&task_id, dispute_details);
 
 			Ok(())
 		}
 
 		pub fn end_task(block_number: BlockNumberOf<T>) -> DispatchResult {
 			// Getting task autocompletions vector from storage
-			let mut task_autocompletions = Self::get_task_completions();
+			let mut task_autocompletions = Self::get_task_autocompletions();
 			// Only retain those records with case ending period >= current block number
 			task_autocompletions.retain(|x| x.task_will_complete_at >= block_number);
 
@@ -1200,7 +1003,7 @@ pub mod pallet {
 			// -----
 
 			// Updating the task autocompletions storage
-			<TaskCompletions<T>>::put(task_autocompletions);
+			<TaskAutocompletions<T>>::put(task_autocompletions);
 
 			Ok(())
 		}
@@ -1230,15 +1033,13 @@ pub mod pallet {
 			};
 			// Updating task details structure
 			task_details.dispute = Some(dispute);
-			// Updating the courtroom storage
-			// <Courtroom<T>>::insert(task_id, dispute);
 			// Updating the task details storage 
 			<TaskStorage<T>>::insert(task_id, task_details);
 		}
 
 		pub fn collect_cases(block_number: BlockNumberOf<T>) {
 			// Getting hearings vector from storage
-			let mut hearings = Self::get_dispute_hearings();
+			let mut hearings = Self::get_hearings();
 			// Only retain those hearings with case ending period >= current block number
 			hearings.retain(|x| x.total_case_period >= block_number);
 
@@ -1304,9 +1105,9 @@ pub mod pallet {
 			let total_case_period = jury_acceptance_period + (ONE_ERA * 2).into();
 			// Structure for time frame storage
 			let dispute_timeframe =
-				DisputeTimeframe { task_id, jury_acceptance_period, total_case_period };
+				Hearing { task_id, jury_acceptance_period, total_case_period };
 			// Get the time frame storage vector
-			let mut dispute_timeframe_storage = Self::get_dispute_hearings();
+			let mut dispute_timeframe_storage = Self::get_hearings();
 			// Updating the timeframe storage vector
 			dispute_timeframe_storage.push(dispute_timeframe);
 			// Updating the timeframe storage

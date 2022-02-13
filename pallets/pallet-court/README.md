@@ -85,12 +85,12 @@ b) Have a automated master council where we build an algorthm to distribute rati
 
 
 TODO:
-1. Move Court Dispute to Task Details
+1. Move Court Dispute to Task Details - Done
 2. Update Storage  
-   1.a hearing storage to be deleted after dispute is over 
-   1.b task autocompletion storage to be deleted
-3. Resolve Cases
-4. Cast vote elements as  helper function - Make parts of the cast vote extrinsic to helper function
+   1.a hearing storage to be deleted after dispute is over - Done
+   1.b task autocompletion storage to be deleted - Done
+3. Resolve Cases - Done
+4. Cast vote elements as  helper function - Make parts of the cast vote extrinsic to helper function - Done
 5. Code Coverage - Test Cases
 6. Web3 Grant Documentation
 7. Need to change name timeframes to hearings - Done
