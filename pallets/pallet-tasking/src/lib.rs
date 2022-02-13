@@ -70,13 +70,6 @@ pub mod pallet {
 		Completed,
 	}
 
-	#[derive(Encode, Decode, PartialEq, Eq, Debug, Clone, TypeInfo)]
-	pub enum CourtCompletionMode {
-		NoVatesCast,
-		SomeVotesCast,
-		AllVotesCast,
-	}
-
 	impl Default for Status {
 		fn default() -> Self {
 			Status::Open
@@ -91,7 +84,7 @@ pub mod pallet {
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
-	pub struct TaskDetails<AccountId, Balance> {
+	pub struct TaskDetails<AccountId, Balance, BlockNumber> {
 		task_id: u128,
 		publisher: AccountId,
 		worker_id: Option<AccountId>,
@@ -103,6 +96,7 @@ pub mod pallet {
 		status: Status,
 		task_description: Vec<u8>,
 		attachments: Option<Vec<Vec<u8>>>,
+		dispute: Option<CourtDispute<AccountId, BlockNumber>>
 	}
 
 	#[derive(Encode, Decode, PartialEq, Eq, Debug, Clone, TypeInfo)]
@@ -139,8 +133,8 @@ pub mod pallet {
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
-	pub struct CourtDispute<AccountId, Balance, BlockNumber> {
-		task_details: TaskDetails<AccountId, Balance>,
+	pub struct CourtDispute<AccountId, BlockNumber> {
+		// task_details: TaskDetails<AccountId, Balance, BlockNumber>,
 		potential_jurors: Vec<AccountId>,
 		// In vector: 1. Worker / Publisher, 2. Publisher rating, 3. Worker rating
 		final_jurors: BTreeMap<AccountId, JurorDecisionDetails>,
@@ -252,7 +246,7 @@ pub mod pallet {
 	#[pallet::getter(fn task)]
 	/// For storing the task details
 	pub(super) type TaskStorage<T: Config> =
-		StorageMap<_, Blake2_128Concat, u128, TaskDetails<T::AccountId, BalanceOf<T>>, ValueQuery>;
+		StorageMap<_, Blake2_128Concat, u128, TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_worker_ratings)]
@@ -300,7 +294,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		u128,
-		CourtDispute<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
+		CourtDispute<T::AccountId, BlockNumberOf<T>>,
 		ValueQuery,
 	>;
 
@@ -308,8 +302,8 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		TaskCreated(T::AccountId, Vec<u8>, u128, u64, BalanceOf<T>, Vec<u8>),
-		TaskIsBid(T::AccountId, Vec<u8>, u128),
-		TaskCompleted(T::AccountId, u128, T::AccountId),
+		TaskIsBid(u128, T::AccountId, Vec<u8>),
+		TaskCompleted(u128, T::AccountId, T::AccountId),
 		/// [TaskID]
 		TaskApproved(u128),
 		AmountTransfered(T::AccountId, T::AccountId, BalanceOf<T>),
@@ -392,30 +386,31 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+
 		#[pallet::weight(10_000)]
 		pub fn disapprove_rating(
 			origin: OriginFor<T>,
 			task_id: u128,
 			user_type: UserType,
 		) -> DispatchResult {
+			// User authentication
 			let who = ensure_signed(origin)?;
-
-			//ensure task exists and is active
+			// Ensure task exists and is active
 			ensure!(<TaskStorage<T>>::contains_key(&task_id), <Error<T>>::TaskDoesNotExist);
-
+			// Get task details from storage
 			let task_details = Self::task(task_id.clone());
-
+			// Accessing status from task details
 			let status = task_details.status.clone();
-
+			// Ensuring if publisher hasn't provided ratings to the worker
 			ensure!(status == Status::CustomerRatingPending, <Error<T>>::TaskIsNotPendingRating);
-
+			// Regsiter case with the court
 			Self::register_case(task_id.clone(), task_details);
-
+			// Show reason respective to the caller
 			let reason = match user_type {
 				UserType::Customer => Reason::UnsatisfiedPublisherRating,
 				UserType::Worker => Reason::UnsatisfiedWorkerRating,
 			};
-
+			// Notify event for summoning court
 			Self::deposit_event(Event::CourtSummoned(task_id, reason, user_type, who));
 
 			Ok(())
@@ -423,25 +418,23 @@ pub mod pallet {
 
 		#[pallet::weight(10_000)]
 		pub fn disapprove_task(origin: OriginFor<T>, task_id: u128) -> DispatchResult {
+			// User authentication
 			let publisher = ensure_signed(origin)?;
-
-			//ensure task exists and is active
+			// Ensure task exists and is active
 			ensure!(<TaskStorage<T>>::contains_key(&task_id), <Error<T>>::TaskDoesNotExist);
-
+			// Getting task details from storage
 			let task_details = Self::task(task_id.clone());
-
+			// Accessing status from task details
 			let status = task_details.status.clone();
-
+			// Accessing publisher id from task details
 			let customer = task_details.publisher.clone();
-
+			// Ensuring that the customer hasn't approved the task
 			ensure!(status == Status::PendingApproval, <Error<T>>::TaskInProgress);
-
-			//ensure the customer is the one disapproving the task
-
+			// Ensure the customer is the one disapproving the task
 			ensure!(publisher == customer, <Error<T>>::UnauthorisedToDisapprove);
-
+			// Register the case in court
 			Self::register_case(task_id.clone(), task_details);
-
+			// Notifying that the court is summoned
 			Self::deposit_event(Event::CourtSummoned(
 				task_id,
 				Reason::DisapproveTask,
@@ -454,14 +447,22 @@ pub mod pallet {
 
 		#[pallet::weight(10_000)]
 		pub fn accept_jury_duty(origin: OriginFor<T>, task_id: u128) -> DispatchResult {
+			// User authentication
 			let juror = ensure_signed(origin)?;
+			// Ensure task exists and is active
+			ensure!(<TaskStorage<T>>::contains_key(&task_id), <Error<T>>::TaskDoesNotExist);
+			// Getting task details from storage
+			let mut task_details = Self::task(task_id.clone());
+			// Ensuring if dispute is raised
+			ensure!(task_details.dispute != None, <Error<T>>::DisputeDoesNotExist);
 
-			ensure!(<Courtroom<T>>::contains_key(&task_id), <Error<T>>::DisputeDoesNotExist);
+			// ensure!(<Courtroom<T>>::contains_key(&task_id), <Error<T>>::DisputeDoesNotExist);
+			// let mut dispute_details = Self::get_dispute_details(task_id.clone());
 
-			let mut dispute_details = Self::get_dispute_details(task_id.clone());
+			// Accessing the dispute details related to the task 
+			let mut dispute_details = task_details.dispute.unwrap();
 
-			// To stop accepting participants for jury after elapsed time
-			// -----
+			// ----- To stop accepting participants for jury after elapsed time
 			let current_period = <frame_system::Pallet<T>>::block_number();
 			let jury_acceptance_period = dispute_details.jury_acceptance_period.clone();
 			ensure!(
@@ -470,25 +471,27 @@ pub mod pallet {
 			);
 			// -----
 
-			ensure!(
-				dispute_details.potential_jurors.contains(&juror),
-				<Error<T>>::NotPotentialJuror
-			);
-
+			// Ensuring if one is potential juror
+			ensure!(dispute_details.potential_jurors.contains(&juror), <Error<T>>::NotPotentialJuror);
 			// Less than 2 is 2 people as we are ensuring first and then storing
 			ensure!(dispute_details.final_jurors.len() < 2, <Error<T>>::CannotAddMoreJurors);
-
+			// Creating the initial structure of the final jurors
 			let juror_details = JurorDecisionDetails {
 				voted_for: None,
 				publisher_rating: None,
 				worker_rating: None,
 			};
-
+			// Updating the final jurors map
 			dispute_details.final_jurors.insert(juror.clone(), juror_details);
-
+			// Adding the dispute details to task details structure
+			task_details.dispute = Some(dispute_details);
+			// Notifying addition of new jurors
 			Self::deposit_event(Event::NewJurorAdded(task_id.clone(), juror));
+			// Updating task details storage
+			<TaskStorage<T>>::insert(&task_id, task_details);
 
-			<Courtroom<T>>::insert(&task_id, dispute_details.clone());
+			// <Courtroom<T>>::insert(&task_id, dispute_details.clone());
+
 			Ok(())
 		}
 
@@ -500,45 +503,44 @@ pub mod pallet {
 			customer_rating: u8,
 			worker_rating: u8,
 		) -> DispatchResult {
+			// User authentication
 			let juror = ensure_signed(origin)?;
-
-			let mut dispute_details = Self::get_dispute_details(&task_id);
-
-			//TODO -> Move Dispute details to task details
-
-			// To stop jurors to vote before the actual voting period
-			// -----
+			// Ensure task exists and is active
+			ensure!(<TaskStorage<T>>::contains_key(&task_id), <Error<T>>::TaskDoesNotExist);
+			// Getting task details from storage
+			let mut task_details = Self::task(task_id.clone());
+			// Ensuring if dispute is raised
+			ensure!(task_details.dispute != None, <Error<T>>::DisputeDoesNotExist);
+			// Accessing the dispute details related to the task 
+			let mut dispute_details = task_details.dispute.unwrap();
+			
+			// ----- To stop jurors to vote before the actual voting period
 			let current_period = <frame_system::Pallet<T>>::block_number();
 			let jury_acceptance_period = dispute_details.jury_acceptance_period.clone();
 			ensure!(current_period > jury_acceptance_period, <Error<T>>::JurySelectionInProcess);
 			// -----
 
-			log::info!("{:#?}", dispute_details);
-
-			ensure!(
-				dispute_details.task_details.status == Status::VotingPeriod,
-				<Error<T>>::CaseClosed
-			);
-			let mut juror_decision_details =
-				dispute_details.final_jurors.get(&juror).cloned().unwrap();
-
-			// Ensuring qualified juror doesn't vote more than once
+			// Ensure if the voting period is in progress
+			ensure!(task_details.status == Status::VotingPeriod, <Error<T>>::CaseClosed);
+			// Get details of the final juror
+			let mut juror_decision_details = dispute_details.final_jurors.get(&juror).cloned().unwrap();
+			// Ensuring final juror doesn't vote more than once
 			ensure!(juror_decision_details.voted_for == None, <Error<T>>::JurorHasVoted);
 
-			log::info!("{:#?}", juror_decision_details);
-			// Aim for settling dispute to begin with
-			let mut dispute_closed: bool = true;
-
+			// ----- Updating juror details structure
 			juror_decision_details.voted_for = Some(voted_for.clone());
 			juror_decision_details.publisher_rating = Some(customer_rating);
 			juror_decision_details.worker_rating = Some(worker_rating);
+			// -----
 
 			// Updating decision details in storage
 			dispute_details.final_jurors.insert(juror.clone(), juror_decision_details);
-
+			// Total votes of customer
 			let mut votes_for_customer = dispute_details.votes_for_customer.unwrap_or(0);
+			// Total votes of worker
 			let mut votes_for_worker = dispute_details.votes_for_worker.unwrap_or(0);
 
+			// ----- Updating vote count 
 			match voted_for {
 				UserType::Customer => {
 					votes_for_customer += 1;
@@ -549,8 +551,14 @@ pub mod pallet {
 					dispute_details.votes_for_worker = Some(votes_for_worker);
 				}
 			}
+			// -----
+			
+			// Updating the task details structure
+			task_details.dispute = Some(dispute_details);
+			// Updating the task details storage
+			<TaskStorage<T>>::insert(&task_id, task_details);
 
-			<Courtroom<T>>::insert(&task_id, dispute_details);
+			// <Courtroom<T>>::insert(&task_id, dispute_details);
 
 			// let total_votes = votes_for_customer + votes_for_worker;
 			// let final_jurors_count = dispute_details.final_jurors.len() as u8;
@@ -706,9 +714,6 @@ pub mod pallet {
 				task_cost.clone(),
 				ExistenceRequirement::KeepAlive,
 			)?;
-
-			log::info!("Hello, this escrow  balance{:#?}", T::Currency::free_balance(&escrow_id));
-
 			// Details related to task created for storage
 			let task_details = TaskDetails {
 				task_id: current_task_count.clone(),
@@ -722,8 +727,8 @@ pub mod pallet {
 				status: Default::default(),
 				task_description: task_des.clone(),
 				attachments: publisher_attachments.clone(),
+				dispute: None
 			};
-
 			// Inserting the new task details to storage
 			<TaskStorage<T>>::insert(current_task_count.clone(), task_details);
 			// Notifying the user about the transaction event
@@ -781,7 +786,7 @@ pub mod pallet {
 			task.status = Status::InProgress;
 			// Inserting updated task in storage
 			<TaskStorage<T>>::insert(&task_id, task.clone());
-
+			// Getting escrow a/c id
 			let escrow_id = Self::escrow_account_id(task_id.clone() as u32);
 			// Locking the amount from the publisher for the task
 			T::Currency::transfer(
@@ -791,12 +796,11 @@ pub mod pallet {
 				task_cost.clone(),
 				ExistenceRequirement::KeepAlive,
 			)?;
-
 			// Notifying the user
 			Self::deposit_event(Event::TaskIsBid(
+				task_id.clone(),
 				bidder.clone(),
 				worker_name.clone(),
-				task_id.clone(),
 			));
 
 			Ok(())
@@ -850,8 +854,8 @@ pub mod pallet {
 			<TaskStorage<T>>::insert(&task_id, task.clone());
 			// Notify user
 			Self::deposit_event(Event::TaskCompleted(
-				worker.clone(),
 				task_id.clone(),
+				worker.clone(),
 				publisher.clone(),
 			));
 
@@ -923,19 +927,16 @@ pub mod pallet {
 		) -> DispatchResult {
 			// User authentication
 			let bidder = ensure_signed(origin)?;
-
 			// Getting task details from storage
 			let task = Self::task(task_id.clone());
 			// Accessing status
 			let status = task.status;
 			// Is rating pending from worker to publisher?
 			ensure!(status == Status::CustomerRatingPending, <Error<T>>::TaskIsNotPendingRating);
-
 			// Get worker id
 			let worker = task.worker_id.clone().ok_or(<Error<T>>::WorkerNotSet)?;
 			// Is worker the bidder?
 			ensure!(worker == bidder.clone(), <Error<T>>::UnauthorisedToProvideCustomerRating);
-
 			// Accessing reference of the publisher
 			let customer = &task.publisher;
 			// Get existing customer ratings
@@ -943,12 +944,10 @@ pub mod pallet {
 				Self::get_customer_ratings(&customer);
 			// Creating a temp rating vector
 			let mut temp_rating_vec = Vec::<u8>::new();
-
 			// Looping over all the existing customer ratings
 			for rating in existing_customer_rating.ratings_vec {
 				temp_rating_vec.push(rating);
 			}
-
 			// Updating temp rating vector with new rating
 			temp_rating_vec.push(rating_for_customer);
 			// Creating new user instance with new rating
@@ -957,13 +956,16 @@ pub mod pallet {
 			// Inserting new user instance in customer rating storage
 			<CustomerRatings<T>>::insert(customer.clone(), curr_customer_ratings.clone());
 
+			// ----- Providing for grace period for task completion
 			let block_number = <frame_system::Pallet<T>>::block_number();
+			// NOTE: Task completion block (4hrs = 2_400 slots)
 			let task_will_complete_at = block_number + 10u32.into();
 			let mut task_completions = Self::get_task_completions();
 			let task_autocomplete: TaskCompletion<BlockNumberOf<T>> =
 				TaskCompletion { task_id, task_will_complete_at };
 			task_completions.push(task_autocomplete);
 			<TaskCompletions<T>>::put(task_completions);
+			// -----
 
 			// Notify the user about the task being closed
 			Self::deposit_event(Event::CustomerRatingProvided(task_id.clone()));
@@ -1034,14 +1036,16 @@ pub mod pallet {
 
 		pub fn adjourn_court(
 			task_id: u128,
-			mut dispute_details: CourtDispute<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
+			// mut task_details: TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
 		) -> DispatchResult {
 			// ----- Initializations
 			let mut total_publisher_rating: u8 = 0;
 			let mut total_worker_rating: u8 = 0;
 			let mut winner_account_id: Vec<T::AccountId> = Vec::new();
-			let worker_id = dispute_details.task_details.worker_id.clone().unwrap();
-			let publisher_id = dispute_details.task_details.publisher.clone();
+			let mut task_details = Self::task(task_id.clone());
+			let mut dispute_details = task_details.dispute.clone().unwrap();
+			let worker_id = task_details.worker_id.clone().unwrap();
+			let publisher_id = task_details.publisher.clone();
 			let escrow_id = Self::escrow_account_id(task_id.clone() as u32);
 			let votes_for_customer: u8 = dispute_details.votes_for_customer.unwrap_or(0);
 			let votes_for_worker: u8 = dispute_details.votes_for_worker.unwrap_or(0);
@@ -1097,7 +1101,7 @@ pub mod pallet {
 			// -----
 
 			// Accessing the task cost 
-			let task_cost = dispute_details.task_details.cost;
+			let task_cost = task_details.cost;
 			// Converting task cost to u128
 			let task_cost_converted = task_cost.saturated_into::<u128>();
 			// Initializing placeholder
@@ -1150,8 +1154,11 @@ pub mod pallet {
 				remaining_amount_converted.into(),
 				ExistenceRequirement::AllowDeath,
 			)?;
-			// Updating the courtroom storage
-			<Courtroom<T>>::insert(&task_id, dispute_details);
+			// Updating the task details structure
+			task_details.dispute = Some(dispute_details);
+			// Updating the task details storage
+			<TaskStorage<T>>::insert(&task_id, task_details);
+			// <Courtroom<T>>::insert(&task_id, dispute_details);
 
 			Ok(())
 		}
@@ -1200,7 +1207,7 @@ pub mod pallet {
 
 		pub fn register_case(
 			task_id: u128,
-			mut task_details: TaskDetails<T::AccountId, BalanceOf<T>>,
+			mut task_details: TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
 		) {
 			// Getting the jury acceptance period and total case period
 			let case_period = Self::calculate_case_period(task_details.clone());
@@ -1210,7 +1217,7 @@ pub mod pallet {
 			let potential_jurors = Self::potential_jurors(task_details.clone());
 			// Creating the court dispute structure
 			let dispute = CourtDispute {
-				task_details: task_details.clone(),
+				// task_details: task_details.clone(),
 				potential_jurors,
 				final_jurors: BTreeMap::new(),
 				winner: None,
@@ -1221,10 +1228,12 @@ pub mod pallet {
 				jury_acceptance_period: case_period.0,
 				total_case_period: case_period.1,
 			};
+			// Updating task details structure
+			task_details.dispute = Some(dispute);
 			// Updating the courtroom storage
-			<Courtroom<T>>::insert(task_id, dispute);
+			// <Courtroom<T>>::insert(task_id, dispute);
 			// Updating the task details storage 
-			<TaskStorage<T>>::insert(task_id.clone(), task_details);
+			<TaskStorage<T>>::insert(task_id, task_details);
 		}
 
 		pub fn collect_cases(block_number: BlockNumberOf<T>) {
@@ -1236,15 +1245,12 @@ pub mod pallet {
 			// ----- Validating jury acceptance period and total case period
 			for hearing in hearings.iter() {
 				if block_number == hearing.jury_acceptance_period {
-					let mut dispute_details =
-						Self::get_dispute_details(hearing.task_id.clone());
-					dispute_details.task_details.status = Status::VotingPeriod;
-					<Courtroom<T>>::insert(&hearing.task_id, dispute_details);
+					let mut task_details = Self::task(hearing.task_id.clone());
+					task_details.status = Status::VotingPeriod;
+					<TaskStorage<T>>::insert(&hearing.task_id, task_details);
 				} else if block_number == hearing.total_case_period {
-					let dispute_details = Self::get_dispute_details(hearing.task_id.clone());
 					// * Ending the court case
-					Self::adjourn_court(hearing.task_id.clone(), dispute_details.clone());
-					<Courtroom<T>>::insert(&hearing.task_id, dispute_details);
+					Self::adjourn_court(hearing.task_id.clone());
 				}
 			}
 			// -----
@@ -1254,7 +1260,7 @@ pub mod pallet {
 		}
 
 		pub fn potential_jurors(
-			task_details: TaskDetails<T::AccountId, BalanceOf<T>>,
+			task_details: TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
 		) -> Vec<T::AccountId> {
 			// Creating iterator of account map storage
 			let all_account_details = <AccountMap<T>>::iter();
@@ -1286,7 +1292,7 @@ pub mod pallet {
 		}
 
 		pub fn calculate_case_period(
-			task_details: TaskDetails<T::AccountId, BalanceOf<T>>,
+			task_details: TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
 		) -> (BlockNumberOf<T>, BlockNumberOf<T>) {
 			// One era is one day
 			const ONE_ERA: u32 = 10;
