@@ -958,7 +958,7 @@ pub mod pallet {
 			<CustomerRatings<T>>::insert(customer.clone(), curr_customer_ratings.clone());
 
 			let block_number = <frame_system::Pallet<T>>::block_number();
-			let task_will_complete_at = block_number + 5u32.into();
+			let task_will_complete_at = block_number + 10u32.into();
 			let mut task_completions = Self::get_task_completions();
 			let task_autocomplete: TaskCompletion<BlockNumberOf<T>> =
 				TaskCompletion { task_id, task_will_complete_at };
@@ -1152,40 +1152,41 @@ pub mod pallet {
 		}
 
 		pub fn end_task(block_number: BlockNumberOf<T>) -> DispatchResult {
-			let task_autocompletions = Self::get_task_completions();
+			// Getting task autocompletions vector from storage
+			let mut task_autocompletions = Self::get_task_completions();
+			// Only retain those records with case ending period >= current block number
+			task_autocompletions.retain(|x| x.task_will_complete_at >= block_number);
+			// ----- Transfering funds to worker on reaching final block number
 			for task_autocompletion in task_autocompletions.iter() {
 				if block_number == task_autocompletion.task_will_complete_at {
 					let task_id = task_autocompletion.task_id;
 					let mut task_details = Self::task(task_id.clone());
+					// * Checking if no court dispute is raised for the task
 					if task_details.status == Status::CustomerRatingPending {
 						let publisher_id = task_details.publisher.clone();
 						let worker_id = task_details.worker_id.clone().unwrap();
 						let escrow_id = Self::escrow_account_id(task_id.clone() as u32);
 						let transfer_amount = T::Currency::free_balance(&escrow_id);
-
 						T::Currency::transfer(
 							&escrow_id,
 							&worker_id,
 							transfer_amount,
 							ExistenceRequirement::AllowDeath,
 						)?;
-
 						task_details.status = Status::Completed;
-
-						// Inserting updated task details
 						TaskStorage::<T>::insert(&task_id, task_details);
-
-						// Notify user about the transfered amount
 						Self::deposit_event(Event::AmountTransfered(
 							publisher_id,
 							worker_id,
 							transfer_amount.clone(),
 						));
-						// Notify the user about the task being closed
 						Self::deposit_event(Event::TaskClosed(task_id.clone()));
 					}
 				}
 			}
+			// -----
+			// Updating the task autocompletions storage
+			<TaskCompletions<T>>::put(task_autocompletions);
 
 			Ok(())
 		}
@@ -1194,12 +1195,13 @@ pub mod pallet {
 			task_id: u128,
 			mut task_details: TaskDetails<T::AccountId, BalanceOf<T>>,
 		) {
+			// Getting the jury acceptance period and total case period
 			let case_period = Self::calculate_case_period(task_details.clone());
-
+			// Updating the status when dispute is raised
 			task_details.status = Status::DisputeRaised;
-
+			// Getting all the potential jurors
 			let potential_jurors = Self::potential_jurors(task_details.clone());
-
+			// Creating the court dispute structure
 			let dispute = CourtDispute {
 				task_details: task_details.clone(),
 				potential_jurors,
@@ -1212,35 +1214,44 @@ pub mod pallet {
 				jury_acceptance_period: case_period.0,
 				total_case_period: case_period.1,
 			};
-
+			// Updating the courtroom storage
 			<Courtroom<T>>::insert(task_id, dispute);
+			// Updating the task details storage 
 			<TaskStorage<T>>::insert(task_id.clone(), task_details);
 		}
 
 		pub fn collect_cases(block_number: BlockNumberOf<T>) {
-			let hearings = Self::get_dispute_hearings();
+			// Getting hearings vector from storage
+			let mut hearings = Self::get_dispute_hearings();
+			// Only retain those hearings with case ending period >= current block number
+			hearings.retain(|x| x.total_case_period >= block_number);
+			// ----- Validating jury acceptance period and total case period
 			for hearing in hearings.iter() {
-				// To convert accaptance period to voting period
 				if block_number == hearing.jury_acceptance_period {
 					let mut dispute_details =
 						Self::get_dispute_details(hearing.task_id.clone());
 					dispute_details.task_details.status = Status::VotingPeriod;
 					<Courtroom<T>>::insert(&hearing.task_id, dispute_details);
-				// To end the case irrespective of voting
 				} else if block_number == hearing.total_case_period {
 					let dispute_details = Self::get_dispute_details(hearing.task_id.clone());
+					// * Ending the court case
 					Self::adjourn_court(hearing.task_id.clone(), dispute_details.clone());
 					<Courtroom<T>>::insert(&hearing.task_id, dispute_details);
 				}
 			}
+			// -----
+			// Updating the hearings storage
+			<Hearings<T>>::put(hearings);
 		}
 
 		pub fn potential_jurors(
 			task_details: TaskDetails<T::AccountId, BalanceOf<T>>,
 		) -> Vec<T::AccountId> {
+			// Creating iterator of account map storage
 			let all_account_details = <AccountMap<T>>::iter();
+			// Initializing empty vector for storing potentials jurors
 			let mut jurors: Vec<T::AccountId> = Vec::new();
-
+			// ----- Collecting all potential jurors based on certain conditions
 			for (acc_id, acc_details) in all_account_details {
 				if acc_details.avg_rating >= Some(4) {
 					for task_tag in &task_details.task_tags {
@@ -1254,11 +1265,13 @@ pub mod pallet {
 					}
 				}
 			}
+			// -----
 
 			jurors
 		}
 
 		pub fn escrow_account_id(id: u32) -> T::AccountId {
+			// Creating and calling sub account
 			T::PalletId::get().into_sub_account(id)
 		}
 
@@ -1287,10 +1300,15 @@ pub mod pallet {
 		}
 
 		fn roundoff(total_rating: u8, number_of_users: u8) -> u8 {
+			// For carrying the result
 			let output: u8;
+			// Calculating the average rating in floating point value
 			let avg_rating: f32 = total_rating as f32 / number_of_users as f32;
+			// Converting floating point to integer
 			let rounded_avg_rating: u8 = avg_rating as u8;
+			// Removing the decimal from float
 			let fraction = avg_rating.fract();
+			// ----- Result at different conditions
 			if fraction > 0.5 {
 				output = rounded_avg_rating + 1;
 			} else if fraction < 0.0 {
@@ -1298,6 +1316,7 @@ pub mod pallet {
 			} else {
 				output = rounded_avg_rating - 1;
 			}
+			// -----
 
 			output
 		}
