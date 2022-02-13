@@ -970,6 +970,7 @@ pub mod pallet {
 
 			Ok(())
 		}
+
 		/* Description:
 		 * Extrinsic for transfering funds from one account to another ..
 		 * on the blockchain. This is called by the worker / publisher.
@@ -1027,7 +1028,7 @@ pub mod pallet {
 		}
 	}
 
-	// Helper functions for our pallet
+	// Helper functions
 
 	impl<T: Config> Pallet<T> {
 
@@ -1035,55 +1036,50 @@ pub mod pallet {
 			task_id: u128,
 			mut dispute_details: CourtDispute<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
 		) -> DispatchResult {
-			// Initialize publisher rating
+			// ----- Initializations
 			let mut total_publisher_rating: u8 = 0;
-			// Initialize worker rating
 			let mut total_worker_rating: u8 = 0;
-
 			let mut winner_account_id: Vec<T::AccountId> = Vec::new();
-
 			let worker_id = dispute_details.task_details.worker_id.clone().unwrap();
-
 			let publisher_id = dispute_details.task_details.publisher.clone();
-
 			let escrow_id = Self::escrow_account_id(task_id.clone() as u32);
-
 			let votes_for_customer: u8 = dispute_details.votes_for_customer.unwrap_or(0);
-
 			let votes_for_worker: u8 = dispute_details.votes_for_worker.unwrap_or(0);
-
-			// To keep track of the juror participation in voting
+			// * To keep track of the juror participation in voting
 			let total_votes_cast: u8 = votes_for_customer + votes_for_worker;
-
-			// let final_jurors_details: Vec<JurorDecisionDetails> =
-			// 	dispute_details.final_jurors.values().cloned().filter(|x| x.voted_for != None).collect();
-
 			let final_jurors_details: BTreeMap<T::AccountId, JurorDecisionDetails> = 
 				dispute_details.clone().final_jurors.into_iter().filter(|(_, value)| value.voted_for != None).collect();
-
-			// Count of the jurors who have voted
 			let final_jurors_count: u8 = final_jurors_details.len() as u8;
-
+			// -----
+			
+			// ----- Calculating total rating for publisher and worker from jurors
 			for juror_decision in final_jurors_details.values() {
 				total_publisher_rating += juror_decision.publisher_rating.unwrap_or(0);
 				total_worker_rating += juror_decision.worker_rating.unwrap_or(0);
 			}
+			// -----
 
+			// Calculating average publisher rating
 			let avg_publisher_rating = Self::roundoff(total_publisher_rating, final_jurors_count.clone());
+			// Updating average publisher rating
 			dispute_details.avg_publisher_rating = Some(avg_publisher_rating);
-
+			// Calculating average worker rating
 			let avg_worker_rating = Self::roundoff(total_worker_rating, final_jurors_count.clone());
+			// Updating average worker rating
 			dispute_details.avg_worker_rating = Some(avg_worker_rating);
 
+			// ----- Deciding the winner based on votes
 			if votes_for_customer > votes_for_worker {
 				dispute_details.winner = Some(UserType::Customer);
 			} else if votes_for_customer < votes_for_worker {
 				dispute_details.winner = Some(UserType::Worker);
 			} else {
-				// If votes are even and if no one votes
+				// * If votes are even and if no one votes
 				dispute_details.winner = None;
 			}
+			// -----
 
+			// ----- Updating the winner a/c id vector with respective publisher & worker ids
 			match dispute_details.winner.clone() {
 				Some(UserType::Customer) => {
 					winner_account_id.push(worker_id.clone());
@@ -1092,22 +1088,27 @@ pub mod pallet {
 				Some(UserType::Worker) => {
 					winner_account_id.push(worker_id.clone());
 				}
+				// * If no one wins, publisher and worker should get half
 				None => {
 					winner_account_id.push(worker_id.clone());
 					winner_account_id.push(publisher_id.clone());
 				}
 			};
+			// -----
 
+			// Accessing the task cost 
 			let task_cost = dispute_details.task_details.cost;
+			// Converting task cost to u128
 			let task_cost_converted = task_cost.saturated_into::<u128>();
+			// Initializing placeholder
 			let remaining_amount;
 
-			// Only calculate court fees if jurors have voted
+			// ----- Only calculate court fees if jurors have voted
 			if total_votes_cast != 0 {
 				let court_fee = (task_cost_converted * 60) / 100 as u128;
 				let juror_fee: u32 = (court_fee as u32) / (final_jurors_count as u32);
 				let juror_account_ids: Vec<_> = final_jurors_details.keys().cloned().collect();
-
+				// * Transfer to all jurors their respective fees
 				for juror_account_id in juror_account_ids {
 					T::Currency::transfer(
 						&escrow_id,
@@ -1120,15 +1121,19 @@ pub mod pallet {
 			} else {
 				remaining_amount = (task_cost_converted * 200) / 100 as u128;
 			}
-			
+			// -----
+
+			// Convert remaining amount to u128
 			let mut remaining_amount_converted = remaining_amount as u32;
 
+			// ----- Checking if winner is customer or no one
 			if dispute_details.winner == Some(UserType::Customer) || dispute_details.winner == None
 			{
-				// Note - Value should ideally be task cost and not remaining amount/2
+				// NOTE: AccountMap value should ideally be task cost & bidder cost and not remaining amount/2
 				let remaining_amount_for_customer = remaining_amount / 2;
 				let remaining_amount_converted_for_customer = remaining_amount_for_customer as u32;
 				remaining_amount_converted = remaining_amount_converted_for_customer;
+				// * Transfering to winner account
 				T::Currency::transfer(
 					&escrow_id,
 					&winner_account_id[1],
@@ -1136,16 +1141,16 @@ pub mod pallet {
 					ExistenceRequirement::KeepAlive,
 				)?;
 			}
+			// -----
 
+			// Transfering to winner account
 			T::Currency::transfer(
 				&escrow_id,
 				&winner_account_id[0],
 				remaining_amount_converted.into(),
 				ExistenceRequirement::AllowDeath,
 			)?;
-
-			log::info!("{:#?}", dispute_details);
-
+			// Updating the courtroom storage
 			<Courtroom<T>>::insert(&task_id, dispute_details);
 
 			Ok(())
@@ -1156,6 +1161,7 @@ pub mod pallet {
 			let mut task_autocompletions = Self::get_task_completions();
 			// Only retain those records with case ending period >= current block number
 			task_autocompletions.retain(|x| x.task_will_complete_at >= block_number);
+
 			// ----- Transfering funds to worker on reaching final block number
 			for task_autocompletion in task_autocompletions.iter() {
 				if block_number == task_autocompletion.task_will_complete_at {
@@ -1185,6 +1191,7 @@ pub mod pallet {
 				}
 			}
 			// -----
+
 			// Updating the task autocompletions storage
 			<TaskCompletions<T>>::put(task_autocompletions);
 
@@ -1225,6 +1232,7 @@ pub mod pallet {
 			let mut hearings = Self::get_dispute_hearings();
 			// Only retain those hearings with case ending period >= current block number
 			hearings.retain(|x| x.total_case_period >= block_number);
+
 			// ----- Validating jury acceptance period and total case period
 			for hearing in hearings.iter() {
 				if block_number == hearing.jury_acceptance_period {
@@ -1240,6 +1248,7 @@ pub mod pallet {
 				}
 			}
 			// -----
+
 			// Updating the hearings storage
 			<Hearings<T>>::put(hearings);
 		}
@@ -1251,6 +1260,7 @@ pub mod pallet {
 			let all_account_details = <AccountMap<T>>::iter();
 			// Initializing empty vector for storing potentials jurors
 			let mut jurors: Vec<T::AccountId> = Vec::new();
+
 			// ----- Collecting all potential jurors based on certain conditions
 			for (acc_id, acc_details) in all_account_details {
 				if acc_details.avg_rating >= Some(4) {
@@ -1308,6 +1318,7 @@ pub mod pallet {
 			let rounded_avg_rating: u8 = avg_rating as u8;
 			// Removing the decimal from float
 			let fraction = avg_rating.fract();
+
 			// ----- Result at different conditions
 			if fraction > 0.5 {
 				output = rounded_avg_rating + 1;

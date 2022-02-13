@@ -92,13 +92,14 @@ TODO:
 3. Resolve Cases
 4. Cast vote elements as  helper function - Make parts of the cast vote extrinsic to helper function
 5. Code Coverage - Test Cases
-6. Web3 Grat Documentation
-7. Need to change name timeframes to possibly hearings - Done
+6. Web3 Grant Documentation
+7. Need to change name timeframes to hearings - Done
+8. Create events for the updates on the court cases
 
 Cases:
 1. What if it is a tie after final votes - Done
-2. What if no jurors vote after accepting jury duty
-3. What if not all accepted jurors vote
+2. What if no jurors vote after accepting jury duty - Done
+3. What if not all accepted jurors vote - Done
 
 
 
