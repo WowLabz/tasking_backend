@@ -134,5 +134,30 @@ fn test_provide_customer_ratings(){
             ));
         });
 }
+
+#[test]
+fn test_disapprove_task(){
+    new_test_ext().execute_with(|| {
+        Tasking::create_task(
+            Origin::signed(1),
+            50,
+            500,
+            b"Backend Systems".to_vec(),
+            b"Alice".to_vec(),
+            vec![TaskTypeTags::FullStackDevelopment],
+            Some(vec![b"http://aws/publisher.png".to_vec()]),
+        )
+        .unwrap();
+        Tasking::bid_for_task(Origin::signed(3), 0, b"Bob".to_vec()).unwrap();
+        Tasking::task_completed(
+            Origin::signed(3),
+            0,
+            Some(vec![b"http://aws/worker.png".to_vec()]),
+        )
+        .unwrap();
+        assert_ok!(Tasking::approve_task(Origin::signed(1), 0));
+    })
+
+}
         
 

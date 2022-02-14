@@ -94,13 +94,18 @@ TODO:
 5. Code Coverage - Test Cases
 6. Web3 Grant Documentation
 7. Need to change name timeframes to hearings - Done
-8. Create events for the updates on the court cases
+8. Create events for the updates on the court cases 
 
 Cases:
-1. What if it is a tie after final votes - Done
-2. What if no jurors vote after accepting jury duty - Done
+1. What if it is a tie after final votes - Done - Need to be resolved 
+Possible fix - Super User casts the deciding vote 
+2. What if no jurors vote after accepting jury duty - Done 
+Fix - Go to next set of probable users (Create accounts from polkadot js extension)
 3. What if not all accepted jurors vote - Done
 
+
+Changes:
+1. Instead of automatic release of funds, create an extrinsic that is to be called by the customer to be satisfied with the rating provided to him and close the  task
 
 
 

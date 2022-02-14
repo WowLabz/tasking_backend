@@ -58,6 +58,7 @@ pub mod pallet {
 		InProgress,
 		PendingApproval,
 		CustomerRatingPending,
+		CustomerRatingProvided,
 		/// -> Change
 		DisputeRaised,
 		VotingPeriod,
@@ -280,8 +281,8 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		TaskCreated(T::AccountId, Vec<u8>, u128, u64, BalanceOf<T>, Vec<u8>),
 		TaskIsBid(u128, T::AccountId, Vec<u8>),
-		TaskCompleted(u128, T::AccountId, T::AccountId),
-		TaskApproved(u128),
+		TaskCompleted(u128, T::AccountId),
+		TaskApproved(u128, T::AccountId),
 		AmountTransfered(T::AccountId, T::AccountId, BalanceOf<T>),
 		TaskClosed(u128),
 		AccBalance(T::AccountId, BalanceOf<T>),
@@ -289,7 +290,9 @@ pub mod pallet {
 		TransferMoney(T::AccountId, BalanceOf<T>, BalanceOf<T>, T::AccountId, BalanceOf<T>, BalanceOf<T>),
 		CourtSummoned(u128, Reason, UserType, T::AccountId),
 		NewJurorAdded(u128, T::AccountId),
-		CustomerRatingProvided(u128),
+		CustomerRatingProvided(u128, T::AccountId, u8, T::AccountId),
+		VoteRecorded(u128,T::AccountId),
+		CourtAdjourned(u128),
 	}
 
 	#[pallet::error]
@@ -338,8 +341,10 @@ pub mod pallet {
 		JurySelectionPeriodElapsed,
 		/// To stop jurors to vote before the actual voting period
 		JurySelectionInProcess,
-		/// To ensure jurors can't vote beyond the voting period
+		/// To ensure jurors can't vote beyond the voting period		
 		CaseClosed,
+		/// To ensure Customer Rating exists
+		CustomerRatingNotProvided
 	}
 
 	#[pallet::hooks]
@@ -370,7 +375,13 @@ pub mod pallet {
 			// Accessing status from task details
 			let status = task_details.status.clone();
 			// Ensuring if publisher hasn't provided ratings to the worker
-			ensure!(status == Status::CustomerRatingPending, <Error<T>>::TaskIsNotPendingRating);
+
+			if user_type == UserType::Customer{
+				ensure!(status == Status::CustomerRatingProvided, <Error<T>>::CustomerRatingNotProvided); 
+			} else{
+				ensure!(status == Status::CustomerRatingPending, <Error<T>>::TaskIsNotPendingRating);
+			}
+			
 			// Regsiter case with the court
 			Self::register_case(task_id.clone(), task_details);
 			// Show reason respective to the caller
@@ -519,6 +530,8 @@ pub mod pallet {
 			task_details.dispute = Some(dispute_details);
 			// Updating the task details storage
 			<TaskStorage<T>>::insert(&task_id, task_details);
+
+			Self::deposit_event(Event::VoteRecorded(task_id.clone(),juror));
 
 			Ok(())
 		}
@@ -676,7 +689,6 @@ pub mod pallet {
 			Self::deposit_event(Event::TaskCompleted(
 				task_id.clone(),
 				worker.clone(),
-				publisher.clone(),
 			));
 
 			Ok(())
@@ -723,7 +735,11 @@ pub mod pallet {
 			// Inserting updated task into storage
 			<TaskStorage<T>>::insert(&task_id, task.clone());
 			// Notify user
-			Self::deposit_event(Event::TaskApproved(task_id.clone()));
+			Self::deposit_event(
+				Event::TaskApproved(
+					task_id.clone(), 
+					publisher.clone()
+				));
 
 			Ok(())
 		}
@@ -739,7 +755,7 @@ pub mod pallet {
 			// Does task exist?
 			ensure!(<TaskStorage<T>>::contains_key(task_id.clone()), <Error<T>>::TaskDoesNotExist);
 			// Getting task details from storage
-			let task = Self::task(task_id.clone());
+			let mut task = Self::task(task_id.clone());
 			// Accessing status
 			let status = task.status;
 			// Is rating pending from worker to publisher?
@@ -767,6 +783,9 @@ pub mod pallet {
 			// Inserting new user instance in customer rating storage
 			<CustomerRatings<T>>::insert(customer.clone(), curr_customer_ratings.clone());
 
+			task.status = Status::CustomerRatingProvided;
+			<TaskStorage<T>>::insert(&task_id, task.clone());
+
 			// ----- Providing for grace period for task completion
 			let block_number = <frame_system::Pallet<T>>::block_number();
 			// NOTE: Task completion block (4hrs = 2_400 slots)
@@ -779,7 +798,13 @@ pub mod pallet {
 			// -----
 
 			// Notify the user about the task being closed
-			Self::deposit_event(Event::CustomerRatingProvided(task_id.clone()));
+			Self::deposit_event(
+				Event::CustomerRatingProvided(
+					task_id.clone(),
+					bidder.clone(),
+					rating_for_customer,
+					customer.clone()
+				));
 
 			Ok(())
 		}
@@ -963,6 +988,12 @@ pub mod pallet {
 			// Updating the task details storage
 			<TaskStorage<T>>::insert(&task_id, task_details);
 
+			Self::deposit_event(
+				Event::CourtAdjourned(
+					task_id.clone()
+				)
+			);
+
 			Ok(())
 		}
 
@@ -978,7 +1009,7 @@ pub mod pallet {
 					let task_id = task_autocompletion.task_id;
 					let mut task_details = Self::task(task_id.clone());
 					// * Checking if no court dispute is raised for the task
-					if task_details.status == Status::CustomerRatingPending {
+					if task_details.status == Status::CustomerRatingProvided {
 						let publisher_id = task_details.publisher.clone();
 						let worker_id = task_details.worker_id.clone().unwrap();
 						let escrow_id = Self::escrow_account_id(task_id.clone() as u32);
@@ -1127,12 +1158,16 @@ pub mod pallet {
 			let fraction = avg_rating.fract();
 
 			// ----- Result at different conditions
-			if fraction > 0.5 {
-				output = rounded_avg_rating + 1;
-			} else if fraction < 0.0 {
-				output = 0;
+			if rounded_avg_rating !=0 {
+				if fraction >= 0.5 {
+					output = rounded_avg_rating + 1;
+				} else if fraction == 0.0 {
+					output = rounded_avg_rating;
+				} else {
+					output = rounded_avg_rating - 1;
+				}
 			} else {
-				output = rounded_avg_rating - 1;
+				output =0;
 			}
 			// -----
 
@@ -1140,3 +1175,5 @@ pub mod pallet {
 		}
 	}
 }
+
+
