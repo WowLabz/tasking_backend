@@ -3,6 +3,7 @@ use crate as pallet_tasking;
 use sp_core::H256;
 use sp_std::prelude::*;
 use frame_support::parameter_types;
+use frame_support::PalletId;
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup}, testing::Header,
 };
@@ -22,25 +23,30 @@ frame_support::construct_runtime!(
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Module, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
         Tasking: pallet_tasking::{Pallet, Call, Storage, Event<T>},
-        Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
     }
 
 );
 
 parameter_types! {
     pub const ExistentialDeposit: u64 = 1;
+    pub const MaxReserves: u32 = 1000000;
 }
 
 impl pallet_balances::Config for Test {
     type MaxLocks = ();
-    type Balance = u64;
-    type DustRemoval = ();
-    type Event = Event;
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = [u8; 8];
+	/// The type for recording an account's balance.
+	type Balance = Balance;
+	/// The ubiquitous event type.
+	type Event = Event;
+	type DustRemoval = ();
+	type ExistentialDeposit = ExistentialDeposit;
+	type AccountStore = System;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -49,7 +55,7 @@ parameter_types! {
 }
 
 impl system::Config for Test {
-    type BaseCallFilter = ();
+    type BaseCallFilter = frame_support::traits::Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;
@@ -70,12 +76,18 @@ impl system::Config for Test {
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
-    type SS58Prefix = ();
+    type SS58Prefix = SS58Prefix;
+    type OnSetCode = ();
+}
+
+parameter_types! {
+	pub const MyPalletId: PalletId = PalletId(*b"acescrow");
 }
 
 impl pallet_tasking::Config for Test {
     type Event = Event;
     type Currency = Balances;
+    type PalletId = MyPalletId;
 }
 
 // Implementing the ExtBuilder to initialize balances 

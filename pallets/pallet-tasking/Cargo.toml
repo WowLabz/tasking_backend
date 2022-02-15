@@ -98,5 +98,6 @@ std = [
     'frame-benchmarking/std',
     'pallet-membership/std',
     'sp-std/std',
+    'pallet-balances/std',
 ]
 try-runtime = ['frame-support/try-runtime']

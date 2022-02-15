@@ -352,7 +352,6 @@ pub mod pallet {
 		fn on_initialize(now: T::BlockNumber) -> Weight {
 			let total_weight: Weight = 10;
 			Self::collect_cases(now);
-			Self::end_task(now);
 			total_weight
 		}
 	}
@@ -786,17 +785,6 @@ pub mod pallet {
 			task.status = Status::CustomerRatingProvided;
 			<TaskStorage<T>>::insert(&task_id, task.clone());
 
-			// ----- Providing for grace period for task completion
-			let block_number = <frame_system::Pallet<T>>::block_number();
-			// NOTE: Task completion block (4hrs = 2_400 slots)
-			let task_will_complete_at = block_number + 10u32.into();
-			let mut task_completions = Self::get_task_autocompletions();
-			let task_autocomplete: TaskAutocompletion<BlockNumberOf<T>> =
-				TaskAutocompletion { task_id, task_will_complete_at };
-			task_completions.push(task_autocomplete);
-			<TaskAutocompletions<T>>::put(task_completions);
-			// -----
-
 			// Notify the user about the task being closed
 			Self::deposit_event(
 				Event::CustomerRatingProvided(
@@ -807,6 +795,50 @@ pub mod pallet {
 				));
 
 			Ok(())
+		}
+
+		#[pallet::weight(100)]
+		pub fn close_task(
+			origin:OriginFor<T>,
+			task_id: u128,	
+		) -> DispatchResult {
+
+			// User authentication
+			let publisher = ensure_signed(origin)?;
+			// Does task exist?
+			ensure!(<TaskStorage<T>>::contains_key(task_id.clone()), <Error<T>>::TaskDoesNotExist);
+			// Getting task details from storage
+			let mut task_details = Self::task(task_id.clone());
+			// Accessing task status
+			let status = task_details.status;
+			// Is approval pending?
+			ensure!(status == Status::CustomerRatingProvided, <Error<T>>::CustomerRatingNotProvided);
+			// Accessing publisher
+			let approver = task_details.publisher.clone();
+			// Is publisher the approver?
+			ensure!(publisher == approver.clone(), <Error<T>>::UnauthorisedToApprove);
+
+			let worker_id = task_details.worker_id.clone().unwrap();
+			let escrow_id = Self::escrow_account_id(task_id.clone() as u32);
+			let transfer_amount = T::Currency::free_balance(&escrow_id);
+			T::Currency::transfer(
+				&escrow_id,
+				&worker_id,
+				transfer_amount,
+				ExistenceRequirement::AllowDeath,
+			)?;
+			task_details.status = Status::Completed;
+
+			TaskStorage::<T>::insert(&task_id, task_details);
+
+			Self::deposit_event(Event::AmountTransfered(
+				publisher,
+				worker_id,
+				transfer_amount.clone(),
+			));
+			Self::deposit_event(Event::TaskClosed(task_id.clone()));
+			Ok(())
+
 		}
 
 		#[pallet::weight(10_000)]
@@ -993,48 +1025,6 @@ pub mod pallet {
 					task_id.clone()
 				)
 			);
-
-			Ok(())
-		}
-
-		pub fn end_task(block_number: BlockNumberOf<T>) -> DispatchResult {
-			// Getting task autocompletions vector from storage
-			let mut task_autocompletions = Self::get_task_autocompletions();
-			// Only retain those records with case ending period >= current block number
-			task_autocompletions.retain(|x| x.task_will_complete_at >= block_number);
-
-			// ----- Transfering funds to worker on reaching final block number
-			for task_autocompletion in task_autocompletions.iter() {
-				if block_number == task_autocompletion.task_will_complete_at {
-					let task_id = task_autocompletion.task_id;
-					let mut task_details = Self::task(task_id.clone());
-					// * Checking if no court dispute is raised for the task
-					if task_details.status == Status::CustomerRatingProvided {
-						let publisher_id = task_details.publisher.clone();
-						let worker_id = task_details.worker_id.clone().unwrap();
-						let escrow_id = Self::escrow_account_id(task_id.clone() as u32);
-						let transfer_amount = T::Currency::free_balance(&escrow_id);
-						T::Currency::transfer(
-							&escrow_id,
-							&worker_id,
-							transfer_amount,
-							ExistenceRequirement::AllowDeath,
-						)?;
-						task_details.status = Status::Completed;
-						TaskStorage::<T>::insert(&task_id, task_details);
-						Self::deposit_event(Event::AmountTransfered(
-							publisher_id,
-							worker_id,
-							transfer_amount.clone(),
-						));
-						Self::deposit_event(Event::TaskClosed(task_id.clone()));
-					}
-				}
-			}
-			// -----
-
-			// Updating the task autocompletions storage
-			<TaskAutocompletions<T>>::put(task_autocompletions);
 
 			Ok(())
 		}
