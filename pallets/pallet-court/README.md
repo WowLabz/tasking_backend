@@ -107,8 +107,13 @@ Fix - Go to next set of probable users (Create accounts from polkadot js extensi
 
 Changes:
 1. Instead of automatic release of funds, create an extrinsic that is to be called by the customer to be satisfied with the rating provided to him and close the  task - Done
-2. Creaate Register Dispute extrinsic for court ot be summoned at any stage by anyone
+2. Create Register Dispute extrinsic for court ot be summoned at any stage by anyone - Done
+ ( Do we need to check if the worker is the bidder and the customer is the publisher while calling the extrinsic) 
 3. Resolve Cases 
+
+In the case of no one votes, do we need to calculate potential jurors again inclusive of people who accepted duty last time
+Pass entire court adjourned in a if condition based on final juror length
+(Once Super user is added change maximum number of court initations to 3)
 
 
 

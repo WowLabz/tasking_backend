@@ -22,8 +22,7 @@ pub mod pallet {
 		log,
 		sp_runtime::traits::{AccountIdConversion, SaturatedConversion},
 		traits::{
-			tokens::ExistenceRequirement, Currency, LockIdentifier, LockableCurrency,
-			WithdrawReasons,
+			tokens::ExistenceRequirement, Currency, LockableCurrency,
 		},
 	};
 
@@ -59,13 +58,11 @@ pub mod pallet {
 		PendingApproval,
 		CustomerRatingPending,
 		CustomerRatingProvided,
-		/// -> Change
+		/// -> Court Period Statuses
 		DisputeRaised,
 		VotingPeriod,
 		JuryDecisionReached,
-		CompletedByDefault,
-		CaseClosed,
-		/// -> Change
+		/// -> Court Period Statuses
 		Completed,
 	}
 
@@ -80,6 +77,8 @@ pub mod pallet {
 		DisapproveTask,
 		UnsatisfiedWorkerRating,
 		UnsatisfiedPublisherRating,
+		AgainstPublisher,
+		AgaisntWorker,
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
@@ -288,11 +287,12 @@ pub mod pallet {
 		AccBalance(T::AccountId, BalanceOf<T>),
 		CountIncreased(u128),
 		TransferMoney(T::AccountId, BalanceOf<T>, BalanceOf<T>, T::AccountId, BalanceOf<T>, BalanceOf<T>),
-		CourtSummoned(u128, Reason, UserType, T::AccountId),
+		CourtSummoned(u128, UserType, Reason, T::AccountId),
 		NewJurorAdded(u128, T::AccountId),
 		CustomerRatingProvided(u128, T::AccountId, u8, T::AccountId),
 		VoteRecorded(u128,T::AccountId),
 		CourtAdjourned(u128),
+		CourtReinitiated(u128),
 	}
 
 	#[pallet::error]
@@ -344,7 +344,10 @@ pub mod pallet {
 		/// To ensure jurors can't vote beyond the voting period		
 		CaseClosed,
 		/// To ensure Customer Rating exists
-		CustomerRatingNotProvided
+		CustomerRatingNotProvided,
+		/// To ensure Court is not summoned again for the same task
+		DisputeAlreadyRaised,
+
 	}
 
 	#[pallet::hooks]
@@ -358,6 +361,41 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+
+		#[pallet::weight(10_000)]
+		pub fn raise_dispute(
+			origin: OriginFor<T>,
+			task_id:u128,
+			user_type: UserType,
+		)->DispatchResult {
+
+			// User authentication
+			let who = ensure_signed(origin)?;
+			// Ensure task exists and is active
+			ensure!(<TaskStorage<T>>::contains_key(&task_id), <Error<T>>::TaskDoesNotExist);
+			// Get task details from storage
+			let task_details = Self::task(task_id.clone());
+			// Accessing status from task details
+			let status = task_details.status.clone();
+			ensure!(status != Status::InProgress, <Error<T>>::TaskInProgress);
+			ensure!(status !=Status::Completed, <Error<T>>::TaskIsNotOpen);
+			ensure!(status !=Status::DisputeRaised, <Error<T>>::DisputeAlreadyRaised);
+			ensure!(status !=Status::VotingPeriod, <Error<T>>::DisputeAlreadyRaised);
+
+			Self::register_case(task_id.clone(), task_details);
+
+			let against = match user_type {
+				UserType::Customer => Reason::AgaisntWorker,
+				UserType::Worker => Reason::AgainstPublisher,
+			};
+
+			// Notify event for summoning court
+			Self::deposit_event(Event::CourtSummoned(task_id, user_type, against, who));
+
+
+			Ok(())
+
+		}
 
 		#[pallet::weight(10_000)]
 		pub fn disapprove_rating(
@@ -389,7 +427,7 @@ pub mod pallet {
 				UserType::Worker => Reason::UnsatisfiedWorkerRating,
 			};
 			// Notify event for summoning court
-			Self::deposit_event(Event::CourtSummoned(task_id, reason, user_type, who));
+			Self::deposit_event(Event::CourtSummoned(task_id, user_type, reason, who));
 
 			Ok(())
 		}
@@ -415,8 +453,8 @@ pub mod pallet {
 			// Notifying that the court is summoned
 			Self::deposit_event(Event::CourtSummoned(
 				task_id,
-				Reason::DisapproveTask,
 				UserType::Customer,
+				Reason::DisapproveTask,
 				publisher,
 			));
 
@@ -660,8 +698,6 @@ pub mod pallet {
 			let status = task.status;
 			// Is task in progress?
 			ensure!(status == Status::InProgress, <Error<T>>::TaskIsNotInProgress);
-			// Accessing publisher
-			let publisher = task.publisher.clone();
 			// Checking if worker is set or not
 			let worker = task.worker_id.clone().ok_or(<Error<T>>::WorkerNotSet)?;
 			// Is worker the biider?
@@ -983,48 +1019,64 @@ pub mod pallet {
 					)?;
 				}
 				remaining_amount = (task_cost_converted * 140) / 100 as u128;
-			} else {
-				remaining_amount = (task_cost_converted * 200) / 100 as u128;
-			}
-			// -----
 
-			// Convert remaining amount to u128
-			let mut remaining_amount_converted = remaining_amount as u32;
+				// Convert remaining amount to u128
+				let mut remaining_amount_converted = remaining_amount as u32;
 
-			// ----- Checking if winner is customer or no one
-			if dispute_details.winner == Some(UserType::Customer) || dispute_details.winner == None
-			{
-				// NOTE: AccountMap value should ideally be task cost & bidder cost and not remaining amount/2
-				let remaining_amount_for_customer = remaining_amount / 2;
-				let remaining_amount_converted_for_customer = remaining_amount_for_customer as u32;
-				remaining_amount_converted = remaining_amount_converted_for_customer;
-				// * Transfering to winner account
+				// ----- Checking if winner is customer or no one
+				if dispute_details.winner == Some(UserType::Customer) || dispute_details.winner == None
+				{
+					// NOTE: AccountMap value should ideally be task cost & bidder cost and not remaining amount/2
+					let remaining_amount_for_customer = remaining_amount / 2;
+					let remaining_amount_converted_for_customer = remaining_amount_for_customer as u32;
+					remaining_amount_converted = remaining_amount_converted_for_customer;
+					// * Transfering to winner account
+					T::Currency::transfer(
+						&escrow_id,
+						&winner_account_id[1],
+						remaining_amount_converted_for_customer.into(),
+						ExistenceRequirement::KeepAlive,
+					)?;
+				}
+				// -----
+
+				// Transfering to winner account
 				T::Currency::transfer(
 					&escrow_id,
-					&winner_account_id[1],
-					remaining_amount_converted_for_customer.into(),
-					ExistenceRequirement::KeepAlive,
+					&winner_account_id[0],
+					remaining_amount_converted.into(),
+					ExistenceRequirement::AllowDeath,
 				)?;
+				// Updating the task details structure
+				task_details.dispute = Some(dispute_details);
+				task_details.status = Status::Completed;
+				// Updating the task details storage
+				<TaskStorage<T>>::insert(&task_id, task_details);
+
+				Self::deposit_event(
+					Event::CourtAdjourned(
+						task_id.clone()
+					)
+				);
+
+			} else {
+				task_details.status = Status::DisputeRaised;
+				let case_period = Self::calculate_case_period(task_details.clone());
+				dispute_details.jury_acceptance_period = case_period.0;
+				dispute_details.total_case_period = case_period.1;
+				dispute_details.potential_jurors = Self::potential_jurors(task_details.clone());
+				dispute_details.final_jurors.clear();
+				task_details.dispute = Some(dispute_details);
+				<TaskStorage<T>>::insert(task_id, task_details);
+
+				Self::deposit_event(
+					Event::CourtReinitiated(
+						task_id.clone()
+					)
+				);
 			}
 			// -----
 
-			// Transfering to winner account
-			T::Currency::transfer(
-				&escrow_id,
-				&winner_account_id[0],
-				remaining_amount_converted.into(),
-				ExistenceRequirement::AllowDeath,
-			)?;
-			// Updating the task details structure
-			task_details.dispute = Some(dispute_details);
-			// Updating the task details storage
-			<TaskStorage<T>>::insert(&task_id, task_details);
-
-			Self::deposit_event(
-				Event::CourtAdjourned(
-					task_id.clone()
-				)
-			);
 
 			Ok(())
 		}
