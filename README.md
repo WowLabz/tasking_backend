@@ -6,18 +6,20 @@
 - **Payment Address:** 0xF13001401396AA866E8012f31fD939C7E83B8601
 - **Level:** 2
 
-## Project Overview
+## Project Overview :page_facing_up:
 
-> Dot Marketplace is a general-purpose decentralized marketplace created as a Substrate pallet.
-> 
+### **Overview**
+
+Dot Marketplace is a general-purpose decentralized marketplace created as a Substrate pallet.
+
 - Dot Marketplace can be used by any decentralized project to float tasks and invite their community members to execute them for a reward. Its POC was developed during the Polkadot India Buildathon (2021).
 - It would be directly integrated into Polkadot JS Apps, where such marketplaces could create bounties and tasks that community members could fulfill.
 - The inspiration for Dot Marketplace emerged from our own needs while building Yoda - a protocol that facilitates decentralized app development leveraging open data. Dot Marketplace would be used to create data, services, and app marketplaces on Yoda, which would motivate us to maintain this project in the long run.
 
-## Project Details
+### **Project Details**
 
-> The current scope of work involves implementing a decentralized court system to resolve disputes in the marketplace and a chat feature between two users.
-> 
+The current scope of work involves implementing a **decentralized court system** to resolve disputes in the marketplace and a **chat feature** between two users.
+
 - The court is a functionality that delivers unbiased decisions and is driven by a jury.
 - The jury is the participants already present on the chain
 - The jury is selected based on some criteria
@@ -31,10 +33,11 @@
 - In case of a tie or if no juror votes, the voting is carried out by the super juror, who will cast a vote based on the work submitted.
 - A user can call the court on the unsatisfactory rating provided by either the customer or the worker.
 
-> The flow of tasking pallet with decentralized court implementation
-> 
+The flow of tasking pallet with decentralized court implementation
 
-![Tasking-Court-Flow4.drawio.svg](Dot%20Marketplace%20v2%20c7348cd1919a40528f59d4e5a0bcf9b8/Tasking-Court-Flow4.drawio.svg)
+
+![Tasking-Court-Flow4 drawio](https://user-images.githubusercontent.com/58659064/154290137-741e7fb6-5aea-40dc-8b3b-71304e08ba79.svg)
+
 
 Dot Marketplace is being built as a Substrate pallet. It would include boilerplate code that para-chain teams can customize as per their requirements. We believe this project has the potential to transform community participation, engagement, and governance in decentralized projects.
 
@@ -103,7 +106,7 @@ We believe this work could be helpful for any Polkadot para-chains/ para-threads
 - [**Varun Gyanchandani**](https://www.linkedin.com/in/varunsays/) [ Backend Lead ]
 - [**Loakesh Indiran**](https://www.linkedin.com/in/loakesh-indiran-8a2282140) [ Full Stack Developer ]
 - [**Tejas Gaware**](http://www.linkedin.com/in/tejas-vijay-1430a3190) [ Backend Developer ]
-- [Praneeth Ratnagiri](https://www.linkedin.com/in/praneeth-ratnagiri-772a43174/) [ Backend Developer ]
+- [**Praneeth Ratnagiri**](https://www.linkedin.com/in/praneeth-ratnagiri-772a43174/) [ Backend Developer ]
 
 ### **Contact**
 
@@ -137,13 +140,20 @@ Dot Marketplace POC was conceptualized and developed during the Polkadot India h
 - Here's a link to the [approved grant proposal for the first phase.](https://github.com/w3f/Grants-Program/blob/master/applications/dot_marketplace.md)
 - We are in touch with Marcin and Raul from the Web 3 Grants and Treasuries team, respectively.
 
-## **Development Roadmap**
+## **Development Roadmap** 🔩
 
 ****Overview****
 
 - Total duration: 5 weeks
+- The development of Dot Marketplace v2 is already underway. 
 
-****Milestone 1 `(Duration: 1 week)`**
+
+### **Milestone 1**
+
+* **Estimated duration:** 1 week
+* **FTE:**  
+* **PTE:**  
+* **Costs:**   USD  // rest is funded by Yoda  
 
 The main deiverabel for this milestone will be to migrate the existing application to substrate frame v2 and include the chat feature for communication between a customer and worker.
 
@@ -157,7 +167,13 @@ The main deiverabel for this milestone will be to migrate the existing applicati
 | 2 | User Chat | Chat functionality in the marketplace between two users to ease communication |
 |  |  |  |
 
-****Milestone 2 `(Duration: 2 weeks)`**
+### **Milestone 2**
+
+* **Estimated duration:** 2 weeks
+* **FTE:**  
+* **PTE:**  
+* **Costs:**   USD  // rest is funded by Yoda  
+
 
 In continuation to previous work, this milestone involves creation of a on chain decentralized court to handle dispute resolution. Being a juror is one of the user incentives that can be achieved thanks to the rating module mentioned in the first phase of dot marketplace.
 
@@ -176,7 +192,12 @@ In continuation to previous work, this milestone involves creation of a on chain
 | 4 | Escrow  | Single account for storing all the funds for transfer/exchange. Account for creating task, bidding for the task, transferring juror fees (if the court is summoned), transferring winner fees. |
 | 5 | Scheduler | Custom event scheduler built based on block number to facilitate the waiting periods for jury acceptance and jury voting. |
 
-****Milestone 3 `(Duration: 2 weeks)`**
+### **Milestone 3**
+
+* **Estimated duration:** 2 weeks
+* **FTE:**  
+* **PTE:**  
+* **Costs:**   USD  // rest is funded by Yoda  
 
 Dot Marketplace will also include frontend UI including the court and chat functionality built on top of the `substrate-front-end-template`
 
@@ -192,19 +213,23 @@ Dot Marketplace will also include frontend UI including the court and chat funct
 | 2 | Website | Dedicated one page website for Dot Marketplace |
 | 3 | Article | Website article sharing the motivation behind Dot Marketplace and how to make best use of it |
 
-****Additional Project Details****
+### **Additional Project Details**
 
-Tech stack used: `Rust, Substrate, React, Python, centralized cloud storage`****
+* Technology stack being used
+  * Rust, Substrate, React, Python, centralised cloud storage
 
-****Future Plans****
+### **Future Plans** 
+Future releases of the Dot Marketplace include:
 
 | Phase | Feature | Description |
 | --- | --- | --- |
 | 3 | Milestone based submissions | Making provisions to breakdown a project into multiple configurable milestones to allow parallel or sequential execution |
 | 4 | Decentralized Storage | Integration with IPFS or another decentralized storage platform |
 
-****Additional Information ➕****
+###
 
-Q). **How did you hear about the Grants Program?**
+## Additional Information :heavy_plus_sign:
 
-A). Web3 Foundation Website, Polkadot India Buildathon
+**How did you hear about the Grants Program?** Web3 Foundation Website, Polkadot India Buildathon 
+
+* We have been working on this roadmap since we applied for the Web3 grant
