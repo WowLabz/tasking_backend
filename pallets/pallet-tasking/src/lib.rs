@@ -83,18 +83,18 @@ pub mod pallet {
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
 	pub struct TaskDetails<AccountId, Balance, BlockNumber> {
-		task_id: u128,
-		publisher: AccountId,
-		worker_id: Option<AccountId>,
-		publisher_name: Option<Vec<u8>>,
-		worker_name: Option<Vec<u8>>,
-		task_tags: Vec<TaskTypeTags>,
-		task_deadline: u64,
-		cost: Balance,
-		status: Status,
-		task_description: Vec<u8>,
-		attachments: Option<Vec<Vec<u8>>>,
-		dispute: Option<CourtDispute<AccountId, BlockNumber>>
+		pub task_id: u128,
+		pub publisher: AccountId,
+		pub worker_id: Option<AccountId>,
+		pub publisher_name: Option<Vec<u8>>,
+		pub worker_name: Option<Vec<u8>>,
+		pub task_tags: Vec<TaskTypeTags>,
+		pub task_deadline: u64,
+		pub cost: Balance,
+		pub status: Status,
+		pub task_description: Vec<u8>,
+		pub attachments: Option<Vec<Vec<u8>>>,
+		pub dispute: Option<CourtDispute<AccountId, BlockNumber>>
 	}
 
 	#[derive(Encode, Decode, PartialEq, Eq, Debug, Clone, TypeInfo)]
@@ -952,7 +952,8 @@ pub mod pallet {
 				dispute_details.clone().final_jurors.into_iter().filter(|(_, value)| value.voted_for != None).collect();
 			let final_jurors_count: u8 = final_jurors_details.len() as u8;
 			// -----
-			
+
+
 			// ----- Calculating total rating for publisher and worker from jurors
 			for juror_decision in final_jurors_details.values() {
 				total_publisher_rating += juror_decision.publisher_rating.unwrap_or(0);
@@ -1076,8 +1077,8 @@ pub mod pallet {
 				);
 			}
 			// -----
-
-
+ 	
+	
 			Ok(())
 		}
 

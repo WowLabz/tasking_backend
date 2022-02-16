@@ -111,6 +111,8 @@ Changes:
  ( Do we need to check if the worker is the bidder and the customer is the publisher while calling the extrinsic) 
 3. Resolve Cases 
 
+// Have alice by defaut as super user who will ideally be a council member
+
 In the case of no one votes, do we need to calculate potential jurors again inclusive of people who accepted duty last time
 Pass entire court adjourned in a if condition based on final juror length
 (Once Super user is added change maximum number of court initations to 3)
