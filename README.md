@@ -1,235 +1,210 @@
-# Substrate Node Template
+# Dot Marketplace v2
 
-[![Try on playground](https://img.shields.io/badge/Playground-Node_Template-brightgreen?logo=Parity%20Substrate)](https://docs.substrate.io/playground/) [![Matrix](https://img.shields.io/matrix/substrate-technical:matrix.org)](https://matrix.to/#/#substrate-technical:matrix.org)
+- **Status:** Open
+- **Project Name:** Dot Marketplace
+- **Team Name:** Wow Labz
+- **Payment Address:** 0xF13001401396AA866E8012f31fD939C7E83B8601
+- **Level:** 2
 
-A fresh FRAME-based [Substrate](https://www.substrate.io/) node, ready for hacking :rocket:
+## Project Overview
 
-## Getting Started
+> Dot Marketplace is a general-purpose decentralized marketplace created as a Substrate pallet.
+> 
+- Dot Marketplace can be used by any decentralized project to float tasks and invite their community members to execute them for a reward. Its POC was developed during the Polkadot India Buildathon (2021).
+- It would be directly integrated into Polkadot JS Apps, where such marketplaces could create bounties and tasks that community members could fulfill.
+- The inspiration for Dot Marketplace emerged from our own needs while building Yoda - a protocol that facilitates decentralized app development leveraging open data. Dot Marketplace would be used to create data, services, and app marketplaces on Yoda, which would motivate us to maintain this project in the long run.
 
-Follow the steps below to get started with the Node Template, or get it up and running right from
-your browser in just a few clicks using
-the [Substrate Playground](https://docs.substrate.io/playground/) :hammer_and_wrench:
+## Project Details
 
-### Using Nix
+> The current scope of work involves implementing a decentralized court system to resolve disputes in the marketplace and a chat feature between two users.
+> 
+- The court is a functionality that delivers unbiased decisions and is driven by a jury.
+- The jury is the participants already present on the chain
+- The jury is selected based on some criteria
+- The potential jurors are collected from the chain based on their past ratings and whether they have the expertise of the task in question
+- Then the final jurors can nominate themselves to be part of the jury for a specific job after accepting the proposal
+- All court cases are time-bound and are given 3 days (43,000 slots) in total
+- The 3 days are divided into 2 parts:
+    - Jury acceptance period (14,400 slots) - This is the period for the potential jurors to accept the jury duty
+    - Voting period (28,800 slots) - This is the time for the jurors to cast their vote. One juror gets only one vote which can be in favor of the customer or service provider (worker)
+- After concluding, all the jurors who participated in the case get a commission, which is based on the total cost of the entire task.
+- In case of a tie or if no juror votes, the voting is carried out by the super juror, who will cast a vote based on the work submitted.
+- A user can call the court on the unsatisfactory rating provided by either the customer or the worker.
 
-Install [nix](https://nixos.org/) and optionally [direnv](https://github.com/direnv/direnv) and
-[lorri](https://github.com/target/lorri) for a fully plug and play experience for setting up the
-development environment. To get all the correct dependencies activate direnv `direnv allow` and
-lorri `lorri shell`.
+> The flow of tasking pallet with decentralized court implementation
+> 
 
-### Rust Setup
+![Tasking-Court-Flow4.drawio.svg](Dot%20Marketplace%20v2%20c7348cd1919a40528f59d4e5a0bcf9b8/Tasking-Court-Flow4.drawio.svg)
 
-First, complete the [basic Rust setup instructions](./docs/rust-setup.md).
+Dot Marketplace is being built as a Substrate pallet. It would include boilerplate code that para-chain teams can customize as per their requirements. We believe this project has the potential to transform community participation, engagement, and governance in decentralized projects.
 
-### Run
-
-Use Rust's native `cargo` command to build and launch the template node:
-
-```sh
-cargo run --release -- --dev --tmp
-```
-
-### Build
-
-The `cargo run` command will perform an initial build. Use the following command to build the node
-without launching it:
-
-```sh
-cargo build --release
-```
-
-### Embedded Docs
-
-Once the project has been built, the following command can be used to explore all parameters and
-subcommands:
-
-```sh
-./target/release/node-template -h
-```
-
-## Run
-
-The provided `cargo run` command will launch a temporary node and its state will be discarded after
-you terminate the process. After the project has been built, there are other ways to launch the
-node.
-
-### Single-Node Development Chain
-
-This command will start the single-node development chain with non-persistent state:
+### **Repository Hierarchy**
 
 ```bash
-./target/release/node-template --dev
+node
+├── build.rs
+├── Cargo.toml
+└── src
+    ├── chain_spec.rs
+    ├── cli.rs
+    ├── command.rs
+    ├── lib.rs
+    ├── main.rs
+    ├── rpc.rs
+    └── service.rs
+scripts
+├── docker_run.sh
+└── init.sh
+pallets
+├── pallet-chat
+│   ├── Cargo.toml
+│   ├── README.md
+│   └── src
+│       ├── benchmarking.rs
+│       ├── lib.rs
+│       ├── mock.rs
+│       └── tests.rs
+├── pallet-court
+│   ├── Cargo.toml
+│   ├── README.md
+│   └── src
+│       └── lib.rs
+└── pallet-tasking
+    ├── Cargo.toml
+    ├── README.md
+    └── src
+        ├── benchmarking.rs
+        ├── lib.rs
+        ├── mock.rs
+        └── tests.rs
+runtime
+├── build.rs
+├── Cargo.toml
+└── src
+    └── lib.rs
 ```
 
-Purge the development chain's state:
+The current focus is to enhance the existing Substrate pallet and allied code base to get a basic yet functional marketplace up and running.
 
-```bash
-./target/release/node-template purge-chain --dev
-```
+### **Ecosystem Fit**
 
-Start the development chain with detailed logging:
+We believe this work could be helpful for any Polkadot para-chains/ para-threads interested in including a marketplace with an on-chain dispute resolution mechanism.
 
-```bash
-RUST_BACKTRACE=1 ./target/release/node-template -ldebug --dev
-```
+- Almost all para-chains/ para-threads would find motivation in encouraging their community members to contribute meaningfully to their roadmap. This can be achieved by utilizing a marketplace like Dot Marketplace where technical, marketing or governance-centric tasks can be published. And community members are invited to bid for and execute them.
+- The on chain court will act as an dispute resolution mechanism between users involved in a task. A set of community members meeting a certain criteria get to be a part of the jury for the dispute and cast votes, based on which a decision is reached.
+- To facilitate easier communication between a customer and a worker, a one-to-one chat feature is created.
 
-> Development chain means that the state of our chain will be in a tmp folder while the nodes are
->   running. Also, **alice** account will be authority and sudo account as declared in the [genesis
-> state](https://github.com/substrate-developer-hub/substrate-node-template/blob/main/node/src/
-chain_spec.rs#L49). At the same time the following accounts will be prefunded:
-> - Alice
-> - Bob 
-> - Alice//stash
-> - Bob//stash
+## **Team 👥**
 
-In case of being interested in maintaining the chain' state between runs a base path must be added
-so the db can be stored in the provided folder instead of a temporal one. We could use this folder 
-to store different chain databases, as a different folder will be created per different chain that
-is ran. The following commands shows how to use a newly created folder as our db base path.
+### **Team members**
 
-```bash
-// Create a folder to use as the db base path
-$ mkdir my-chain-state
+- [**Amit Singh**](https://www.linkedin.com/in/startupamit/) [ Product Manager ]
+- [**Roshit Omanakuttan**](https://www.linkedin.com/in/roshit/) [ Technical Architect ]
+- [**Varun Gyanchandani**](https://www.linkedin.com/in/varunsays/) [ Backend Lead ]
+- [**Loakesh Indiran**](https://www.linkedin.com/in/loakesh-indiran-8a2282140) [ Full Stack Developer ]
+- [**Tejas Gaware**](http://www.linkedin.com/in/tejas-vijay-1430a3190) [ Backend Developer ]
+- [Praneeth Ratnagiri](https://www.linkedin.com/in/praneeth-ratnagiri-772a43174/) [ Backend Developer ]
 
-// Use of that folder to store the chain state
-$ ./target/release/node-template --dev --base-path ./my-chain-state/
+### **Contact**
 
-// Check the folder structure created inside the base path after running the chain
-$ ls ./my-chain-state
-chains
-$ ls ./my-chain-state/chains/
-dev
-$ ls ./my-chain-state/chains/dev
-db keystore network
-```
+- **Contact Name:** Amit Singh
+- **Contact Email:** amit (dot) singh (@) wowlabz.com
+- **Website:** [http://www.wowlabz.com](https://www.wowlabz.com/)
+- **Project Website:** Dot marketplace website is under construction
 
+### **Legal Structure**
 
-### Connect with Polkadot-JS Apps Front-end
+- **Registered Address:** Wow Labz, 2Gethr Cowork, Tower B, Mantri Commercio, Outer Ring Rd, Bellandur, Bengaluru, Karnataka, India 560103
+- **Registered Legal Entity:** Wow Internet Labz Private Limited
 
-Once the node template is running locally, you can connect it with **Polkadot-JS Apps** front-end
-to interact with your chain. [Click
-here](https://polkadot.js.org/apps/#/explorer?rpc=ws://localhost:9944) connecting the Apps to your
-local node template.
+### **Team's experience**
 
-### Multi-Node Local Testnet
+Dot Marketplace is being built by the team at Wow Labz. Wow Labz is one of India's leading turnkey product development companies. Yoda Protocol has been conceptualized and is being produced by the team at Wow Labz. The team has previously built a decentralized storage protocol called Lake Network - [https://lakenetwork.io/](https://lakenetwork.io/) in addition to multiple dApps on Ethereum, Stellar, EOS, and Hyperledger.
 
-If you want to see the multi-node consensus algorithm in action, refer to our
-[Start a Private Network tutorial](https://docs.substrate.io/tutorials/v3/private-network).
+A list of centralized apps published can be found [here](https://www.wowlabz.com/work/).
 
-## Template Structure
+### **Team Code Repos**
 
-A Substrate project such as this consists of a number of components that are spread across a few
-directories.
+- [https://github.com/orgs/WowLabz/projects](https://github.com/orgs/WowLabz/projects)
+- [https://github.com/WowLabz/tasking_backend](https://github.com/WowLabz/tasking_backend)
+- [https://github.com/WowLabz/tasking_frontend](https://github.com/WowLabz/tasking_frontend)
+- [https://github.com/WowLabz/yoda_creator_economy_node](https://github.com/WowLabz/yoda_creator_economy_node)
 
-### Node
+## **Development Status 📖**
 
-A blockchain node is an application that allows users to participate in a blockchain network.
-Substrate-based blockchain nodes expose a number of capabilities:
+Dot Marketplace POC was conceptualized and developed during the Polkadot India hackathon. The roadmap listed below comprises new features that would help take the POC to a minimum viable product (MVP).  The first stage of the project involved creating user registration and marketplace based on a bidding system.
 
-- Networking: Substrate nodes use the [`libp2p`](https://libp2p.io/) networking stack to allow the
-  nodes in the network to communicate with one another.
-- Consensus: Blockchains must have a way to come to
-  [consensus](https://docs.substrate.io/v3/advanced/consensus) on the state of the
-  network. Substrate makes it possible to supply custom consensus engines and also ships with
-  several consensus mechanisms that have been built on top of
-  [Web3 Foundation research](https://research.web3.foundation/en/latest/polkadot/NPoS/index.html).
-- RPC Server: A remote procedure call (RPC) server is used to interact with Substrate nodes.
+- Here's a link to the [approved grant proposal for the first phase.](https://github.com/w3f/Grants-Program/blob/master/applications/dot_marketplace.md)
+- We are in touch with Marcin and Raul from the Web 3 Grants and Treasuries team, respectively.
 
-There are several files in the `node` directory - take special note of the following:
+## **Development Roadmap**
 
-- [`chain_spec.rs`](./node/src/chain_spec.rs): A
-  [chain specification](https://docs.substrate.io/v3/runtime/chain-specs) is a
-  source code file that defines a Substrate chain's initial (genesis) state. Chain specifications
-  are useful for development and testing, and critical when architecting the launch of a
-  production chain. Take note of the `development_config` and `testnet_genesis` functions, which
-  are used to define the genesis state for the local development chain configuration. These
-  functions identify some
-  [well-known accounts](https://docs.substrate.io/v3/tools/subkey#well-known-keys)
-  and use them to configure the blockchain's initial state.
-- [`service.rs`](./node/src/service.rs): This file defines the node implementation. Take note of
-  the libraries that this file imports and the names of the functions it invokes. In particular,
-  there are references to consensus-related topics, such as the
-  [longest chain rule](https://docs.substrate.io/v3/advanced/consensus#longest-chain-rule),
-  the [Aura](https://docs.substrate.io/v3/advanced/consensus#aura) block authoring
-  mechanism and the
-  [GRANDPA](https://docs.substrate.io/v3/advanced/consensus#grandpa) finality
-  gadget.
+****Overview****
 
-After the node has been [built](#build), refer to the embedded documentation to learn more about the
-capabilities and configuration parameters that it exposes:
+- Total duration: 5 weeks
 
-```shell
-./target/release/node-template --help
-```
+****Milestone 1 `(Duration: 1 week)`**
 
-### Runtime
+The main deiverabel for this milestone will be to migrate the existing application to substrate frame v2 and include the chat feature for communication between a customer and worker.
 
-In Substrate, the terms
-"[runtime](https://docs.substrate.io/v3/getting-started/glossary#runtime)" and
-"[state transition function](https://docs.substrate.io/v3/getting-started/glossary#state-transition-function-stf)"
-are analogous - they refer to the core logic of the blockchain that is responsible for validating
-blocks and executing the state changes they define. The Substrate project in this repository uses
-the [FRAME](https://docs.substrate.io/v3/runtime/frame) framework to construct a
-blockchain runtime. FRAME allows runtime developers to declare domain-specific logic in modules
-called "pallets". At the heart of FRAME is a helpful
-[macro language](https://docs.substrate.io/v3/runtime/macros) that makes it easy to
-create pallets and flexibly compose them to create blockchains that can address
-[a variety of needs](https://www.substrate.io/substrate-users/).
+| Sr no. | Deliverable | Description |
+| --- | --- | --- |
+| 0a | License | Apache 2.0 |
+| 0b | Documentation | We will provide both inline documentation of the code and a tutorial that explains how a user can use DOT Marketplace and understand the flow of tasking pallet. |
+| 0c | Testing Guide | Functions will be covered by unit tests, the documentation will describe how to run these tests. We will also provide scripts to help deploy, run and test the build. |
+| 0d | Docker Image | Docker image of the build |
+| 1 | Migration from frame v1 to frame v2 | The existing application backend was migrated to frme v2 to account for the new features provided by the framework |
+| 2 | User Chat | Chat functionality in the marketplace between two users to ease communication |
+|  |  |  |
 
-Review the [FRAME runtime implementation](./runtime/src/lib.rs) included in this template and note
-the following:
+****Milestone 2 `(Duration: 2 weeks)`**
 
-- This file configures several pallets to include in the runtime. Each pallet configuration is
-  defined by a code block that begins with `impl $PALLET_NAME::Config for Runtime`.
-- The pallets are composed into a single runtime by way of the
-  [`construct_runtime!`](https://crates.parity.io/frame_support/macro.construct_runtime.html)
-  macro, which is part of the core
-  [FRAME Support](https://docs.substrate.io/v3/runtime/frame#support-crate)
-  library.
+In continuation to previous work, this milestone involves creation of a on chain decentralized court to handle dispute resolution. Being a juror is one of the user incentives that can be achieved thanks to the rating module mentioned in the first phase of dot marketplace.
 
-### Pallets
+| Sr no. | Deliverable | Description |
+| --- | --- | --- |
+| 0a | License | Apache 2.0 |
+| 0b | Documentation | We will provide both inline documentation of the code and a tutorial that explains how a user can use DOT Marketplace and understand the flow of tasking pallet. |
+| 0c | Testing Guide | Functions will be covered by unit tests, the documentation will describe how to run these tests. We will also provide scripts to help deploy, run and test the build. |
+| 0d | Docker Image | Docker image of the build |
+| 1 | Decentralized Court Module | A on chain decentralized court for dispute resolution within the economy. |
+| 1a | Disapprove Task  | In the case of a customer not being satisfied by the work submitted by the service provider. A set of jurors is formed to resolve the dispu te and pass a verdict. |
+| 1b | Disapprove Rating | The customer or the service provider, once they have received their rating for a particular task and are not satisfied by it. |
+| 1c | General Dispute | A general dispute function for cases that do not fall under the categories mentioned in 1a and 1b. |
+| 2 | Jury | The chain specification of the testnet is modified to include more users with necessary specifications to be a part fo the jury. The specifications include having average user rating above a certain threshold and being an expert in the field of the task. A list of potential jurors are notified and they have a period of one day to accept jury duty, with the maximum number of juors capped to 5 per dispute. |
+| 3 | Voting module | Each juror can review the dispute and cast their vote which also includes their rating for both the customer and the worker. After a period of two days all the juror votes are counted and a winner is identified. |
+| 4 | Escrow  | Single account for storing all the funds for transfer/exchange. Account for creating task, bidding for the task, transferring juror fees (if the court is summoned), transferring winner fees. |
+| 5 | Scheduler | Custom event scheduler built based on block number to facilitate the waiting periods for jury acceptance and jury voting. |
 
-The runtime in this project is constructed using many FRAME pallets that ship with the
-[core Substrate repository](https://github.com/paritytech/substrate/tree/master/frame) and a
-template pallet that is [defined in the `pallets`](./pallets/template/src/lib.rs) directory.
+****Milestone 3 `(Duration: 2 weeks)`**
 
-A FRAME pallet is compromised of a number of blockchain primitives:
+Dot Marketplace will also include frontend UI including the court and chat functionality built on top of the `substrate-front-end-template`
 
-- Storage: FRAME defines a rich set of powerful
-  [storage abstractions](https://docs.substrate.io/v3/runtime/storage) that makes
-  it easy to use Substrate's efficient key-value database to manage the evolving state of a
-  blockchain.
-- Dispatchables: FRAME pallets define special types of functions that can be invoked (dispatched)
-  from outside of the runtime in order to update its state.
-- Events: Substrate uses [events and errors](https://docs.substrate.io/v3/runtime/events-and-errors)
-  to notify users of important changes in the runtime.
-- Errors: When a dispatchable fails, it returns an error.
-- Config: The `Config` configuration interface is used to define the types and parameters upon
-  which a FRAME pallet depends.
+| Sr no. | Deliverable | Description |
+| --- | --- | --- |
+| 0a | License | Apache 2.0 |
+| 0b | Documentation | We will provide both inline documentation of the code and a tutorial that explains how a user can use DOT Marketplace and understand the flow of tasking pallet. |
+| 0c | Testing Guide | Functions will be covered by unit tests, the documentation will describe how to run these tests. We will also provide scripts to help deploy, run and test the build. |
+| 0d | Docker Image | Docker image of the build |
+| 1 | Frontend App | Supporting frontend UI to test the aforementioned functionality |
+| 1a | Chat  | UI and supporting functionality fro the user chat feature |
+| 1b  | Court | UI and supporting functionality for the decentralized court module |
+| 2 | Website | Dedicated one page website for Dot Marketplace |
+| 3 | Article | Website article sharing the motivation behind Dot Marketplace and how to make best use of it |
 
-### Run in Docker
+****Additional Project Details****
 
-First, install [Docker](https://docs.docker.com/get-docker/) and
-[Docker Compose](https://docs.docker.com/compose/install/).
+Tech stack used: `Rust, Substrate, React, Python, centralized cloud storage`****
 
-Then run the following command to start a single node development chain.
+****Future Plans****
 
-```bash
-./scripts/docker_run.sh
-```
+| Phase | Feature | Description |
+| --- | --- | --- |
+| 3 | Milestone based submissions | Making provisions to breakdown a project into multiple configurable milestones to allow parallel or sequential execution |
+| 4 | Decentralized Storage | Integration with IPFS or another decentralized storage platform |
 
-This command will firstly compile your code, and then start a local development network. You can
-also replace the default command
-(`cargo build --release && ./target/release/node-template --dev --ws-external`)
-by appending your own. A few useful ones are as follow.
+****Additional Information ➕****
 
-```bash
-# Run Substrate node without re-compiling
-./scripts/docker_run.sh ./target/release/node-template --dev --ws-external
+Q). **How did you hear about the Grants Program?**
 
-# Purge the local dev chain
-./scripts/docker_run.sh ./target/release/node-template purge-chain --dev
-
-# Check whether the code is compilable
-./scripts/docker_run.sh cargo check
-```
+A). Web3 Foundation Website, Polkadot India Buildathon
