@@ -155,7 +155,7 @@ Dot Marketplace POC was conceptualized and developed during the Polkadot India h
 * **PTE:**  
 * **Costs:**   USD  // rest is funded by Yoda  
 
-The main deiverabel for this milestone will be to migrate the existing application to substrate frame v2 and include the chat feature for communication between a customer and worker.
+The main deiverable for this milestone will be to migrate the existing application to substrate frame v2 and include the chat feature for communication between a customer and worker.
 
 | Sr no. | Deliverable | Description |
 | --- | --- | --- |
@@ -163,8 +163,8 @@ The main deiverabel for this milestone will be to migrate the existing applicati
 | 0b | Documentation | We will provide both inline documentation of the code and a tutorial that explains how a user can use DOT Marketplace and understand the flow of tasking pallet. |
 | 0c | Testing Guide | Functions will be covered by unit tests, the documentation will describe how to run these tests. We will also provide scripts to help deploy, run and test the build. |
 | 0d | Docker Image | Docker image of the build |
-| 1 | Migration from frame v1 to frame v2 | The existing application backend was migrated to frme v2 to account for the new features provided by the framework |
-| 2 | User Chat | Chat functionality in the marketplace between two users to ease communication |
+| 1 | Migration from frame v1 to frame v2 | The existing application backend will be migrated to frme v2 to account for the new features provided by the framework |
+| 2 | User Chat | Chat functionality to be exposed and consumed between two users to ease communication |
 |  |  |  |
 
 ### **Milestone 2**
@@ -183,14 +183,14 @@ In continuation to previous work, this milestone involves creation of a on chain
 | 0b | Documentation | We will provide both inline documentation of the code and a tutorial that explains how a user can use DOT Marketplace and understand the flow of tasking pallet. |
 | 0c | Testing Guide | Functions will be covered by unit tests, the documentation will describe how to run these tests. We will also provide scripts to help deploy, run and test the build. |
 | 0d | Docker Image | Docker image of the build |
-| 1 | Decentralized Court Module | A on chain decentralized court for dispute resolution within the economy. |
-| 1a | Disapprove Task  | In the case of a customer not being satisfied by the work submitted by the service provider. A set of jurors is formed to resolve the dispu te and pass a verdict. |
+| 1 | Decentralized Court Module | An on chain decentralized court for dispute resolution within the ecosystem. |
+| 1a | Disapprove Task  | In the case of a customer not being satisfied by the work submitted by the service provider (worker). A set of jurors is formed (court-summon) to resolve the dispute and pass a verdict. |
 | 1b | Disapprove Rating | The customer or the service provider, once they have received their rating for a particular task and are not satisfied by it. |
 | 1c | General Dispute | A general dispute function for cases that do not fall under the categories mentioned in 1a and 1b. |
-| 2 | Jury | The chain specification of the testnet is modified to include more users with necessary specifications to be a part fo the jury. The specifications include having average user rating above a certain threshold and being an expert in the field of the task. A list of potential jurors are notified and they have a period of one day to accept jury duty, with the maximum number of juors capped to 5 per dispute. |
+| 2 | Jury | The chain specification of the testnet is modified to include more users with necessary specifications to be a part of the jury. The specifications include having average user rating above a certain threshold and being an expert in the field of the task. A list of potential jurors are notified and they have a period of one day to accept jury duty, with the maximum number of juors capped to 5 per dispute. |
 | 3 | Voting module | Each juror can review the dispute and cast their vote which also includes their rating for both the customer and the worker. After a period of two days all the juror votes are counted and a winner is identified. |
 | 4 | Escrow  | Single account for storing all the funds for transfer/exchange. Account for creating task, bidding for the task, transferring juror fees (if the court is summoned), transferring winner fees. |
-| 5 | Scheduler | Custom event scheduler built based on block number to facilitate the waiting periods for jury acceptance and jury voting. |
+| 5 | Scheduler | Custom event scheduler built based on block number to facilitate the waiting periods for jury acceptance and juror voting. |
 
 ### **Milestone 3**
 
@@ -211,7 +211,7 @@ Dot Marketplace will also include frontend UI including the court and chat funct
 | 1a | Chat  | UI and supporting functionality fro the user chat feature |
 | 1b  | Court | UI and supporting functionality for the decentralized court module |
 | 2 | Website | Dedicated one page website for Dot Marketplace |
-| 3 | Article | Website article sharing the motivation behind Dot Marketplace and how to make best use of it |
+| 3 | Article | Website article sharing the motivation behind phase 2 of Dot Marketplace and how to make best use of it |
 
 ### **Additional Project Details**
 
