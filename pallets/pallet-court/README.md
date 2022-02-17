@@ -117,6 +117,7 @@ In the case of no one votes, do we need to calculate potential jurors again incl
 Pass entire court adjourned in a if condition based on final juror length
 (Once Super user is added change maximum number of court initations to 3)
 
+----- EVENT NOT BEONG DEPOSITED when all other functions are working in function adjour court, last else block
 
 
 

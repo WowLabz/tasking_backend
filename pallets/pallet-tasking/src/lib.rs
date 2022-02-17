@@ -1061,27 +1061,39 @@ pub mod pallet {
 				);
 
 			} else {
-				task_details.status = Status::DisputeRaised;
-				let case_period = Self::calculate_case_period(task_details.clone());
-				dispute_details.jury_acceptance_period = case_period.0;
-				dispute_details.total_case_period = case_period.1;
-				dispute_details.potential_jurors = Self::potential_jurors(task_details.clone());
-				if final_jurors_count != 0 {
-					dispute_details.final_jurors.clear();
-				}
-				task_details.dispute = Some(dispute_details);
-				<TaskStorage<T>>::insert(task_id, task_details);
 
-				Self::deposit_event(
-					Event::CourtReinitiated(
-						task_id.clone()
-					)
-				);
+				Self::reset_case_period(task_id,task_details);
+				
 			}
 			// -----
  	
 	
 			Ok(())
+		}
+
+		pub fn reset_case_period(
+			task_id: u128,
+			mut task_details: TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
+		) {
+			
+			let mut dispute_details = task_details.dispute.clone().unwrap();
+			task_details.status = Status::DisputeRaised;
+			let case_period = Self::calculate_case_period(task_details.clone());
+			dispute_details.jury_acceptance_period = case_period.0;
+			dispute_details.total_case_period = case_period.1;
+			dispute_details.potential_jurors = Self::potential_jurors(task_details.clone());
+			if dispute_details.final_jurors.len() != 0 {
+				dispute_details.final_jurors.clear();
+			}
+			task_details.dispute = Some(dispute_details);
+			<TaskStorage<T>>::insert(task_id, task_details);
+
+			Self::deposit_event(
+				Event::CourtReinitiated(
+					task_id.clone()
+				)
+			);
+
 		}
 
 		pub fn register_case(
@@ -1128,11 +1140,18 @@ pub mod pallet {
 			for hearing in hearings.iter() {
 				if block_number == hearing.jury_acceptance_period {
 					let mut task_details = Self::task(hearing.task_id.clone());
-					task_details.status = Status::VotingPeriod;
-					<TaskStorage<T>>::insert(&hearing.task_id, task_details);
+					let dispute_details = task_details.dispute.clone().unwrap();
+					if dispute_details.final_jurors.len() == 0
+					{
+						Self::reset_case_period(hearing.task_id,task_details);
+					}else
+					{
+						task_details.status = Status::VotingPeriod;
+						<TaskStorage<T>>::insert(&hearing.task_id, task_details);
+					}
 				} else if block_number == hearing.total_case_period {
 					// * Ending the court case
-					Self::adjourn_court(hearing.task_id.clone());
+					Self::adjourn_court(hearing.task_id);
 				}
 			}
 			// -----
