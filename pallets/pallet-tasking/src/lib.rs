@@ -1006,7 +1006,7 @@ pub mod pallet {
 			let remaining_amount;
 
 			// ----- Only calculate court fees if jurors have voted
-			if total_votes_cast != 0 {
+			if total_votes_cast != 0 as u8{
 				let court_fee = (task_cost_converted * 60) / 100 as u128;
 				let juror_fee: u32 = (court_fee as u32) / (final_jurors_count as u32);
 				let juror_account_ids: Vec<_> = final_jurors_details.keys().cloned().collect();
@@ -1066,7 +1066,9 @@ pub mod pallet {
 				dispute_details.jury_acceptance_period = case_period.0;
 				dispute_details.total_case_period = case_period.1;
 				dispute_details.potential_jurors = Self::potential_jurors(task_details.clone());
-				dispute_details.final_jurors.clear();
+				if final_jurors_count != 0 {
+					dispute_details.final_jurors.clear();
+				}
 				task_details.dispute = Some(dispute_details);
 				<TaskStorage<T>>::insert(task_id, task_details);
 
@@ -1111,12 +1113,17 @@ pub mod pallet {
 			<TaskStorage<T>>::insert(task_id, task_details);
 		}
 
+     
+
 		pub fn collect_cases(block_number: BlockNumberOf<T>) {
 			// Getting hearings vector from storage
 			let mut hearings = Self::get_hearings();
+			log::info!("//////Before{:?}",hearings);
 			// Only retain those hearings with case ending period >= current block number
-			hearings.retain(|x| x.total_case_period >= block_number);
-
+			hearings.retain(|x| x.total_case_period >= block_number); 
+			log::info!("//////After{:?}",hearings);
+			// Updating the hearings storage
+			<Hearings<T>>::put(hearings.clone());
 			// ----- Validating jury acceptance period and total case period
 			for hearing in hearings.iter() {
 				if block_number == hearing.jury_acceptance_period {
@@ -1130,8 +1137,7 @@ pub mod pallet {
 			}
 			// -----
 
-			// Updating the hearings storage
-			<Hearings<T>>::put(hearings);
+
 		}
 
 		pub fn potential_jurors(
@@ -1170,7 +1176,7 @@ pub mod pallet {
 			task_details: TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
 		) -> (BlockNumberOf<T>, BlockNumberOf<T>) {
 			// One era is one day
-			const ONE_ERA: u32 = 10;
+			const ONE_ERA: u32 = 5;
 			// Retrieving complete task details
 			let task_id = task_details.task_id.clone();
 			// Time span for participant to become jurors
