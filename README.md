@@ -93,9 +93,9 @@ The current focus is to enhance the existing Substrate pallet and allied code ba
 
 We believe this work could be helpful for any Polkadot para-chains/ para-threads interested in including a marketplace with an on-chain dispute resolution mechanism.
 
-- Almost all para-chains/ para-threads would find motivation in encouraging their community members to contribute meaningfully to their roadmap. This can be achieved by utilizing a marketplace like Dot Marketplace where technical, marketing or governance-centric tasks can be published. And community members are invited to bid for and execute them.
+- Almost all para-chains/ para-threads would find motivation in encouraging their community members to contribute meaningfully to their roadmap. This can be achieved by utilizing a marketplace like Dot Marketplace where technical, marketing or governance-centric tasks can be published as bounties. And community members are invited to bid for and execute them.
 - The on chain court will act as an dispute resolution mechanism between users involved in a task. A set of community members meeting a certain criteria get to be a part of the jury for the dispute and cast votes, based on which a decision is reached.
-- To facilitate easier communication between a customer and a worker, a one-to-one chat feature is created.
+- To facilitate easier communication between a customer and a worker, a one-to-one chat feature is created as well.
 
 ## **Team 👥**
 
@@ -122,7 +122,7 @@ We believe this work could be helpful for any Polkadot para-chains/ para-threads
 
 ### **Team's experience**
 
-Dot Marketplace is being built by the team at Wow Labz. Wow Labz is one of India's leading turnkey product development companies. Yoda Protocol has been conceptualized and is being produced by the team at Wow Labz. The team has previously built a decentralized storage protocol called Lake Network - [https://lakenetwork.io/](https://lakenetwork.io/) in addition to multiple dApps on Ethereum, Stellar, EOS, and Hyperledger.
+Dot Marketplace is being built by the team at Wow Labz. Wow Labz is one of India's leading turnkey product development companies. Socialli Protocol has been conceptualized and is being produced by the team at Wow Labz. The team has previously built a decentralized storage protocol called Lake Network - [https://lakenetwork.io/](https://lakenetwork.io/) in addition to multiple dApps on Ethereum, Stellar, EOS, and Hyperledger.
 
 A list of centralized apps published can be found [here](https://www.wowlabz.com/work/).
 
@@ -144,16 +144,17 @@ Dot Marketplace POC was conceptualized and developed during the Polkadot India h
 
 ****Overview****
 
-- Total duration: 5 weeks
-- The development of Dot Marketplace v2 is already underway. 
+* **Total Estimated Duration:** 5 Weeks
+* **Full-Time Equivalent (FTE):**  3.36
+* **Total Costs:** 40,275 USD
 
 
 ### **Milestone 1**
 
 * **Estimated duration:** 1 week
-* **FTE:**  
-* **PTE:**  
-* **Costs:**   USD  // rest is funded by Yoda  
+* **FTE:**  2
+* **PTE:**  2
+* **Costs:**  8,325 USD  
 
 The main deiverable for this milestone will be to migrate the existing application to substrate frame v2 and include the chat feature for communication between a customer and worker.
 
@@ -170,9 +171,9 @@ The main deiverable for this milestone will be to migrate the existing applicati
 ### **Milestone 2**
 
 * **Estimated duration:** 2 weeks
-* **FTE:**  
-* **PTE:**  
-* **Costs:**   USD  // rest is funded by Yoda  
+* **FTE:**  2
+* **PTE:**  2
+* **Costs:**  15,900 USD  
 
 
 In continuation to previous work, this milestone involves creation of a on chain decentralized court to handle dispute resolution. Being a juror is one of the user incentives that can be achieved thanks to the rating module mentioned in the first phase of dot marketplace.
@@ -195,9 +196,9 @@ In continuation to previous work, this milestone involves creation of a on chain
 ### **Milestone 3**
 
 * **Estimated duration:** 2 weeks
-* **FTE:**  
-* **PTE:**  
-* **Costs:**   USD  // rest is funded by Yoda  
+* **FTE:**  2
+* **PTE:**  2
+* **Costs:**  16,050 USD    
 
 Dot Marketplace will also include frontend UI including the court and chat functionality built on top of the `substrate-front-end-template`
 
