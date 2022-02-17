@@ -3,7 +3,7 @@
 - **Status:** Open
 - **Project Name:** Dot Marketplace
 - **Team Name:** Wow Labz
-- **Payment Address:** 0xF13001401396AA866E8012f31fD939C7E83B8601
+- **Payment Address:** 0xF13001401396AA866E8012f31fD939C7E83B8601 (USDT - ERC20)
 - **Level:** 2
 
 ## Project Overview :page_facing_up:
