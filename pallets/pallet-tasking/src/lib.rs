@@ -121,6 +121,7 @@ pub mod pallet {
 		task_id: u128,
 		jury_acceptance_period: BlockNumber,
 		total_case_period: BlockNumber,
+		trial_number: u8
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
@@ -1021,7 +1022,7 @@ pub mod pallet {
 			}
 			remaining_amount = (task_cost_converted * 140) / 100 as u128;
 
-			// Convert remaining amount to u128
+			// Convert remaining amount to u32
 			let mut remaining_amount_converted = remaining_amount as u32;
 
 			// ----- Checking if winner is customer or no one
@@ -1108,6 +1109,7 @@ pub mod pallet {
 					if dispute_details.final_jurors.len() == 0 {
 						hearing.jury_acceptance_period += 5u128.saturated_into();
 						hearing.total_case_period += 5u128.saturated_into();
+						hearing.trial_number += 1;
 						task_details.status = Status::DisputeRaised;
 						dispute_details.jury_acceptance_period = hearing.jury_acceptance_period.clone();
 						dispute_details.total_case_period = hearing.total_case_period.clone();
@@ -1127,10 +1129,12 @@ pub mod pallet {
 					if total_votes == 0 {
 						hearing.jury_acceptance_period += 5u128.saturated_into();
 						hearing.total_case_period += 5u128.saturated_into();
+						hearing.trial_number += 1;
 						task_details.status = Status::DisputeRaised;
 						dispute_details.jury_acceptance_period = hearing.jury_acceptance_period.clone();
 						dispute_details.total_case_period = hearing.total_case_period.clone();
 						dispute_details.potential_jurors = Self::potential_jurors(task_details.clone());
+						// * Clearing the list of final jurors as people may have accepted jury duty
 						if dispute_details.final_jurors.len() != 0 {
 							dispute_details.final_jurors.clear();
 						}
@@ -1191,9 +1195,11 @@ pub mod pallet {
 			let jury_acceptance_period = <frame_system::Pallet<T>>::block_number() + ONE_ERA.into();
 			// Total case time
 			let total_case_period = jury_acceptance_period + (ONE_ERA * 2).into();
+			// Initiate trial
+			let trial_number = 1;
 			// Structure for time frame storage
 			let dispute_timeframe =
-				Hearing { task_id, jury_acceptance_period, total_case_period };
+				Hearing { task_id, jury_acceptance_period, total_case_period, trial_number };
 			// Get the time frame storage vector
 			let mut dispute_timeframe_storage = Self::get_hearings();
 			// Updating the timeframe storage vector
