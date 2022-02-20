@@ -934,7 +934,7 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 
-		pub fn adjourn_court(task_id: u128) -> DispatchResult {
+		fn adjourn_court(task_id: u128) -> DispatchResult {
 			// ----- Initializations
 			let mut total_publisher_rating: u8 = 0;
 			let mut total_worker_rating: u8 = 0;
@@ -947,12 +947,12 @@ pub mod pallet {
 			let votes_for_customer: u8 = dispute_details.votes_for_customer.unwrap_or(0);
 			let votes_for_worker: u8 = dispute_details.votes_for_worker.unwrap_or(0);
 			// * To keep track of the juror participation in voting
-			let total_votes_cast: u8 = votes_for_customer + votes_for_worker;
+			// NOTE: Disabling no votes from juror check
+			// let total_votes_cast: u8 = votes_for_customer + votes_for_worker;
 			let final_jurors_details: BTreeMap<T::AccountId, JurorDecisionDetails> = 
 				dispute_details.clone().final_jurors.into_iter().filter(|(_, value)| value.voted_for != None).collect();
 			let final_jurors_count: u8 = final_jurors_details.len() as u8;
 			// -----
-
 
 			// ----- Calculating total rating for publisher and worker from jurors
 			for juror_decision in final_jurors_details.values() {
@@ -1005,98 +1005,67 @@ pub mod pallet {
 			// Initializing placeholder
 			let remaining_amount;
 
-			// ----- Only calculate court fees if jurors have voted
-			if total_votes_cast != 0 as u8{
-				let court_fee = (task_cost_converted * 60) / 100 as u128;
-				let juror_fee: u32 = (court_fee as u32) / (final_jurors_count as u32);
-				let juror_account_ids: Vec<_> = final_jurors_details.keys().cloned().collect();
-				// * Transfer to all jurors their respective fees
-				for juror_account_id in juror_account_ids {
-					T::Currency::transfer(
-						&escrow_id,
-						&juror_account_id,
-						juror_fee.into(),
-						ExistenceRequirement::KeepAlive,
-					)?;
-				}
-				remaining_amount = (task_cost_converted * 140) / 100 as u128;
-
-				// Convert remaining amount to u128
-				let mut remaining_amount_converted = remaining_amount as u32;
-
-				// ----- Checking if winner is customer or no one
-				if dispute_details.winner == Some(UserType::Customer) || dispute_details.winner == None
-				{
-					// NOTE: AccountMap value should ideally be task cost & bidder cost and not remaining amount/2
-					let remaining_amount_for_customer = remaining_amount / 2;
-					let remaining_amount_converted_for_customer = remaining_amount_for_customer as u32;
-					remaining_amount_converted = remaining_amount_converted_for_customer;
-					// * Transfering to winner account
-					T::Currency::transfer(
-						&escrow_id,
-						&winner_account_id[1],
-						remaining_amount_converted_for_customer.into(),
-						ExistenceRequirement::KeepAlive,
-					)?;
-				}
-				// -----
-
-				// Transfering to winner account
+			// ----- Only calculate court fees if jurors have voted (Not used)
+			// if total_votes_cast != 0 {
+			let court_fee = (task_cost_converted * 60) / 100 as u128;
+			let juror_fee: u32 = (court_fee as u32) / (final_jurors_count as u32);
+			let juror_account_ids: Vec<_> = final_jurors_details.keys().cloned().collect();
+			// * Transfer to all jurors their respective fees
+			for juror_account_id in juror_account_ids {
 				T::Currency::transfer(
 					&escrow_id,
-					&winner_account_id[0],
-					remaining_amount_converted.into(),
-					ExistenceRequirement::AllowDeath,
+					&juror_account_id,
+					juror_fee.into(),
+					ExistenceRequirement::KeepAlive,
 				)?;
-				// Updating the task details structure
-				task_details.dispute = Some(dispute_details);
-				task_details.status = Status::Completed;
-				// Updating the task details storage
-				<TaskStorage<T>>::insert(&task_id, task_details);
+			}
+			remaining_amount = (task_cost_converted * 140) / 100 as u128;
 
-				Self::deposit_event(
-					Event::CourtAdjourned(
-						task_id.clone()
-					)
-				);
+			// Convert remaining amount to u128
+			let mut remaining_amount_converted = remaining_amount as u32;
 
-			} else {
-
-				Self::reset_case_period(task_id,task_details);
-				
+			// ----- Checking if winner is customer or no one
+			if dispute_details.winner == Some(UserType::Customer) || dispute_details.winner == None
+			{
+				// NOTE: AccountMap value should ideally be task cost & bidder cost and not remaining amount/2
+				let remaining_amount_for_customer = remaining_amount / 2;
+				let remaining_amount_converted_for_customer = remaining_amount_for_customer as u32;
+				remaining_amount_converted = remaining_amount_converted_for_customer;
+				// * Transfering to winner account
+				T::Currency::transfer(
+					&escrow_id,
+					&winner_account_id[1],
+					remaining_amount_converted_for_customer.into(),
+					ExistenceRequirement::KeepAlive,
+				)?;
 			}
 			// -----
- 	
-	
-			Ok(())
-		}
 
-		pub fn reset_case_period(
-			task_id: u128,
-			mut task_details: TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
-		) {
-			
-			let mut dispute_details = task_details.dispute.clone().unwrap();
-			task_details.status = Status::DisputeRaised;
-			let case_period = Self::calculate_case_period(task_details.clone());
-			dispute_details.jury_acceptance_period = case_period.0;
-			dispute_details.total_case_period = case_period.1;
-			dispute_details.potential_jurors = Self::potential_jurors(task_details.clone());
-			if dispute_details.final_jurors.len() != 0 {
-				dispute_details.final_jurors.clear();
-			}
+			// Transfering to winner account
+			T::Currency::transfer(
+				&escrow_id,
+				&winner_account_id[0],
+				remaining_amount_converted.into(),
+				ExistenceRequirement::AllowDeath,
+			)?;
+			// Updating the task details structure
 			task_details.dispute = Some(dispute_details);
-			<TaskStorage<T>>::insert(task_id, task_details);
+			task_details.status = Status::Completed;
+			// Updating the task details storage
+			<TaskStorage<T>>::insert(&task_id, task_details);
 
 			Self::deposit_event(
-				Event::CourtReinitiated(
+				Event::CourtAdjourned(
 					task_id.clone()
 				)
 			);
-
+			// } 
+			// -----
+ 	
+			Ok(())
 		}
 
-		pub fn register_case(
+		fn register_case(
 			task_id: u128,
 			mut task_details: TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
 		) {
@@ -1108,7 +1077,6 @@ pub mod pallet {
 			let potential_jurors = Self::potential_jurors(task_details.clone());
 			// Creating the court dispute structure
 			let dispute = CourtDispute {
-				// task_details: task_details.clone(),
 				potential_jurors,
 				final_jurors: BTreeMap::new(),
 				winner: None,
@@ -1125,41 +1093,62 @@ pub mod pallet {
 			<TaskStorage<T>>::insert(task_id, task_details);
 		}
 
-     
-
-		pub fn collect_cases(block_number: BlockNumberOf<T>) {
+		fn collect_cases(block_number: BlockNumberOf<T>) {
 			// Getting hearings vector from storage
-			let mut hearings = Self::get_hearings();
-			log::info!("//////Before{:?}",hearings);
+			let mut hearings: Vec<Hearing<BlockNumberOf<T>>> = Self::get_hearings();
 			// Only retain those hearings with case ending period >= current block number
 			hearings.retain(|x| x.total_case_period >= block_number); 
-			log::info!("//////After{:?}",hearings);
-			// Updating the hearings storage
-			<Hearings<T>>::put(hearings.clone());
+
 			// ----- Validating jury acceptance period and total case period
-			for hearing in hearings.iter() {
+			for hearing in hearings.iter_mut() {
+				// * For jury acceptance period
 				if block_number == hearing.jury_acceptance_period {
 					let mut task_details = Self::task(hearing.task_id.clone());
-					let dispute_details = task_details.dispute.clone().unwrap();
-					if dispute_details.final_jurors.len() == 0
-					{
-						Self::reset_case_period(hearing.task_id,task_details);
-					}else
-					{
+					let mut dispute_details = task_details.dispute.clone().unwrap();
+					if dispute_details.final_jurors.len() == 0 {
+						hearing.jury_acceptance_period += 5u128.saturated_into();
+						hearing.total_case_period += 5u128.saturated_into();
+						task_details.status = Status::DisputeRaised;
+						dispute_details.jury_acceptance_period = hearing.jury_acceptance_period.clone();
+						dispute_details.total_case_period = hearing.total_case_period.clone();
+						dispute_details.potential_jurors = Self::potential_jurors(task_details.clone());
+						task_details.dispute = Some(dispute_details);
+					} else {
+						// * Change status when atleast 1 final juror accepted jury duty
 						task_details.status = Status::VotingPeriod;
-						<TaskStorage<T>>::insert(&hearing.task_id, task_details);
 					}
-				} else if block_number == hearing.total_case_period {
-					// * Ending the court case
-					Self::adjourn_court(hearing.task_id);
+					<TaskStorage<T>>::insert(&hearing.task_id, task_details);
+				} 
+				// * For total case period
+				else if block_number == hearing.total_case_period {
+					let mut task_details = Self::task(hearing.task_id.clone());
+					let mut dispute_details = task_details.dispute.clone().unwrap();
+					let total_votes = dispute_details.votes_for_worker.unwrap_or(0) + dispute_details.votes_for_customer.unwrap_or(0);
+					if total_votes == 0 {
+						hearing.jury_acceptance_period += 5u128.saturated_into();
+						hearing.total_case_period += 5u128.saturated_into();
+						task_details.status = Status::DisputeRaised;
+						dispute_details.jury_acceptance_period = hearing.jury_acceptance_period.clone();
+						dispute_details.total_case_period = hearing.total_case_period.clone();
+						dispute_details.potential_jurors = Self::potential_jurors(task_details.clone());
+						if dispute_details.final_jurors.len() != 0 {
+							dispute_details.final_jurors.clear();
+						}
+						task_details.dispute = Some(dispute_details);
+						<TaskStorage<T>>::insert(&hearing.task_id, task_details);
+					} else {
+						// * Adjourn court 
+						Self::adjourn_court(hearing.task_id);
+					}
 				}
 			}
 			// -----
-
-
+			
+			// Updating the hearings storage
+			<Hearings<T>>::put(hearings);
 		}
 
-		pub fn potential_jurors(
+		fn potential_jurors(
 			task_details: TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
 		) -> Vec<T::AccountId> {
 			// Creating iterator of account map storage
@@ -1186,12 +1175,12 @@ pub mod pallet {
 			jurors
 		}
 
-		pub fn escrow_account_id(id: u32) -> T::AccountId {
+		fn escrow_account_id(id: u32) -> T::AccountId {
 			// Creating and calling sub account
 			T::PalletId::get().into_sub_account(id)
 		}
 
-		pub fn calculate_case_period(
+		fn calculate_case_period(
 			task_details: TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
 		) -> (BlockNumberOf<T>, BlockNumberOf<T>) {
 			// One era is one day
@@ -1226,7 +1215,7 @@ pub mod pallet {
 			let fraction = avg_rating.fract();
 
 			// ----- Result at different conditions
-			if rounded_avg_rating !=0 {
+			if rounded_avg_rating != 0 {
 				if fraction >= 0.5 {
 					output = rounded_avg_rating + 1;
 				} else if fraction == 0.0 {
@@ -1235,7 +1224,7 @@ pub mod pallet {
 					output = rounded_avg_rating - 1;
 				}
 			} else {
-				output =0;
+				output = 0;
 			}
 			// -----
 
@@ -1243,5 +1232,3 @@ pub mod pallet {
 		}
 	}
 }
-
-
