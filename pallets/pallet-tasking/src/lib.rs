@@ -122,7 +122,8 @@ pub mod pallet {
 		task_id: u128,
 		jury_acceptance_period: BlockNumber,
 		total_case_period: BlockNumber,
-		trial_number: u8
+		trial_number: u8,
+		is_active: bool,
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
@@ -142,6 +143,7 @@ pub mod pallet {
 		avg_publisher_rating: Option<u8>,
 		jury_acceptance_period: BlockNumber,
 		total_case_period: BlockNumber,
+		sudo_juror: Option<AccountId>,
 	}
 
 	#[derive(Encode, Decode, Debug, PartialEq, Clone, Eq, Default, TypeInfo)]
@@ -364,6 +366,20 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+
+		#[pallet::weight(10_000)]
+		pub fn sudo_juror_vote(
+			origin: OriginFor<T>,
+			task_id: u128,
+			voted_for: UserType,
+			customer_rating: u8,
+			worker_rating: u8,
+
+		) -> DispatchResult {
+			
+
+			Ok(())
+		}
 
 		#[pallet::weight(10_000)]
 		pub fn raise_dispute(
@@ -1089,6 +1105,7 @@ pub mod pallet {
 				avg_publisher_rating: None,
 				jury_acceptance_period: case_period.0,
 				total_case_period: case_period.1,
+				sudo_juror: None
 			};
 			// Updating task details structure
 			task_details.dispute = Some(dispute);
@@ -1100,12 +1117,19 @@ pub mod pallet {
 			// Getting hearings vector from storage
 			let mut hearings: Vec<Hearing<BlockNumberOf<T>>> = Self::get_hearings();
 			// Only retain those hearings with case ending period >= current block number
-			hearings.retain(|x| x.total_case_period >= block_number); 
+			hearings.retain(|x| x.total_case_period >= block_number || x.is_active); 
 
 			// ----- Validating jury acceptance period and total case period
 			for hearing in hearings.iter_mut() {
+				if hearing.trial_number >= 3 {
+					let mut task_details = Self::task(hearing.task_id.clone());
+					let mut dispute_details = task_details.dispute.clone().unwrap();
+					dispute_details.sudo_juror = Some(Self::pick_sudo_juror());
+					task_details.dispute = Some(dispute_details);
+					hearing.is_active = false;
+				}
 				// * For jury acceptance period
-				if block_number == hearing.jury_acceptance_period {
+				else if block_number == hearing.jury_acceptance_period {
 					let mut task_details = Self::task(hearing.task_id.clone());
 					let mut dispute_details = task_details.dispute.clone().unwrap();
 					if dispute_details.final_jurors.len() == 0 {
@@ -1181,7 +1205,10 @@ pub mod pallet {
 			jurors
 		}
 
-		pub fn pick_sudo_juror() -> T::AccountId {
+		pub fn pick_sudo_juror(
+			publisher_id: T::AccountId,
+			worker_id: T::AccountId,
+		) -> T::AccountId {
 			// Creating iterator of account map storage
 			let all_account_details = <AccountMap<T>>::iter();
 			// Storage all sudo users
@@ -1189,7 +1216,7 @@ pub mod pallet {
 
 			// ----- Verify and collect sudo users
 			for (acc_id, acc_details) in all_account_details {
-				if acc_details.sudo {
+				if acc_details.sudo && acc_id != worker_id && acc_id != publisher_id {
 					all_sudo_account_ids.push(acc_id);
 				}
 			}
