@@ -20,6 +20,8 @@ features = ["libm"]
 [dependencies.serde]
 version = '1.0.129'
 
+[dependencies.rand]
+version = "0.8.4"
 
 [dependencies.pallet-membership]
 default-features = false

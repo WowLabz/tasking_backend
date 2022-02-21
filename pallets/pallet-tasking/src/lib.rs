@@ -33,6 +33,7 @@ pub mod pallet {
 	use codec::{Decode, Encode};
 	use sp_std::collections::btree_map::BTreeMap;
 	use sp_std::vec::Vec;
+	use rand::seq::SliceRandom;
 
 	// type AccountOf<T> = <T as frame_system::Config>::AccountId;
 	type BalanceOf<T> =
@@ -179,6 +180,7 @@ pub mod pallet {
 		pub ratings: Vec<u8>,
 		pub avg_rating: Option<u8>,
 		pub tags: Vec<TaskTypeTags>,
+		pub sudo: bool
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
@@ -935,7 +937,7 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 
-		fn adjourn_court(task_id: u128) -> DispatchResult {
+		pub fn adjourn_court(task_id: u128) -> DispatchResult {
 			// ----- Initializations
 			let mut total_publisher_rating: u8 = 0;
 			let mut total_worker_rating: u8 = 0;
@@ -1066,7 +1068,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn register_case(
+		pub fn register_case(
 			task_id: u128,
 			mut task_details: TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
 		) {
@@ -1094,7 +1096,7 @@ pub mod pallet {
 			<TaskStorage<T>>::insert(task_id, task_details);
 		}
 
-		fn collect_cases(block_number: BlockNumberOf<T>) {
+		pub fn collect_cases(block_number: BlockNumberOf<T>) {
 			// Getting hearings vector from storage
 			let mut hearings: Vec<Hearing<BlockNumberOf<T>>> = Self::get_hearings();
 			// Only retain those hearings with case ending period >= current block number
@@ -1152,7 +1154,7 @@ pub mod pallet {
 			<Hearings<T>>::put(hearings);
 		}
 
-		fn potential_jurors(
+		pub fn potential_jurors(
 			task_details: TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
 		) -> Vec<T::AccountId> {
 			// Creating iterator of account map storage
@@ -1162,7 +1164,7 @@ pub mod pallet {
 
 			// ----- Collecting all potential jurors based on certain conditions
 			for (acc_id, acc_details) in all_account_details {
-				if acc_details.avg_rating >= Some(4) {
+				if acc_details.avg_rating >= Some(4) && !acc_details.sudo {
 					for task_tag in &task_details.task_tags {
 						if acc_details.tags.contains(&task_tag)
 							&& acc_id.clone() != task_details.publisher
@@ -1179,12 +1181,34 @@ pub mod pallet {
 			jurors
 		}
 
-		fn escrow_account_id(id: u32) -> T::AccountId {
+		pub fn pick_sudo_juror() -> T::AccountId {
+			// Creating iterator of account map storage
+			let all_account_details = <AccountMap<T>>::iter();
+			// Storage all sudo users
+			let mut all_sudo_account_ids: Vec<T::AccountId> = Vec::new();
+
+			// ----- Verify and collect sudo users
+			for (acc_id, acc_details) in all_account_details {
+				if acc_details.sudo {
+					all_sudo_account_ids.push(acc_id);
+				}
+			}
+			// -----
+
+			// Create a random object
+			let mut rng = rand::thread_rng();
+			// Fetching the sudo juror at random
+			let sudo_juror = all_sudo_account_ids.choose(&mut rng).unwrap().clone();
+
+			sudo_juror
+		}
+
+		pub fn escrow_account_id(id: u32) -> T::AccountId {
 			// Creating and calling sub account
 			T::PalletId::get().into_sub_account(id)
 		}
 
-		fn calculate_case_period(
+		pub fn calculate_case_period(
 			task_details: TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
 		) -> (BlockNumberOf<T>, BlockNumberOf<T>) {
 			// One era is one day
@@ -1210,7 +1234,7 @@ pub mod pallet {
 			(jury_acceptance_period, total_case_period)
 		}
 
-		fn roundoff(total_rating: u8, number_of_users: u8) -> u8 {
+		pub fn roundoff(total_rating: u8, number_of_users: u8) -> u8 {
 			// For carrying the result
 			let output: u8;
 			// Calculating the average rating in floating point value
