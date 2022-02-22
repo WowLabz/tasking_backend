@@ -154,7 +154,7 @@ fn testnet_genesis(
 			ratings: [3, 5, 4, 2, 4].to_vec(),
 			avg_rating: Some(4),
 			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec(),
-			sudo: true
+			sudo: false
 		},
 		AccountDetails {
 			balance: 1 << 60,
