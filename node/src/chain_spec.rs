@@ -1,7 +1,7 @@
 use node_template_runtime::{
 	pallet_tasking::AccountDetails, pallet_tasking::TaskTypeTags, AccountId, AuraConfig, Balance,
 	BalancesConfig, GenesisConfig, GrandpaConfig, Signature, SudoConfig, SystemConfig,
-	TaskingConfig, WASM_BINARY,
+	PalletTaskingConfig, WASM_BINARY,
 };
 use sc_service::ChainType;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -226,7 +226,7 @@ fn testnet_genesis(
 			// Assign network admin rights.
 			key: root_key,
 		},
-		tasking: TaskingConfig {
+		pallet_tasking: PalletTaskingConfig {
 			// single_value: VALUE,
 			account_map: accounts_to_map
 				.iter()
