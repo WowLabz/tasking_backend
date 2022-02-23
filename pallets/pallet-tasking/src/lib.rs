@@ -11,6 +11,8 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+mod dot_shuffle;
+
 #[frame_support::pallet]
 pub mod pallet {
 	// use log::{info, trace, warn};
@@ -29,21 +31,15 @@ pub mod pallet {
 	#[cfg(feature = "std")]
 	use frame_support::serde::{Deserialize, Serialize};
 	use num_traits::float::Float;
-	// use pallet_scheduler;
 	use codec::{Decode, Encode};
 	use sp_std::collections::btree_map::BTreeMap;
 	use sp_std::vec::Vec;
-	// use rand::{ thread_rng };
-	// use rand::thread_rng;
-	// use rand::seq::SliceRandom;
-	// use rand::seq::IteratorRandom;
-	// use rand::prelude::*;
-	// use rand::rngs::ThreadRng;
-	// use rand::Issac
-	// use rand::Rng;
-	use picorand::{PicoRandGenerate, WyRand, RNG};
+	// use parity_scale_codec::alloc::string::ToString;
+	use crate::dot_shuffle::ts_shuffle;
+	// use serde::__private::ToString;
 
 	// type AccountOf<T> = <T as frame_system::Config>::AccountId;
+	type Item<T> = <T as frame_system::Config>::AccountId;
 	type BalanceOf<T> =
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
@@ -367,7 +363,8 @@ pub mod pallet {
 		CustomerRatingNotProvided,
 		/// To ensure Court is not summoned again for the same task
 		DisputeAlreadyRaised,
-
+		/// To ensure the correct id for raising a dispute
+		UnauthorisedToRaiseDispute
 	}
 
 	#[pallet::hooks]
@@ -399,15 +396,39 @@ pub mod pallet {
 			// Accessing dispute details of the task
 			let mut dispute_details = task_details.dispute.clone().unwrap();
 			// Only the selected sudo juror can complete the case
-			ensure!(dispute_details.sudo_juror.unwrap() == sudo_juror, <Error<T>>::UnauthorisedToComplete);
-			// Creating sudo juror payload
-			let sudo_juror_payload = SudoJurorPayload {
-				voted_for: voted_for,
-				publisher_rating: customer_rating,
-				worker_rating: worker_rating,
+			ensure!(dispute_details.sudo_juror.clone().unwrap() == sudo_juror, <Error<T>>::UnauthorisedToComplete);
+			// Creating the sudo juror details structure
+			let juror_details = JurorDecisionDetails {
+				voted_for: Some(voted_for.clone()),
+				publisher_rating: Some(customer_rating),
+				worker_rating: Some(worker_rating),
 			};
+			// Updating the final jurors map
+			dispute_details.final_jurors.insert(sudo_juror.clone(), juror_details);
+			// Accessing number of votes for the publisher
+			let mut votes_for_customer = dispute_details.votes_for_customer.clone().unwrap_or(0);
+			// Accessing number of votes for the worker
+			let mut votes_for_worker = dispute_details.votes_for_worker.clone().unwrap_or(0);
+			
+			// ------ Allocating the vote to the respective party
+			match voted_for {
+				UserType::Customer => { 
+					votes_for_customer += 1;
+					dispute_details.votes_for_customer = Some(votes_for_customer);
+				},
+				UserType::Worker => { 
+					votes_for_worker += 1; 
+					dispute_details.votes_for_worker = Some(votes_for_worker);
+				},
+			}
+			// ------
+
+			// Adding the dispute details to task details structure
+			task_details.dispute = Some(dispute_details);
+			// Updating the task details storage
+			<TaskStorage<T>>::insert(task_id.clone(), task_details);
 			// Concluding the case
-			Self::adjourn_court(task_id.clone(), Some(sudo_juror_payload));
+			Self::adjourn_court(task_id.clone());
 			
 			Ok(())
 		}
@@ -427,6 +448,13 @@ pub mod pallet {
 			let task_details = Self::task(task_id.clone());
 			// Accessing status from task details
 			let status = task_details.status.clone();
+
+			if user_type == UserType::Customer {
+				ensure!(task_details.publisher.clone() == who, <Error<T>>::UnauthorisedToRaiseDispute);
+			} else if user_type == UserType::Worker {
+				ensure!(task_details.worker_id.clone().unwrap() == who, <Error<T>>::UnauthorisedToRaiseDispute);
+			}
+
 			ensure!(status != Status::InProgress, <Error<T>>::TaskInProgress);
 			ensure!(status !=Status::Completed, <Error<T>>::TaskIsNotOpen);
 			ensure!(status !=Status::DisputeRaised, <Error<T>>::DisputeAlreadyRaised);
@@ -978,33 +1006,14 @@ pub mod pallet {
 
 			Ok(())
 		}
-
-		#[pallet::weight(10_000)]
-		pub fn some_extrinsic(origin: OriginFor<T>) -> DispatchResult {
-
-			let block_number = <frame_system::Pallet<T>>::block_number;
-			let mut rng = RNG::<WyRand, u16>::new(block_number as u64);
-
-            // Generate in implicit range
-            let mut generated = rng.generate();
-
-            log::info!("######## Generated b4: {:?}", generated);
-
-            log::info!("######## Hello there");
-
-            // Generate in explicit range
-            generated = rng.generate_range(0xC0, 0xDE);
-    
-            log::info!("######## Generated after: {:?}", generated);
-			Ok(())
-		}
+		
 	}
 
 	// Helper functions
 
 	impl<T: Config> Pallet<T> {
 
-		pub fn adjourn_court(task_id: u128, sudo_juror_payload: Option<SudoJurorPayload>) -> Option<bool> {
+		pub fn adjourn_court(task_id: u128) -> Option<bool> {
 			// ----- Initializations
 			let mut total_publisher_rating: u8 = 0;
 			let mut total_worker_rating: u8 = 0;
@@ -1014,8 +1023,8 @@ pub mod pallet {
 			let worker_id = task_details.worker_id.clone().unwrap();
 			let publisher_id = task_details.publisher.clone();
 			let escrow_id = Self::escrow_account_id(task_id.clone() as u32);
-			let mut votes_for_customer: u8 = dispute_details.votes_for_customer.unwrap_or(0);
-			let mut votes_for_worker: u8 = dispute_details.votes_for_worker.unwrap_or(0);
+			let votes_for_customer: u8 = dispute_details.votes_for_customer.unwrap_or(0);
+			let votes_for_worker: u8 = dispute_details.votes_for_worker.unwrap_or(0);
 			let mut is_active = true;
 			// * To keep track of the juror participation in voting
 			// NOTE: Disabling no votes from juror check
@@ -1042,17 +1051,6 @@ pub mod pallet {
 				let avg_worker_rating = Self::roundoff(total_worker_rating, final_jurors_count.clone());
 				// Updating average worker rating
 				dispute_details.avg_worker_rating = Some(avg_worker_rating);
-
-				// Sudo juror's decision
-				if sudo_juror_payload != None {
-					let sudo_juror_payload_unpacked = sudo_juror_payload.unwrap();
-					match sudo_juror_payload_unpacked.voted_for {
-						UserType::Customer => { votes_for_customer += 1 },
-						UserType::Worker => { votes_for_worker += 1 },
-					}
-					dispute_details.avg_publisher_rating = Some(sudo_juror_payload_unpacked.publisher_rating);
-					dispute_details.avg_worker_rating = Some(sudo_juror_payload_unpacked.worker_rating);
-				}
 
 				// ----- Deciding the winner based on votes
 				if votes_for_customer > votes_for_worker {
@@ -1237,7 +1235,7 @@ pub mod pallet {
 						<TaskStorage<T>>::insert(&hearing.task_id, task_details);
 					} else {
 						// * Adjourn court 
-						let is_active = Self::adjourn_court(hearing.task_id, None).unwrap();
+						let is_active = Self::adjourn_court(hearing.task_id).unwrap();
 						if !is_active {
 							dispute_details.sudo_juror = Some(Self::pick_sudo_juror(task_details.publisher.clone(), task_details.worker_id.clone().unwrap()));
 							task_details.dispute = Some(dispute_details);
@@ -1297,12 +1295,14 @@ pub mod pallet {
 			}
 			// -----
 
-			// Create a random object
-			// let mut rng =  rand::thread_rng();
-			// Fetching the sudo juror at random
-			// let sudo_juror = all_sudo_account_ids.choose(&mut rng).unwrap().clone();
-
-			worker_id
+			// Get current block number
+			let block_number = <frame_system::Pallet<T>>::block_number();
+			// Length of the acount id list
+			let length = all_sudo_account_ids.len() as u32;
+			// Calling the shuffling algorithm
+			let random_vector = ts_shuffle::<Item<T>>(all_sudo_account_ids, block_number.saturated_into::<u32>(), length);
+			
+			random_vector.first().unwrap().clone()
 		}
 
 		pub fn escrow_account_id(id: u32) -> T::AccountId {

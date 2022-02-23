@@ -347,7 +347,7 @@ construct_runtime!(
 		Sudo: pallet_sudo,
 		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
 		// Include the custom logic from the pallet-template in the runtime.
-		PalletTasking: pallet_tasking,
+		Tasking: pallet_tasking,
 		Chat: pallet_chat,
 	}
 );

@@ -119,7 +119,10 @@ Pass entire court adjourned in a if condition based on final juror length
 
 ----- EVENT NOT BEONG DEPOSITED when all other functions are working in function adjour court, last else block
 
-
-
+Final:
+1. Check the entire flow
+2. Refactor collect cases [DRY code]
+3. Add remoining ensures in raise dispute extrinsic - Done
+4. Add unit test cases
 
 
