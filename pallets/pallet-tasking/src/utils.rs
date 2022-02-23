@@ -2,6 +2,7 @@
 
 use parity_scale_codec::alloc::string::ToString;
 use sp_std::vec::Vec;
+use num_traits::float::Float;
 
 pub fn dot_shuffle<T>(
     mut input: Vec<T>, 
@@ -92,4 +93,29 @@ pub fn lcg(seed: u128, length: u128) -> u32 {
     // -----
 
     total as u32
+}
+
+pub fn roundoff(total_rating: u8, number_of_users: u8) -> u8 {
+    // For carrying the result
+    let output: u8;
+    // Calculating the average rating in floating point value
+    let avg_rating: f32 = total_rating as f32 / number_of_users as f32;
+    // Converting floating point to integer
+    let rounded_avg_rating: u8 = avg_rating as u8;
+    // Removing the decimal from float
+    let fraction = avg_rating.fract();
+
+    // ----- Result at different conditions
+    if rounded_avg_rating != 0 {
+        if fraction >= 0.5 {
+            output = rounded_avg_rating + 1;
+        } else {
+            output = rounded_avg_rating; 
+        }
+    } else {
+        output = 0;
+    }
+    // -----
+
+    output
 }

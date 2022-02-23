@@ -11,7 +11,7 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-mod shuffle;
+mod utils;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -21,7 +21,7 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	//use pallet_court::*;
 	use frame_support::{
-		log,
+		//log,
 		sp_runtime::traits::{AccountIdConversion, SaturatedConversion},
 		traits::{
 			tokens::ExistenceRequirement, Currency, LockableCurrency,
@@ -30,15 +30,14 @@ pub mod pallet {
 
 	#[cfg(feature = "std")]
 	use frame_support::serde::{Deserialize, Serialize};
-	use num_traits::float::Float;
 	use codec::{Decode, Encode};
 	use sp_std::collections::btree_map::BTreeMap;
 	use sp_std::vec::Vec;
 	// use parity_scale_codec::alloc::string::ToString;
-	use crate::shuffle::dot_shuffle;
+	use crate::utils::{dot_shuffle,roundoff};
 	// use serde::__private::ToString;
 
-	type AccountOf<T> = <T as frame_system::Config>::AccountId;
+	//type AccountOf<T> = <T as frame_system::Config>::AccountId;
 	type Item<T> = <T as frame_system::Config>::AccountId;
 	type BalanceOf<T> =
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -159,35 +158,6 @@ pub mod pallet {
 		sudo_juror: Option<AccountId>,
 	}
 
-	#[derive(Encode, Decode, Debug, PartialEq, Clone, Eq, Default, TypeInfo)]
-	pub struct User<AccountId> {
-		account_id: AccountId,
-		user_type: UserType,
-		rating: Option<u8>,
-		ratings_vec: Vec<u8>,
-	}
-
-	impl<AccountId> User<AccountId> {
-		pub fn new(account_id: AccountId, user_type: UserType, ratings_vec: Vec<u8>) -> Self {
-			let rating = Some(Self::get_list_average(ratings_vec.clone()));
-
-			Self { account_id, user_type, rating, ratings_vec }
-		}
-
-		pub fn get_list_average(list: Vec<u8>) -> u8 {
-			let list_len: u8 = list.len() as u8;
-			if list_len == 1 {
-				return list[0];
-			}
-			let mut total_sum = 0;
-			for item in list.iter() {
-				total_sum += item;
-			}
-			let average = total_sum / list_len;
-			average
-		}
-	}
-
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub struct AccountDetails<Balance> {
@@ -219,7 +189,7 @@ pub mod pallet {
 			for item in list.iter() {
 				total_sum += item;
 			}
-			let average = total_sum / list_len;
+			let average = roundoff(total_sum, list_len);
 			average
 		}
 	}
@@ -284,15 +254,15 @@ pub mod pallet {
 	pub(super) type TaskStorage<T: Config> =
 		StorageMap<_, Blake2_128Concat, u128, TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>, ValueQuery>;
 
-	#[pallet::storage]
-	#[pallet::getter(fn get_worker_ratings)]
-	pub(super) type WorkerRatings<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::AccountId, User<T::AccountId>, ValueQuery>;
+	// #[pallet::storage]
+	// #[pallet::getter(fn get_worker_ratings)]
+	// pub(super) type WorkerRatings<T: Config> =
+	// 	StorageMap<_, Blake2_128Concat, T::AccountId, User<T::AccountId>, ValueQuery>;
 
-	#[pallet::storage]
-	#[pallet::getter(fn get_customer_ratings)]
-	pub(super) type CustomerRatings<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::AccountId, User<T::AccountId>, ValueQuery>;
+	// #[pallet::storage]
+	// #[pallet::getter(fn get_customer_ratings)]
+	// pub(super) type CustomerRatings<T: Config> =
+	// 	StorageMap<_, Blake2_128Concat, T::AccountId, User<T::AccountId>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_account_balances)]
@@ -858,24 +828,24 @@ pub mod pallet {
 			// Is publisher the approver?
 			ensure!(publisher == approver.clone(), <Error<T>>::UnauthorisedToApprove);
 			// Checking if the worker is set or not
-			let bidder = task.worker_id.clone().ok_or(<Error<T>>::WorkerNotSet)?;
+			//let bidder = task.worker_id.clone().ok_or(<Error<T>>::WorkerNotSet)?;
 
 			task.final_worker_rating = Some(rating_for_the_worker.clone());
 
-			// Getting Worker Rating from RatingMap
-			let existing_bidder_ratings: User<T::AccountId> = Self::get_worker_ratings(&bidder);
-			// Creating temp rating vector
-			let mut temp_rating_vec = Vec::<u8>::new();
-			// Looping through all the existing worker ratings
-			for rating in existing_bidder_ratings.ratings_vec {
-				temp_rating_vec.push(rating);
-			}
-			// Updating the temp rating vector with new rating
-			temp_rating_vec.push(rating_for_the_worker);
-			// Creating a new user instance for updating worker details
-			let curr_bidder_ratings = User::new(bidder.clone(), UserType::Worker, temp_rating_vec);
-			// Inserting into worker rating storage
-			<WorkerRatings<T>>::insert(bidder.clone(), curr_bidder_ratings.clone());
+			// // Getting Worker Rating from RatingMap
+			// let existing_bidder_ratings: User<T::AccountId> = Self::get_worker_ratings(&bidder);
+			// // Creating temp rating vector
+			// let mut temp_rating_vec = Vec::<u8>::new();
+			// // Looping through all the existing worker ratings
+			// for rating in existing_bidder_ratings.ratings_vec {
+			// 	temp_rating_vec.push(rating);
+			// }
+			// // Updating the temp rating vector with new rating
+			// temp_rating_vec.push(rating_for_the_worker);
+			// // Creating a new user instance for updating worker details
+			// let curr_bidder_ratings = User::new(bidder.clone(), UserType::Worker, temp_rating_vec);
+			// // Inserting into worker rating storage
+			// <WorkerRatings<T>>::insert(bidder.clone(), curr_bidder_ratings.clone());
 
 			
 			// Updating task status
@@ -917,23 +887,22 @@ pub mod pallet {
 
 			task.final_customer_rating = Some(rating_for_customer.clone());
 
-
-			// Get existing customer ratings
-			let existing_customer_rating: User<T::AccountId> =
-				Self::get_customer_ratings(&customer);
-			// Creating a temp rating vector
-			let mut temp_rating_vec = Vec::<u8>::new();
-			// Looping over all the existing customer ratings
-			for rating in existing_customer_rating.ratings_vec {
-				temp_rating_vec.push(rating);
-			}
-			// Updating temp rating vector with new rating
-			temp_rating_vec.push(rating_for_customer);
-			// Creating new user instance with new rating
-			let curr_customer_ratings =
-			User::new(customer.clone(), UserType::Customer, temp_rating_vec);
-			// Inserting new user instance in customer rating storage
-			<CustomerRatings<T>>::insert(customer.clone(), curr_customer_ratings.clone());
+			// // Get existing customer ratings
+			// let existing_customer_rating: User<T::AccountId> =
+			// 	Self::get_customer_ratings(&customer);
+			// // Creating a temp rating vector
+			// let mut temp_rating_vec = Vec::<u8>::new();
+			// // Looping over all the existing customer ratings
+			// for rating in existing_customer_rating.ratings_vec {
+			// 	temp_rating_vec.push(rating);
+			// }
+			// // Updating temp rating vector with new rating
+			// temp_rating_vec.push(rating_for_customer);
+			// // Creating new user instance with new rating
+			// let curr_customer_ratings =
+			// User::new(customer.clone(), UserType::Customer, temp_rating_vec);
+			// // Inserting new user instance in customer rating storage
+			// <CustomerRatings<T>>::insert(customer.clone(), curr_customer_ratings.clone());
 
 			task.status = Status::CustomerRatingProvided;
 			<TaskStorage<T>>::insert(&task_id, task.clone());
@@ -981,6 +950,9 @@ pub mod pallet {
 				ExistenceRequirement::AllowDeath,
 			)?;
 			task_details.status = Status::Completed;
+
+			<AccountDetails<BalanceOf<T>>>::update_rating::<T>(publisher.clone(), task_details.final_customer_rating.clone().unwrap());
+			<AccountDetails<BalanceOf<T>>>::update_rating::<T>(task_details.worker_id.clone().unwrap(), task_details.final_worker_rating.clone().unwrap());
 
 			TaskStorage::<T>::insert(&task_id, task_details);
 
@@ -1052,8 +1024,6 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 
-		pub fn update_account_storage(task_id: u128) {}
-
 		pub fn adjourn_court(task_id: u128) -> Option<bool> {
 			// ----- Initializations
 			let mut total_publisher_rating: u8 = 0;
@@ -1085,11 +1055,11 @@ pub mod pallet {
 				// -----
 
 				// Calculating average publisher rating
-				let avg_publisher_rating = Self::roundoff(total_publisher_rating, final_jurors_count.clone());
+				let avg_publisher_rating = roundoff(total_publisher_rating, final_jurors_count.clone());
 				// Updating average publisher rating
 				dispute_details.avg_publisher_rating = Some(avg_publisher_rating);
 				// Calculating average worker rating
-				let avg_worker_rating = Self::roundoff(total_worker_rating, final_jurors_count.clone());
+				let avg_worker_rating = roundoff(total_worker_rating, final_jurors_count.clone());
 				// Updating average worker rating
 				dispute_details.avg_worker_rating = Some(avg_worker_rating);
 
@@ -1172,8 +1142,8 @@ pub mod pallet {
 					ExistenceRequirement::AllowDeath,
 				).ok()?;
 				// Updating the task details structure
-				task_details.final_worker_rating = dispute_details.avg_publisher_rating.clone();
-				task_details.final_customer_rating = dispute_details.avg_worker_rating.clone();
+				task_details.final_worker_rating = dispute_details.avg_worker_rating.clone();
+				task_details.final_customer_rating = dispute_details.avg_publisher_rating.clone();
 				<AccountDetails<BalanceOf<T>>>::update_rating::<T>(publisher_id.clone(), task_details.final_customer_rating.clone().unwrap());
 				<AccountDetails<BalanceOf<T>>>::update_rating::<T>(worker_id.clone(), task_details.final_worker_rating.clone().unwrap());
 				task_details.dispute = Some(dispute_details);
@@ -1227,6 +1197,7 @@ pub mod pallet {
 			<TaskStorage<T>>::insert(task_id, task_details);
 		}
 
+		
 		pub fn collect_cases(block_number: BlockNumberOf<T>) {
 			// Getting hearings vector from storage
 			let mut hearings: Vec<Hearing<BlockNumberOf<T>>> = Self::get_hearings();
@@ -1235,10 +1206,11 @@ pub mod pallet {
 
 			// ----- Validating jury acceptance period and total case period
 			for hearing in hearings.iter_mut() {
-				let mut task_details = Self::task(hearing.task_id.clone());
-				let mut dispute_details = task_details.dispute.clone().unwrap();
+				
 				// For stopping unlimited court reinitiations
 				if hearing.trial_number >= 3 {
+					let mut task_details = Self::task(hearing.task_id.clone());
+					let mut dispute_details = task_details.dispute.clone().unwrap();
 					dispute_details.sudo_juror = Some(Self::pick_sudo_juror(task_details.publisher.clone(), task_details.worker_id.clone().unwrap()));
 					task_details.dispute = Some(dispute_details);
 					hearing.is_active = false;
@@ -1246,6 +1218,9 @@ pub mod pallet {
 				}
 				// * For jury acceptance period
 				else if block_number == hearing.jury_acceptance_period {
+					let mut task_details = Self::task(hearing.task_id.clone());
+					let mut dispute_details = task_details.dispute.clone().unwrap();
+
 					if dispute_details.final_jurors.len() == 0 {
 						hearing.jury_acceptance_period += 5u128.saturated_into();
 						hearing.total_case_period += 5u128.saturated_into();
@@ -1263,6 +1238,8 @@ pub mod pallet {
 				} 
 				// * For total case period
 				else if block_number == hearing.total_case_period {
+					let mut task_details = Self::task(hearing.task_id.clone());
+					let mut dispute_details = task_details.dispute.clone().unwrap();
 					let total_votes = dispute_details.votes_for_worker.unwrap_or(0) + dispute_details.votes_for_customer.unwrap_or(0);
 					if total_votes == 0 {
 						hearing.jury_acceptance_period += 5u128.saturated_into();
@@ -1279,6 +1256,7 @@ pub mod pallet {
 						task_details.dispute = Some(dispute_details);
 						<TaskStorage<T>>::insert(&hearing.task_id, task_details);
 					} else {
+
 						// * Adjourn court 
 						let is_active = Self::adjourn_court(hearing.task_id).unwrap();
 						if !is_active {
@@ -1383,31 +1361,6 @@ pub mod pallet {
 			(jury_acceptance_period, total_case_period)
 		}
 
-		pub fn roundoff(total_rating: u8, number_of_users: u8) -> u8 {
-			// For carrying the result
-			let output: u8;
-			// Calculating the average rating in floating point value
-			let avg_rating: f32 = total_rating as f32 / number_of_users as f32;
-			// Converting floating point to integer
-			let rounded_avg_rating: u8 = avg_rating as u8;
-			// Removing the decimal from float
-			let fraction = avg_rating.fract();
 
-			// ----- Result at different conditions
-			if rounded_avg_rating != 0 {
-				if fraction >= 0.5 {
-					output = rounded_avg_rating + 1;
-				} else if fraction == 0.0 {
-					output = rounded_avg_rating;
-				} else {
-					output = rounded_avg_rating - 1;
-				}
-			} else {
-				output = 0;
-			}
-			// -----
-
-			output
-		}
 	}
 }

@@ -18,30 +18,12 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use frame_support::{
 		log,
-        sp_runtime::traits::Hash,
         traits::{ 
-            Randomness, 
-            Currency, 
-            tokens::ExistenceRequirement, 
-            LockIdentifier, 
-            WithdrawReasons, 
             LockableCurrency 
         },
-		dispatch::{ EncodeLike },
-        transactional
     };
 	use sp_std::vec::Vec;
-	// use codec::{EncodeLike};
 
-	type AccountOf<T> = <T as frame_system::Config>::AccountId;
-	type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
-
-	// NOTE: Need to refactor, duplicate code for testing purposes
-	
-	type AccountId<T> = <T as frame_system::Config>::AccountId;
-	type Balance<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
-
-	
 	#[derive(Encode, Decode, Default, PartialEq, Eq, Debug, Clone, TypeInfo)]
 	pub struct Message<AccountId> {
 		pub message_id: u128,
@@ -96,10 +78,6 @@ pub mod pallet {
     /// For storing the number of tasks
 	pub type MessageCount<T> = StorageValue<_, u128, ValueQuery>;
 
-	// #[pallet::storage]
-	// #[pallet::getter(fn get_message)]
-    // /// For storing the message details
-	// pub(super) type MessageStorage<T: Config> = StorageValue<_, Vec<Message<T::AccountId>>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_message)]
@@ -133,8 +111,6 @@ pub mod pallet {
 		UnauthorisedToClose,
 		/// To make sure a reply exists
 		ReplyDoesNotExist
-		
-		
 	}
 
 	#[pallet::call]
@@ -158,18 +134,8 @@ pub mod pallet {
 				reply: None,
 				status: Status::Active
 			};
-
-			// // If mode = true, storagevalue element is called else storagemap
-			// if mode{
-			// 	let mut msg_details: Vec<Message<T::AccountId>> = Vec::new();
-			// 	msg_details.push(msg.new());
 				
-			// 	<MessageStorage<T>>::put(msg_details);
-				
-			// }
-			// else{
-				
-			<MsgStorage<T>>::insert(&message_count,msg);
+			<MsgStorage<T>>::insert(&message_count,msg.new());
 			
 			<MessageCount<T>>::put(message_count + 1);
 
@@ -198,10 +164,6 @@ pub mod pallet {
 			
 			let original_sender = msg.sender_id.clone();
 
-			// let mut reply_details: Vec<&Message<T::AccountId>> = Vec::new();
-			// reply_details.push(&msg);
-			// <MessageStorage<T>>::put(reply_details);
-
 			<MsgStorage<T>>::insert(&message_id,msg);
 	
 			Self::deposit_event(Event::MessageReplied( message_id, receiver, original_sender));
@@ -224,10 +186,6 @@ pub mod pallet {
 			ensure! (msg.status == Status::Replied,<Error<T>>::ReplyDoesNotExist);
 
 			let receiver = msg.receiver_id.clone();
-
-			// if mode{
-			// 	msg.status = Status::Closed;
-			// }
 
 			msg.status = match mode{
 				true => Status::Closed,
