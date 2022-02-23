@@ -1,24 +1,9 @@
 // Random shuffling using Fischer-Yates modern method & Linear Congruential Generator
 
-// fn main() {
-//     // Set the type
-//     type Item = char;
-//     // Keeps changing
-//     let block_number: u32 = 10;
-//     // Account IDs
-//     let original: Vec<Item> = vec!['a', 'b', 'c', 'd', 'e', 'f'];
-//     // Length of the acount id list
-//     let length = original.len() as u32;
-//     // Calling the shuffling algorithm
-//     let random_vector = ts_shuffle::<Item>(original, block_number, length);
-    
-//     println!("{:?}", random_vector);
-// }
-
 use parity_scale_codec::alloc::string::ToString;
 use sp_std::vec::Vec;
 
-pub fn ts_shuffle<T>(
+pub fn dot_shuffle<T>(
     mut input: Vec<T>, 
     seed: u32, 
     mut length: u32
@@ -32,7 +17,7 @@ pub fn ts_shuffle<T>(
     // ----- Executing the Fischer-Yates algorithm
     loop {
         // * Function for adding individual numbers
-        random_number_idx = one(
+        random_number_idx = get_sum(
             // * Linear congruential generator
             lcg(
                 seed as u128, 
@@ -60,7 +45,7 @@ pub fn ts_shuffle<T>(
     result
 }
 
-pub fn one(number: u32, length: u32) -> u32 {
+pub fn get_sum(number: u32, length: u32) -> u32 {
     // Converting numeric to string
     let mut number_string = number.to_string();
     // For total of the number

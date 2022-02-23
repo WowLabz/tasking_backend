@@ -11,7 +11,7 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-mod dot_shuffle;
+mod shuffle;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -24,7 +24,7 @@ pub mod pallet {
 		log,
 		sp_runtime::traits::{AccountIdConversion, SaturatedConversion},
 		traits::{
-			tokens::ExistenceRequirement, Currency, LockableCurrency, Randomness
+			tokens::ExistenceRequirement, Currency, LockableCurrency,
 		},
 	};
 
@@ -35,10 +35,10 @@ pub mod pallet {
 	use sp_std::collections::btree_map::BTreeMap;
 	use sp_std::vec::Vec;
 	// use parity_scale_codec::alloc::string::ToString;
-	use crate::dot_shuffle::ts_shuffle;
+	use crate::shuffle::dot_shuffle;
 	// use serde::__private::ToString;
 
-	// type AccountOf<T> = <T as frame_system::Config>::AccountId;
+	type AccountOf<T> = <T as frame_system::Config>::AccountId;
 	type Item<T> = <T as frame_system::Config>::AccountId;
 	type BalanceOf<T> =
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -99,7 +99,9 @@ pub mod pallet {
 		pub status: Status,
 		pub task_description: Vec<u8>,
 		pub attachments: Option<Vec<Vec<u8>>>,
-		pub dispute: Option<CourtDispute<AccountId, BlockNumber>>
+		pub dispute: Option<CourtDispute<AccountId, BlockNumber>>,
+		pub final_worker_rating: Option<u8>,
+		pub final_customer_rating: Option<u8>,
 	}
 
 	#[derive(Encode, Decode, PartialEq, Eq, Debug, Clone, TypeInfo)]
@@ -194,6 +196,32 @@ pub mod pallet {
 		pub avg_rating: Option<u8>,
 		pub tags: Vec<TaskTypeTags>,
 		pub sudo: bool
+	}
+
+	impl<Balance> AccountDetails<Balance> {
+
+		pub fn update_rating<T: Config>(account_id: T::AccountId, new_rating: u8) {
+			let mut account_details = <AccountMap<T>>::get(account_id.clone());
+			let mut all_ratings = account_details.ratings;
+			all_ratings.push(new_rating);
+			let avg_rating = Some(Self::get_list_average(all_ratings.clone()));
+			account_details.avg_rating = avg_rating;
+			account_details.ratings = all_ratings.clone();
+			<AccountMap<T>>::insert(account_id, account_details);
+		}
+
+		pub fn get_list_average(list: Vec<u8>) -> u8 {
+			let list_len: u8 = list.len() as u8;
+			if list_len == 1 {
+				return list[0];
+			}
+			let mut total_sum = 0;
+			for item in list.iter() {
+				total_sum += item;
+			}
+			let average = total_sum / list_len;
+			average
+		}
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
@@ -686,7 +714,9 @@ pub mod pallet {
 				status: Default::default(),
 				task_description: task_des.clone(),
 				attachments: publisher_attachments.clone(),
-				dispute: None
+				dispute: None,
+				final_worker_rating: None,
+				final_customer_rating: None,
 			};
 			// Inserting the new task details to storage
 			<TaskStorage<T>>::insert(current_task_count.clone(), task_details);
@@ -829,6 +859,9 @@ pub mod pallet {
 			ensure!(publisher == approver.clone(), <Error<T>>::UnauthorisedToApprove);
 			// Checking if the worker is set or not
 			let bidder = task.worker_id.clone().ok_or(<Error<T>>::WorkerNotSet)?;
+
+			task.final_worker_rating = Some(rating_for_the_worker.clone());
+
 			// Getting Worker Rating from RatingMap
 			let existing_bidder_ratings: User<T::AccountId> = Self::get_worker_ratings(&bidder);
 			// Creating temp rating vector
@@ -843,6 +876,8 @@ pub mod pallet {
 			let curr_bidder_ratings = User::new(bidder.clone(), UserType::Worker, temp_rating_vec);
 			// Inserting into worker rating storage
 			<WorkerRatings<T>>::insert(bidder.clone(), curr_bidder_ratings.clone());
+
+			
 			// Updating task status
 			task.status = Status::CustomerRatingPending;
 			// Inserting updated task into storage
@@ -879,6 +914,10 @@ pub mod pallet {
 			ensure!(worker == bidder.clone(), <Error<T>>::UnauthorisedToProvideCustomerRating);
 			// Accessing reference of the publisher
 			let customer = &task.publisher;
+
+			task.final_customer_rating = Some(rating_for_customer.clone());
+
+
 			// Get existing customer ratings
 			let existing_customer_rating: User<T::AccountId> =
 				Self::get_customer_ratings(&customer);
@@ -892,7 +931,7 @@ pub mod pallet {
 			temp_rating_vec.push(rating_for_customer);
 			// Creating new user instance with new rating
 			let curr_customer_ratings =
-				User::new(customer.clone(), UserType::Customer, temp_rating_vec);
+			User::new(customer.clone(), UserType::Customer, temp_rating_vec);
 			// Inserting new user instance in customer rating storage
 			<CustomerRatings<T>>::insert(customer.clone(), curr_customer_ratings.clone());
 
@@ -1013,6 +1052,8 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 
+		pub fn update_account_storage(task_id: u128) {}
+
 		pub fn adjourn_court(task_id: u128) -> Option<bool> {
 			// ----- Initializations
 			let mut total_publisher_rating: u8 = 0;
@@ -1131,10 +1172,16 @@ pub mod pallet {
 					ExistenceRequirement::AllowDeath,
 				).ok()?;
 				// Updating the task details structure
+				task_details.final_worker_rating = dispute_details.avg_publisher_rating.clone();
+				task_details.final_customer_rating = dispute_details.avg_worker_rating.clone();
 				task_details.dispute = Some(dispute_details);
 				task_details.status = Status::Completed;
 				// Updating the task details storage
 				<TaskStorage<T>>::insert(&task_id, task_details);
+				
+
+				AccountDetails::<pallet::AccountDetails<_> as Trait>::BalanceOf::update_rating::<T>(publisher_id.clone(), task_details.final_customer_rating.unwrap().clone());
+				AccountDetails::<pallet::AccountDetails<_> as Trait>::BalanceOf::update_rating::<T>(worker_id.clone(), task_details.final_worker_rating.unwrap().clone());
 
 				Self::deposit_event(
 					Event::CourtAdjourned(
@@ -1300,7 +1347,7 @@ pub mod pallet {
 			// Length of the acount id list
 			let length = all_sudo_account_ids.len() as u32;
 			// Calling the shuffling algorithm
-			let random_vector = ts_shuffle::<Item<T>>(all_sudo_account_ids, block_number.saturated_into::<u32>(), length);
+			let random_vector = dot_shuffle::<Item<T>>(all_sudo_account_ids, block_number.saturated_into::<u32>(), length);
 			
 			random_vector.first().unwrap().clone()
 		}
