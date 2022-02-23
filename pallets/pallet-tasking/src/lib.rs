@@ -1174,14 +1174,12 @@ pub mod pallet {
 				// Updating the task details structure
 				task_details.final_worker_rating = dispute_details.avg_publisher_rating.clone();
 				task_details.final_customer_rating = dispute_details.avg_worker_rating.clone();
+				<AccountDetails<BalanceOf<T>>>::update_rating::<T>(publisher_id.clone(), task_details.final_customer_rating.clone().unwrap());
+				<AccountDetails<BalanceOf<T>>>::update_rating::<T>(worker_id.clone(), task_details.final_worker_rating.clone().unwrap());
 				task_details.dispute = Some(dispute_details);
 				task_details.status = Status::Completed;
 				// Updating the task details storage
 				<TaskStorage<T>>::insert(&task_id, task_details);
-				
-
-				AccountDetails::<pallet::AccountDetails<_> as Trait>::BalanceOf::update_rating::<T>(publisher_id.clone(), task_details.final_customer_rating.unwrap().clone());
-				AccountDetails::<pallet::AccountDetails<_> as Trait>::BalanceOf::update_rating::<T>(worker_id.clone(), task_details.final_worker_rating.unwrap().clone());
 
 				Self::deposit_event(
 					Event::CourtAdjourned(
