@@ -15,13 +15,11 @@ mod utils;
 
 #[frame_support::pallet]
 pub mod pallet {
-	// use log::{info, trace, warn};
+	
 	use frame_support::pallet_prelude::*;
 	use frame_support::PalletId;
 	use frame_system::pallet_prelude::*;
-	//use pallet_court::*;
 	use frame_support::{
-		//log,
 		sp_runtime::traits::{AccountIdConversion, SaturatedConversion},
 		traits::{
 			tokens::ExistenceRequirement, Currency, LockableCurrency,
@@ -33,11 +31,9 @@ pub mod pallet {
 	use codec::{Decode, Encode};
 	use sp_std::collections::btree_map::BTreeMap;
 	use sp_std::vec::Vec;
-	// use parity_scale_codec::alloc::string::ToString;
 	use crate::utils::{dot_shuffle,roundoff};
-	// use serde::__private::ToString;
+	
 
-	//type AccountOf<T> = <T as frame_system::Config>::AccountId;
 	type Item<T> = <T as frame_system::Config>::AccountId;
 	type BalanceOf<T> =
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -253,16 +249,6 @@ pub mod pallet {
 	#[pallet::getter(fn task)]
 	pub(super) type TaskStorage<T: Config> =
 		StorageMap<_, Blake2_128Concat, u128, TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>, ValueQuery>;
-
-	// #[pallet::storage]
-	// #[pallet::getter(fn get_worker_ratings)]
-	// pub(super) type WorkerRatings<T: Config> =
-	// 	StorageMap<_, Blake2_128Concat, T::AccountId, User<T::AccountId>, ValueQuery>;
-
-	// #[pallet::storage]
-	// #[pallet::getter(fn get_customer_ratings)]
-	// pub(super) type CustomerRatings<T: Config> =
-	// 	StorageMap<_, Blake2_128Concat, T::AccountId, User<T::AccountId>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_account_balances)]
@@ -831,22 +817,6 @@ pub mod pallet {
 			//let bidder = task.worker_id.clone().ok_or(<Error<T>>::WorkerNotSet)?;
 
 			task.final_worker_rating = Some(rating_for_the_worker.clone());
-
-			// // Getting Worker Rating from RatingMap
-			// let existing_bidder_ratings: User<T::AccountId> = Self::get_worker_ratings(&bidder);
-			// // Creating temp rating vector
-			// let mut temp_rating_vec = Vec::<u8>::new();
-			// // Looping through all the existing worker ratings
-			// for rating in existing_bidder_ratings.ratings_vec {
-			// 	temp_rating_vec.push(rating);
-			// }
-			// // Updating the temp rating vector with new rating
-			// temp_rating_vec.push(rating_for_the_worker);
-			// // Creating a new user instance for updating worker details
-			// let curr_bidder_ratings = User::new(bidder.clone(), UserType::Worker, temp_rating_vec);
-			// // Inserting into worker rating storage
-			// <WorkerRatings<T>>::insert(bidder.clone(), curr_bidder_ratings.clone());
-
 			
 			// Updating task status
 			task.status = Status::CustomerRatingPending;
@@ -886,24 +856,6 @@ pub mod pallet {
 			let customer = &task.publisher;
 
 			task.final_customer_rating = Some(rating_for_customer.clone());
-
-			// // Get existing customer ratings
-			// let existing_customer_rating: User<T::AccountId> =
-			// 	Self::get_customer_ratings(&customer);
-			// // Creating a temp rating vector
-			// let mut temp_rating_vec = Vec::<u8>::new();
-			// // Looping over all the existing customer ratings
-			// for rating in existing_customer_rating.ratings_vec {
-			// 	temp_rating_vec.push(rating);
-			// }
-			// // Updating temp rating vector with new rating
-			// temp_rating_vec.push(rating_for_customer);
-			// // Creating new user instance with new rating
-			// let curr_customer_ratings =
-			// User::new(customer.clone(), UserType::Customer, temp_rating_vec);
-			// // Inserting new user instance in customer rating storage
-			// <CustomerRatings<T>>::insert(customer.clone(), curr_customer_ratings.clone());
-
 			task.status = Status::CustomerRatingProvided;
 			<TaskStorage<T>>::insert(&task_id, task.clone());
 
