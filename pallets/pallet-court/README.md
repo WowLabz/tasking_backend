@@ -125,4 +125,9 @@ Final:
 3. Add remaining ensures in raise dispute extrinsic - Done
 4. Add unit test cases
 
+Things to discuss:
+1. Having seprate storages for ratings received as a customer and ratings as a worker
+(Possible Fix: Mention general rating as a credibility and store the ratings separately)
+Credibility - A value from a function containing worker and customer rating
+
 
