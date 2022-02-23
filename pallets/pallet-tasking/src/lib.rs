@@ -93,7 +93,8 @@ pub mod pallet {
 		pub cost: Balance,
 		pub status: Status,
 		pub task_description: Vec<u8>,
-		pub attachments: Option<Vec<Vec<u8>>>,
+		pub publisher_attachments: Option<Vec<Vec<u8>>>,
+		pub worker_attachments: Option<Vec<Vec<u8>>>,
 		pub dispute: Option<CourtDispute<AccountId, BlockNumber>>,
 		pub final_worker_rating: Option<u8>,
 		pub final_customer_rating: Option<u8>,
@@ -112,13 +113,6 @@ pub mod pallet {
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
-	pub struct SudoJurorPayload {
-		voted_for: UserType,
-		publisher_rating: u8,
-		worker_rating: u8,
-	}
-
-	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
 	pub struct JurorDecisionDetails {
 		voted_for: Option<UserType>,
 		publisher_rating: Option<u8>,
@@ -132,12 +126,6 @@ pub mod pallet {
 		total_case_period: BlockNumber,
 		trial_number: u8,
 		is_active: bool,
-	}
-
-	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
-	pub struct TaskAutocompletion<BlockNumber> {
-		task_id: u128,
-		task_will_complete_at: BlockNumber,
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
@@ -251,11 +239,6 @@ pub mod pallet {
 		StorageMap<_, Blake2_128Concat, u128, TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn get_account_balances)]
-	pub(super) type AccountBalances<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::AccountId, BalanceOf<T>, ValueQuery>;
-
-	#[pallet::storage]
 	#[pallet::getter(fn get_count)]
 	pub(super) type Count<T> = StorageValue<_, u128, ValueQuery>;
 
@@ -269,10 +252,6 @@ pub mod pallet {
 	pub(super) type Hearings<T: Config> =
 		StorageValue<_, Vec<Hearing<BlockNumberOf<T>>>, ValueQuery>;
 
-	#[pallet::storage]
-	#[pallet::getter(fn get_task_autocompletions)]
-	pub(super) type TaskAutocompletions<T: Config> =
-		StorageValue<_, Vec<TaskAutocompletion<BlockNumberOf<T>>>, ValueQuery>;
 	// -----
 
 	#[pallet::event]
@@ -669,7 +648,8 @@ pub mod pallet {
 				cost: task_cost.clone(),
 				status: Default::default(),
 				task_description: task_des.clone(),
-				attachments: publisher_attachments.clone(),
+				publisher_attachments: publisher_attachments.clone(),
+				worker_attachments: None,
 				dispute: None,
 				final_worker_rating: None,
 				final_customer_rating: None,
@@ -750,7 +730,7 @@ pub mod pallet {
 		pub fn task_completed(
 			origin: OriginFor<T>,
 			task_id: u128,
-			worker_attachments: Option<Vec<Vec<u8>>>, // TODO: Mandatory
+			worker_attachments: Vec<Vec<u8>>, 
 		) -> DispatchResult {
 			// User authentication
 			let bidder = ensure_signed(origin)?;
@@ -768,20 +748,9 @@ pub mod pallet {
 			ensure!(worker == bidder.clone(), <Error<T>>::UnauthorisedToComplete);
 			// Updating the status
 			task.status = Status::PendingApproval;
-			// Accessing the task attachments
-			let existing_attachments = task.attachments.clone();
-			// Creating vector for holding old and new attachents
-			let mut updated_attachments: Vec<Vec<u8>> = Vec::new();
-			// Update only if old attachments exist
-			if let Some(attachments) = existing_attachments {
-				updated_attachments.extend(attachments.clone());
-			}
-			// update only if new attachments exist
-			if let Some(work_attachments) = worker_attachments {
-				updated_attachments.extend(work_attachments.clone());
-			}
-			// Updating the attachments for storage
-			task.attachments = Some(updated_attachments);
+
+			task.worker_attachments = Some(worker_attachments);
+			
 			// Inserting the updated task details
 			<TaskStorage<T>>::insert(&task_id, task.clone());
 			// Notify user
