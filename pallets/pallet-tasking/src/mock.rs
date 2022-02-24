@@ -8,6 +8,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup}, testing::Header,
 };
 use frame_system as system;
+use crate::AccountDetails;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -94,17 +95,23 @@ impl pallet_tasking::Config for Test {
 pub(crate) struct ExtBuilder {
     // endowed accounts with balances
     balances: Vec<(AccountId, Balance)>,
+    account_map: Vec<(u64,AccountDetails<Balance>)>,
 }
 
 impl Default for ExtBuilder {
     fn default() -> ExtBuilder {
-        ExtBuilder { balances: vec![] }
+        ExtBuilder { balances: vec![], account_map: vec![]}
     }
 }
 
 impl ExtBuilder {
     pub(crate) fn with_balances(mut self, balances: Vec<(AccountId, Balance)>) -> Self {
         self.balances = balances;
+        self
+    }
+
+    pub(crate) fn with_account_details(mut self, account_map: Vec<(u64,AccountDetails<Balance>)>) -> Self {
+        self.account_map = account_map;
         self
     }
 
@@ -118,6 +125,10 @@ impl ExtBuilder {
         }
         .assimilate_storage(&mut t)
         .expect("Pallet balances storage can be assimilated");
+
+        pallet_tasking::GenesisConfig::<Test> {
+            account_map: self.account_map,
+        };
 
         let mut ext = sp_io::TestExternalities::new(t);
         ext.execute_with(|| System::set_block_number(1));
