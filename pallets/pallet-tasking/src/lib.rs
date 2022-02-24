@@ -20,7 +20,8 @@ pub mod pallet {
 	use frame_support::PalletId;
 	use frame_system::pallet_prelude::*;
 	use frame_support::{
-		sp_runtime::traits::{AccountIdConversion, SaturatedConversion},
+		log, sp_runtime,
+		sp_runtime::traits::{AccountIdConversion, SaturatedConversion,},
 		traits::{
 			tokens::ExistenceRequirement, Currency, LockableCurrency,
 		},
@@ -208,6 +209,23 @@ pub mod pallet {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub account_map: Vec<(T::AccountId, AccountDetails<BalanceOf<T>>)>,
+	}
+	
+	#[cfg(feature = "std")]
+	impl<T: Config> GenesisConfig<T> {
+		/// Direct implementation of `GenesisBuild::build_storage`.
+		///
+		/// Kept in order not to break dependency.
+		pub fn build_storage(&self) -> Result<sp_runtime::Storage, String> {
+			<Self as GenesisBuild<T>>::build_storage(self)
+		}
+	
+		/// Direct implementation of `GenesisBuild::assimilate_storage`.
+		///
+		/// Kept in order not to break dependency.
+		pub fn assimilate_storage(&self, storage: &mut sp_runtime::Storage) -> Result<(), String> {
+			<Self as GenesisBuild<T>>::assimilate_storage(self, storage)
+		}
 	}
 
 	#[cfg(feature = "std")]
@@ -525,6 +543,8 @@ pub mod pallet {
 				<Error<T>>::JurySelectionPeriodElapsed
 			);
 			// -----
+
+			log::info!("****Potential Jurors {:?}", dispute_details.potential_jurors);
 
 			// Ensuring if one is potential juror
 			ensure!(dispute_details.potential_jurors.contains(&juror), <Error<T>>::NotPotentialJuror);

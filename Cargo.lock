@@ -3970,6 +3970,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "futures-timer 3.0.2",
  "num-traits",
  "pallet-balances",
  "pallet-membership",

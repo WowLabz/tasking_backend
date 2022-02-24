@@ -95,7 +95,7 @@ impl pallet_tasking::Config for Test {
 pub(crate) struct ExtBuilder {
     // endowed accounts with balances
     balances: Vec<(AccountId, Balance)>,
-    account_map: Vec<(u64,AccountDetails<Balance>)>,
+    account_map: Vec<(AccountId,AccountDetails<Balance>)>,
 }
 
 impl Default for ExtBuilder {
@@ -110,7 +110,7 @@ impl ExtBuilder {
         self
     }
 
-    pub(crate) fn with_account_details(mut self, account_map: Vec<(u64,AccountDetails<Balance>)>) -> Self {
+    pub(crate) fn with_account_details(mut self, account_map: Vec<(AccountId,AccountDetails<Balance>)>) -> Self {
         self.account_map = account_map;
         self
     }
@@ -128,7 +128,9 @@ impl ExtBuilder {
 
         pallet_tasking::GenesisConfig::<Test> {
             account_map: self.account_map,
-        };
+        }       
+        .assimilate_storage(&mut t)
+        .expect("Pallet tasking storage can be assimilated");
 
         let mut ext = sp_io::TestExternalities::new(t);
         ext.execute_with(|| System::set_block_number(1));

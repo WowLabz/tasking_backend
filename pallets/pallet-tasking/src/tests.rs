@@ -3,6 +3,8 @@ use crate::{mock::*, Error, Status, TaskDetails, TaskTypeTags, CourtDispute, Use
 use frame_support::{log, assert_noop, assert_ok, dispatch::DispatchError};
 use frame_system::{ensure_signed, RawOrigin};
 use crate::AccountDetails;
+use sp_std::time::Duration;
+use futures_timer::Delay;
 
 #[test]
 fn test_create_task (){
@@ -412,6 +414,15 @@ fn test_customer_disapprove_rating(){
 #[test]
 fn test_accept_jury_duty(){
     ExtBuilder::default()
+    .with_balances(vec![
+        (1, 100000),
+        (2, 100000),
+        (3, 100000),
+        (4, 100000),
+        (5, 100000),
+        (6, 100000),
+        (7, 100000),
+    ])
     .with_account_details(vec![
         (1, AccountDetails {
 			balance: 1 << 60,
@@ -463,15 +474,6 @@ fn test_accept_jury_duty(){
 			sudo: false
 		}),
     ])
-    .with_balances(vec![
-        (1, 100000),
-        (2, 100000),
-        (3, 100000),
-        (4, 100000),
-        (5, 100000),
-        (6, 100000),
-        (7, 100000),
-    ])
     .build()
     .execute_with(|| {
         Tasking::create_task(
@@ -507,6 +509,114 @@ fn test_accept_jury_duty(){
     })
 
 }
+
+#[test]
+fn test_cast_vote(){
+    ExtBuilder::default()
+    .with_balances(vec![
+        (1, 100000),
+        (2, 100000),
+        (3, 100000),
+        (4, 100000),
+        (5, 100000),
+        (6, 100000),
+        (7, 100000),
+    ])
+    .with_account_details(vec![
+        (1, AccountDetails {
+			balance: 1 << 60,
+			ratings: [5, 5, 5, 5, 5].to_vec(),
+			avg_rating: Some(5),
+			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec(),
+			sudo: true
+		}),
+        (2, AccountDetails {
+			balance: 1 << 60,
+			ratings: [5, 5, 5, 5, 5].to_vec(),
+			avg_rating: Some(5),
+			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec(),
+			sudo: false
+		}),
+        (3, AccountDetails {
+			balance: 1 << 60,
+			ratings: [5, 5, 5, 5, 5].to_vec(),
+			avg_rating: Some(5),
+			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec(),
+			sudo: false
+		}),
+        (4, AccountDetails {
+			balance: 1 << 60,
+			ratings: [5, 5, 5, 5, 5].to_vec(),
+			avg_rating: Some(5),
+			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec(),
+			sudo: false
+		}),
+        (5, AccountDetails {
+			balance: 1 << 60,
+			ratings: [5, 5, 5, 5, 5].to_vec(),
+			avg_rating: Some(5),
+			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec(),
+			sudo: false
+		}),
+        (6, AccountDetails {
+			balance: 1 << 60,
+			ratings: [5, 5, 5, 5, 5].to_vec(),
+			avg_rating: Some(5),
+			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec(),
+			sudo: false
+		}),
+        (7, AccountDetails {
+			balance: 1 << 60,
+			ratings: [5, 5, 5, 5, 5].to_vec(),
+			avg_rating: Some(5),
+			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec(),
+			sudo: false
+		}),
+    ])
+    .build()
+    .execute_with(|| {
+        Tasking::create_task(
+            Origin::signed(1),
+            50,
+            500,
+            b"Backend Systems".to_vec(),
+            b"Alice".to_vec(),
+            vec![TaskTypeTags::MachineLearning],
+            Some(vec![b"http://aws/publisher.png".to_vec()]),
+        )
+        .unwrap();
+        Tasking::bid_for_task(
+            Origin::signed(3), 
+            0, 
+            b"Bob".to_vec()
+        ).unwrap();
+        Tasking::task_completed(
+            Origin::signed(3),
+            0,
+            vec![b"http://aws/worker.png".to_vec()],
+        ).unwrap();
+        Tasking::disapprove_task(
+            Origin::signed(1), 
+            0
+        ).unwrap();
+        Tasking::accept_jury_duty(
+            Origin::signed(7),
+            0
+        ).unwrap();
+        Delay::new(Duration::from_secs(45));
+
+        assert_ok!(
+            Tasking::cast_vote(
+            Origin::signed(7),
+            0,
+            UserType::Customer,
+            5,
+            3)
+        );
+    })
+
+}
+
 
         
 
