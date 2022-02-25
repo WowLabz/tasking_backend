@@ -203,13 +203,7 @@ fn testnet_genesis(
 			ratings: [3, 5, 3, 3, 3].to_vec(),
 			avg_rating: Some(3),
 			tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec(),
-			sudo: trueAccountDetails {
-				balance: 1 << 60,
-				ratings: [5, 5, 5, 5, 5].to_vec(),
-				avg_rating: Some(5),
-				tags: [TaskTypeTags::MachineLearning, TaskTypeTags::DeepLearning].to_vec(),
-				sudo: true
-			}
+			sudo: true
 		},
 	];
 

@@ -5,6 +5,7 @@ use frame_system::{ensure_signed, RawOrigin};
 use crate::AccountDetails;
 use sp_std::time::Duration;
 use futures_timer::Delay;
+use std::{thread,time};
 
 #[test]
 fn test_create_task (){
@@ -574,7 +575,7 @@ fn test_cast_vote(){
 		}),
     ])
     .build()
-    .execute_with(|| {
+    .execute_with( || {
         Tasking::create_task(
             Origin::signed(1),
             50,
@@ -603,19 +604,39 @@ fn test_cast_vote(){
             Origin::signed(7),
             0
         ).unwrap();
-        Delay::new(Duration::from_secs(45));
+        let ten_millis = time::Duration::from_secs(45);
+        thread::sleep(ten_millis);
 
-        assert_ok!(
+        assert_noop!(
             Tasking::cast_vote(
             Origin::signed(7),
             0,
             UserType::Customer,
             5,
-            3)
+            3),
+            Error::<Test>::JurySelectionInProcess
+
         );
+        //Delay::new(Duration::from_secs(45)).await?;
+        // let work  = thread::spawn(|| {
+
+        //     let ten_millis = time::Duration::from_secs(30);
+        //     thread::sleep(ten_millis);
+            
+        //     Tasking::cast_vote(
+        //     Origin::signed(7),
+        //     0,
+        //     UserType::Customer,
+        //     5,
+        //     3)
+            
+        // });
+        // assert_ok!(work);
+      
     })
 
 }
+
 
 
         
