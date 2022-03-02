@@ -20,7 +20,7 @@ pub mod pallet {
 	use frame_support::PalletId;
 	use frame_system::pallet_prelude::*;
 	use frame_support::{
-		log, sp_runtime,
+		sp_runtime,
 		sp_runtime::traits::{AccountIdConversion, SaturatedConversion,},
 		traits::{
 			tokens::ExistenceRequirement, Currency, LockableCurrency,
@@ -543,8 +543,6 @@ pub mod pallet {
 				<Error<T>>::JurySelectionPeriodElapsed
 			);
 			// -----
-
-			log::info!("****Potential Jurors {:?}", dispute_details.potential_jurors);
 
 			// Ensuring if one is potential juror
 			ensure!(dispute_details.potential_jurors.contains(&juror), <Error<T>>::NotPotentialJuror);
