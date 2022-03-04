@@ -1,13 +1,10 @@
 use crate::mock::ExtBuilder;
-use crate::{mock::*, Error, Status, TaskDetails, TaskTypeTags, CourtDispute, UserType, TaskStorage};
-use frame_support::{log, assert_noop, assert_ok, dispatch::DispatchError};
-use frame_system::{ensure_signed, RawOrigin};
-use crate::AccountDetails;
-use sp_std::time::Duration;
-use futures_timer::Delay;
-use std::{thread,time};
+use crate::{mock::*, Error, Status, TaskDetails, TaskTypeTags, UserType};
+use frame_support::{assert_noop, assert_ok, dispatch::DispatchError};
+use frame_system::{ensure_signed};
 
 #[test]
+// Test functions for create_task extrinsic
 fn test_create_task (){
     ExtBuilder::default()
     .with_balances(vec![
@@ -20,6 +17,8 @@ fn test_create_task (){
         (7, 100000),
     ])
     .build()
+
+    //  Test for checking storage structure on creating a task
     .execute_with(|| {
         assert_ok!(Tasking::create_task(
             Origin::signed(1),
@@ -51,9 +50,25 @@ fn test_create_task (){
         };
         assert_eq!(Tasking::task(0), expected_task_details);
     });
+
+    // Test for chhecking error on an unsigned transaction
+    new_test_ext().execute_with(||{
+        assert_noop!(Tasking::create_task(
+            Origin::none(),
+            30,
+            300,
+            b"Create a website".to_vec(),
+            b"Alice".to_vec(),
+            vec![TaskTypeTags::WebDevelopment],
+            Some(vec![b"http://aws/publisher.png".to_vec()])
+        ),
+        DispatchError::BadOrigin
+        );
+    })
 }
 
 #[test]
+// Test for bid for task extrinsic
 fn test_bid_for_task(){
     ExtBuilder::default()
         .with_balances(vec![
@@ -66,6 +81,7 @@ fn test_bid_for_task(){
             (7, 100000),
         ])
         .build()
+        
         .execute_with(||{
         Tasking::create_task(
             Origin::signed(1),
@@ -77,15 +93,29 @@ fn test_bid_for_task(){
             Some(vec![b"http://aws/publisher.png".to_vec()])
         )
         .unwrap();
-        assert_ok!(Tasking::bid_for_task(
-            Origin::signed(3),
-            0,
-            b"Bob".to_vec()
-        ));
-    })
+
+        // Test for bidding for a created task by a signed user
+        assert_ok!(
+            Tasking::bid_for_task(
+                Origin::signed(3),
+                0,
+                b"Bob".to_vec()
+            ));
+
+        // Test for error return whe bidding a task with incorrect task ID
+        assert_noop!(
+            Tasking::bid_for_task(
+                Origin::signed(3), 
+                10, 
+                b"Bob".to_vec()),
+                Error::<Test>::TaskDoesNotExist
+            );
+    });
+
 }
 
 #[test]
+// Test for completing a task extrinsic
 fn test_task_completed() {
     ExtBuilder::default()
     .with_balances(vec![
@@ -114,16 +144,29 @@ fn test_task_completed() {
             0, 
             b"Bob".to_vec()
         ).unwrap();
+
+        // Task being completed by the right worker
         assert_ok!(
             Tasking::task_completed(
                 Origin::signed(3), 
                 0, 
                 vec![b"http://aws/worker.png".to_vec()]
             ));
-    })
+        
+        // Error test for trying to complete the task with a wrong ID
+        assert_noop!(
+            Tasking::task_completed(
+                Origin::signed(4), 
+                0, 
+                vec![b"http://aws/worker.png".to_vec()]
+            ),
+            Error::<Test>::TaskIsNotInProgress
+        );
+    });
 }
 
 #[test]
+// Tests for approve tasks extrinsic
 fn test_approve_task() {
     ExtBuilder::default()
     .with_balances(vec![
@@ -154,7 +197,12 @@ fn test_approve_task() {
             vec![b"http://aws/worker.png".to_vec()],
         )
         .unwrap();
+        
+        // Success test for approving task
         assert_ok!(Tasking::approve_task(Origin::signed(1), 0, 5));
+
+        // Error test for approving task with an account id other than the publishers
+        assert_noop!(Tasking::approve_task(Origin::signed(2), 0, 5), Error::<Test>::TaskIsNotPendingApproval);
     })
 }
 
@@ -198,12 +246,24 @@ fn test_provide_customer_ratings(){
                 0, 
                 5
             ).unwrap();
+
+            // Success test for providing customer rating
             assert_ok!(
                 Tasking::provide_customer_rating(
                 Origin::signed(3),
                 0,
                 5
             ));
+
+            // Error test for providing rating to incorrect task ID
+            assert_noop!(
+                Tasking::provide_customer_rating(
+                Origin::signed(3),
+                2,
+                5
+            ), 
+            Error::<Test>::TaskDoesNotExist
+        );
         });
 }
 
@@ -557,6 +617,12 @@ fn test_accept_jury_duty(){
             Origin::signed(1), 
             0
         ).unwrap();
+        System::set_block_number(6);
+        Tasking::collect_cases(6);
+        System::set_block_number(11);
+        Tasking::collect_cases(11);
+        // System::set_block_number(16);
+        // Tasking::collect_cases(16);
         
         assert_ok!(
             Tasking::accept_jury_duty(
@@ -631,7 +697,7 @@ fn test_cast_vote(){
 		}),
     ])
     .build()
-    .execute_with( || {
+    .execute_with( ||{
         Tasking::create_task(
             Origin::signed(1),
             50,
@@ -642,36 +708,47 @@ fn test_cast_vote(){
             Some(vec![b"http://aws/publisher.png".to_vec()]),
         )
         .unwrap();
+        //System::set_block_number(2);
         Tasking::bid_for_task(
             Origin::signed(3), 
             0, 
             b"Bob".to_vec()
         ).unwrap();
+        //System::set_block_number(3);
         Tasking::task_completed(
             Origin::signed(3),
             0,
             vec![b"http://aws/worker.png".to_vec()],
         ).unwrap();
+        System::set_block_number(3);
         Tasking::disapprove_task(
             Origin::signed(1), 
             0
         ).unwrap();
+        
         Tasking::accept_jury_duty(
             Origin::signed(7),
             0
         ).unwrap();
-        let ten_millis = time::Duration::from_secs(40);
-        thread::sleep(ten_millis);
-
-        assert_ok!(Tasking::cast_vote(
-            Origin::signed(7),
-            0,
-            UserType::Customer,
-            5,
-            3)
+        // Number shoud be equal block number at disapprove task + 5
+        System::set_block_number(8);
+        Tasking::collect_cases(8);
+        
+        System::set_block_number(10);
+        let task = Tasking::task(0);
+        println!("***Task Details: {:?}",task.status);
+        assert_ok!(
+            Tasking::cast_vote(
+                Origin::signed(7),
+                0,
+                UserType::Worker,
+                4,
+                5
+            )
         );
-    })
 
+                
+    })
 }
 
 

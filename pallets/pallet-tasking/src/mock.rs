@@ -1,5 +1,4 @@
 use crate as pallet_tasking;
-//pub use pallet_balances;
 use sp_core::H256;
 use sp_std::prelude::*;
 use frame_support::parameter_types;
@@ -15,7 +14,6 @@ type Block = frame_system::mocking::MockBlock<Test>;
 
 pub type AccountId = u64;
 pub type Balance = u64;
-pub type BlockNumber = u64;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
