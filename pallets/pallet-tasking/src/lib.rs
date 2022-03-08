@@ -954,6 +954,7 @@ pub mod pallet {
 
 			// authentication
 			let sender = ensure_signed(origin)?;
+			let mut milestone_cost: BalanceOf<T> = 0u8.saturated_into();
 			let mut milestone_id = milestone_id;
 			let (milestone_number, project_id) = get_milestone_and_project_id(&mut milestone_id).map_err(|_| <Error<T>>::InvalidMilestoneId)?;
 			// ensure that the project and milestone exists
@@ -973,6 +974,8 @@ pub mod pallet {
 									}else{
 										if milestone_vector[milestone_number as usize].status != Status::Open {
 											res = Err(<Error<T>>::MilestoneNotOpenForBidding);
+										}else{
+											milestone_cost = milestone_vector[milestone_number as usize].cost.clone();
 										}
 									}
 								},
@@ -989,6 +992,13 @@ pub mod pallet {
 			<BidderList<T>>::mutate(&milestone_key, |bidder_vector| {
 				bidder_vector.push(account);
 			});
+			let escrow_id = Self::get_escrow(milestone_id.clone());
+			T::Currency::transfer(
+				&sender,
+				&escrow_id,
+				milestone_cost,
+				ExistenceRequirement::KeepAlive,
+			)?;
 			Self::deposit_event(Event::BidSuccessful(milestone_id,sender));
 			Ok(())
 			// function body ends here
@@ -1602,6 +1612,10 @@ pub mod pallet {
 
 		pub fn escrow_account_id(id: u32) -> T::AccountId {
 			// Creating and calling sub account
+			T::PalletId::get().into_sub_account(id)
+		}
+
+		pub fn get_escrow(id: Vec<u8>) -> T::AccountId {
 			T::PalletId::get().into_sub_account(id)
 		}
 
