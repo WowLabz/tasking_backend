@@ -1,13 +1,14 @@
 // Random shuffling using Fischer-Yates modern method & Linear Congruential Generator
 
-use std::fmt::Result;
+
 
 use sp_runtime::SaturatedConversion;
 // use parity_scale_codec::alloc::string::ToString;
 use sp_std::vec::Vec;
 use num_traits::float::Float;
 
-use codec::alloc::string::{ToString, String};
+use codec::alloc::string::{ToString, String, FromUtf8Error};
+use codec::Error;
 
 
 
@@ -18,20 +19,29 @@ pub fn create_milestone_id(project_id: u128, milestone_number: u8) -> Vec<u8> {
     arr
 }
 
-pub fn get_milestone_and_project_id(milestone_id: &mut Vec<u8>) -> Option<(u8,u128)> {
+// pub fn get_milestone_and_project_id(milestone_id: &mut Vec<u8>) -> Option<(u8,u128)> {
+//     let milestone_number = milestone_id.pop().unwrap() - 97;
+//     let project_id: &[u8] = milestone_id;
+//     let project_id = String::from_utf8(project_id.to_vec());
+//     let project_number: u128;
+//     match project_id {
+//         Ok(str_project_id) => {
+//             project_number = str_project_id.parse::<u128>().unwrap();
+//             return Some((milestone_number, project_number));
+//         },
+//         Err(_) => {
+//             return None;
+//         }
+//     }
+// }
+
+pub fn get_milestone_and_project_id(milestone_id: &mut Vec<u8>) -> Result<(u8,u128), FromUtf8Error> {
     let milestone_number = milestone_id.pop().unwrap() - 97;
     let project_id: &[u8] = milestone_id;
-    let project_id = String::from_utf8(project_id.to_vec());
+    let project_id = String::from_utf8(project_id.to_vec())?;
     let project_number: u128;
-    match project_id {
-        Ok(str_project_id) => {
-            project_number = str_project_id.parse::<u128>().unwrap();
-            return Some((milestone_number, project_number));
-        },
-        Err(_) => {
-            return None;
-        }
-    }
+    project_number = project_id.parse::<u128>().unwrap();
+    return Ok((milestone_number, project_number));
 }
 
 pub fn dot_shuffle<T>(

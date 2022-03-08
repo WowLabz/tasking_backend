@@ -20,7 +20,7 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use frame_support::{
 		sp_runtime,
-		sp_runtime::traits::{AccountIdConversion, SaturatedConversion,},
+		sp_runtime::traits::{AccountIdConversion, SaturatedConversion, Hash},
 		traits::{
 			tokens::ExistenceRequirement, Currency, LockableCurrency,
 		},
@@ -71,6 +71,7 @@ pub mod pallet {
 		}
 	}
 
+	// Enum for the status of the Project
 	#[derive(Encode, Decode, PartialEq, Eq, Debug, Clone, TypeInfo)]
 	pub enum ProjectStatus {
 		/// Project has been initiated
@@ -83,6 +84,7 @@ pub mod pallet {
 		Closed,
 	}
 
+	// Default for the project status
 	impl Default for ProjectStatus {
 		fn default() -> Self {
 			ProjectStatus::Initiated
@@ -118,6 +120,7 @@ pub mod pallet {
 		pub final_customer_rating: Option<u8>,
 	}
 
+	// Struct for Project Description
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
 	pub struct ProjectDetails<AccountId, Balance, BlockNumber> {
 		pub project_id: u128,
@@ -130,6 +133,7 @@ pub mod pallet {
 		pub status: ProjectStatus,
 	}
 
+	// Implementation for the Project Struct
 	impl<AccountId, Balance, BlockNumber> ProjectDetails<AccountId, Balance, BlockNumber> {
 		pub fn new(project_id:u128, project_name: Vec<u8>, tags: Vec<TaskTypeTags>, publisher: AccountId) -> Self {
 			ProjectDetails{
@@ -145,6 +149,8 @@ pub mod pallet {
 		}
 	}
 
+
+	// Milestone struct
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
 	pub struct Milestone<AccountId, Balance, BlockNumber> {
 		pub milestone_id: Vec<u8>,
@@ -160,6 +166,8 @@ pub mod pallet {
 		pub final_worker_rating: Option<u8>,
 		pub final_customer_rating: Option<u8>,
 	}
+
+	// Implementation of the milestone struct
 	impl<AccountId, Balance, BlockNumber> Milestone<AccountId, Balance, BlockNumber>{
 		fn new(
 			milestone_id: Vec<u8>,
@@ -262,9 +270,9 @@ pub mod pallet {
 			average
 		} // O(1) --> O(n)
 		// length of the arry l
-		// prev rating 
-		// new rating 
-		// prev rating * l + new rating -- 4 
+		// prev rating
+		// new rating
+		// prev rating * l + new rating -- 4
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
@@ -297,12 +305,12 @@ pub mod pallet {
 	pub type AccountMap<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, AccountDetails<BalanceOf<T>>, ValueQuery>;
 
-	// * Genesis configuration for accounts 
+	// * Genesis configuration for accounts
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub account_map: Vec<(T::AccountId, AccountDetails<BalanceOf<T>>)>,
 	}
-	
+
 	#[cfg(feature = "std")]
 	impl<T: Config> GenesisConfig<T> {
 		/// Direct implementation of `GenesisBuild::build_storage`.
@@ -311,7 +319,7 @@ pub mod pallet {
 		pub fn build_storage(&self) -> Result<sp_runtime::Storage, String> {
 			<Self as GenesisBuild<T>>::build_storage(self)
 		}
-	
+
 		/// Direct implementation of `GenesisBuild::assimilate_storage`.
 		///
 		/// Kept in order not to break dependency.
@@ -352,8 +360,12 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_project)]
-	pub(super) type ProjectStorage<T: Config> = 
+	pub(super) type ProjectStorage<T: Config> =
 	    StorageMap<_, Blake2_128Concat, u128, ProjectDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>, OptionQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_bidder_list)]
+	pub type BidderList<T: Config> = StorageMap<_, Blake2_128Concat, T::Hash, Vec<AccountDetails<BalanceOf<T>>>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_count)]
@@ -395,6 +407,8 @@ pub mod pallet {
 		MileStoneCreated(Vec<u8>, BalanceOf<T>),
 		/// Event for project being added to the marketplace. \[ProjectId]
 		ProjectAddedToMarketplace(u128),
+		/// Event for a successful bid placed. \[MilestoneId, AccountId]
+		BidSuccessful(Vec<u8>, T::AccountId),
 	}
 
 	#[pallet::error]
@@ -443,7 +457,7 @@ pub mod pallet {
 		JurySelectionPeriodElapsed,
 		/// To stop jurors to vote before the actual voting period
 		JurySelectionInProcess,
-		/// To ensure jurors can't vote beyond the voting period		
+		/// To ensure jurors can't vote beyond the voting period
 		CaseClosed,
 		/// To ensure Customer Rating exists
 		CustomerRatingNotProvided,
@@ -465,6 +479,17 @@ pub mod pallet {
 		UnauthorisedToAddMilestone,
 		/// To ensure the publisher is add the project to the marketplace
 		UnauthorisedToAddToMarketplace,
+		/// To ensure that a closed project is not being modified
+		ProjectClosed,
+		/// Ensuring the milestone id is valid
+		InvalidMilestoneId,
+		/// Ensuring that project is open for bidding
+		ProjectNotOpenForBidding,
+		/// Ensuring that the milestone is open for bidding
+		MilestoneNotOpenForBidding,
+		/// Ensuring that the owner do not bid for the milestone
+		PublisherCannotBid,
+
 	}
 
 	#[pallet::hooks]
@@ -509,15 +534,15 @@ pub mod pallet {
 			let mut votes_for_customer = dispute_details.votes_for_customer.clone().unwrap_or(0);
 			// Accessing number of votes for the worker
 			let mut votes_for_worker = dispute_details.votes_for_worker.clone().unwrap_or(0);
-			
+
 			// ------ Allocating the vote to the respective party
 			match voted_for {
-				UserType::Customer => { 
+				UserType::Customer => {
 					votes_for_customer += 1;
 					dispute_details.votes_for_customer = Some(votes_for_customer);
 				},
-				UserType::Worker => { 
-					votes_for_worker += 1; 
+				UserType::Worker => {
+					votes_for_worker += 1;
 					dispute_details.votes_for_worker = Some(votes_for_worker);
 				},
 			}
@@ -531,7 +556,7 @@ pub mod pallet {
 			Self::adjourn_court(task_id.clone());
 			// Notify event
 			Self::deposit_event(Event::CaseClosedBySudoJuror(task_id, sudo_juror));
-			
+
 			Ok(())
 		}
 
@@ -597,11 +622,11 @@ pub mod pallet {
 			// Ensuring if publisher hasn't provided ratings to the worker
 
 			if user_type == UserType::Customer{
-				ensure!(status == Status::CustomerRatingProvided, <Error<T>>::CustomerRatingNotProvided); 
+				ensure!(status == Status::CustomerRatingProvided, <Error<T>>::CustomerRatingNotProvided);
 			} else{
 				ensure!(status == Status::CustomerRatingPending, <Error<T>>::TaskIsNotPendingRating);
 			}
-			
+
 			// Regsiter case with the court
 			Self::register_case(task_id.clone(), task_details);
 			// Show reason respective to the caller
@@ -654,7 +679,7 @@ pub mod pallet {
 			let mut task_details = Self::task(task_id.clone());
 			// Ensuring if dispute is raised
 			ensure!(task_details.dispute != None, <Error<T>>::DisputeDoesNotExist);
-			// Accessing the dispute details related to the task 
+			// Accessing the dispute details related to the task
 			let mut dispute_details = task_details.dispute.unwrap();
 
 			// ----- To stop accepting participants for jury after elapsed time
@@ -704,9 +729,9 @@ pub mod pallet {
 			let mut task_details = Self::task(task_id.clone());
 			// Ensuring if dispute is raised
 			ensure!(task_details.dispute != None, <Error<T>>::DisputeDoesNotExist);
-			// Accessing the dispute details related to the task 
+			// Accessing the dispute details related to the task
 			let mut dispute_details = task_details.dispute.unwrap();
-			
+
 			// ----- To stop jurors to vote before the actual voting period
 			let current_period = <frame_system::Pallet<T>>::block_number();
 			let jury_acceptance_period = dispute_details.jury_acceptance_period.clone();
@@ -733,7 +758,7 @@ pub mod pallet {
 			// Total votes of worker
 			let mut votes_for_worker = dispute_details.votes_for_worker.unwrap_or(0);
 
-			// ----- Updating vote count 
+			// ----- Updating vote count
 			match voted_for {
 				UserType::Customer => {
 					votes_for_customer += 1;
@@ -745,7 +770,7 @@ pub mod pallet {
 				}
 			}
 			// -----
-			
+
 			// Updating the task details structure
 			task_details.dispute = Some(dispute_details);
 			// Updating the task details storage
@@ -813,7 +838,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(1000)]
 		pub fn create_project(
 			origin: OriginFor<T>,
 			project_name: Vec<u8>,
@@ -836,7 +861,7 @@ pub mod pallet {
 			// function body ends here
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(1000)]
 		pub fn add_milestone_to_project(
 			origin: OriginFor<T>,
 			project_id: u128,
@@ -857,22 +882,26 @@ pub mod pallet {
 						// check if the account adding the milestone is the publisher of the project
 						if project.publisher != sender {
 							res = Some(<Error<T>>::UnauthorisedToAddMilestone);
+						}else if project.status == ProjectStatus::Closed{
+							res = Some(<Error<T>>::ProjectClosed);
 						}else{
 							match &mut project.milestones {
 								Some(vector_of_milestones) => {
 									if vector_of_milestones.len() == 5 {
 										res = Some(<Error<T>>::MilestoneLimitReached);
 									} else{
-										let mut mid: Vec<u8> = Vec::new();
-										mid.push(65 + vector_of_milestones.len() as u8);
+										// let mut mid: Vec<u8> = Vec::new();
+										// mid.push(65 + vector_of_milestones.len() as u8);
+										let mid = create_milestone_id(project_id, vector_of_milestones.len() as u8);
 										let milestone = Milestone::new(mid.clone(), milestone_name, tags, cost.clone(), publisher_attachments);
 										vector_of_milestones.push(milestone);
 										Self::deposit_event(Event::MileStoneCreated(mid, cost));
 									}
 								},
 								None => {
-									let mut mid = Vec::new();
-									mid.push(65 as u8);
+									// let mut mid = Vec::new();
+									// mid.push(65 as u8);
+									let mid = create_milestone_id(project_id, 0);
 									let milestone = Milestone::new(mid.clone(), milestone_name, tags, cost.clone(), publisher_attachments);
 									let mut vector_of_milestones = Vec::new();
 									vector_of_milestones.push(milestone);
@@ -900,7 +929,7 @@ pub mod pallet {
 			project_id: u128,
 		) -> DispatchResult {
 			// function body starts here
-			
+
 			// authenticating
 			let sender = ensure_signed(origin)?;
 
@@ -920,6 +949,56 @@ pub mod pallet {
 				res
 			})?;
 
+			Ok(())
+			// function body ends here
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn bid_for_milestone(
+			origin: OriginFor<T>,
+			milestone_id: Vec<u8>,
+			worker_name: Vec<u8>
+		) -> DispatchResult {
+			// function body starts here
+
+			// authentication
+			let sender = ensure_signed(origin)?;
+			let mut milestone_id = milestone_id;
+			let (milestone_number, project_id) = get_milestone_and_project_id(&mut milestone_id).map_err(|_| <Error<T>>::InvalidMilestoneId)?;
+			// ensure that the project and milestone exists
+			<ProjectStorage<T>>::try_mutate(&project_id, |option_project| {
+				let mut res = Ok(());
+				match option_project{
+					Some(project) => {
+						if project.status != ProjectStatus::Open {
+							res = Err(<Error<T>>::ProjectNotOpenForBidding);
+						}else if project.publisher == sender{
+							res = Err(<Error<T>>::PublisherCannotBid);
+						}else{
+							match &mut project.milestones {
+								Some(milestone_vector) => {
+									if milestone_number >= milestone_vector.len() as u8{
+										res = Err(<Error<T>>::InvalidMilestoneId);
+									}else{
+										if milestone_vector[milestone_number as usize].status != Status::Open {
+											res = Err(<Error<T>>::MilestoneNotOpenForBidding);
+										}
+									}
+								},
+								None => res = Err(<Error<T>>::InvalidMilestoneId)
+							};
+						}
+					},
+					None => res = Err(<Error<T>>::ProjectDoesNotExist)
+				}
+				res
+			})?;
+			let account = Self::accounts(sender.clone());
+			let milestone_key = T::Hashing::hash_of(&milestone_id);
+			<BidderList<T>>::mutate(&milestone_key, |bidder_vector| {
+				bidder_vector.push(account);
+			});
+			Self::deposit_event(Event::BidSuccessful(milestone_id,sender));
 			Ok(())
 			// function body ends here
 		}
@@ -983,7 +1062,7 @@ pub mod pallet {
 		pub fn task_completed(
 			origin: OriginFor<T>,
 			task_id: u128,
-			worker_attachments: Vec<Vec<u8>>, 
+			worker_attachments: Vec<Vec<u8>>,
 		) -> DispatchResult {
 			// User authentication
 			let bidder = ensure_signed(origin)?;
@@ -1035,7 +1114,7 @@ pub mod pallet {
 			// Is publisher the approver?
 			ensure!(publisher == approver.clone(), <Error<T>>::UnauthorisedToApprove);
 			// Update the final rating for the worker
-			task.final_worker_rating = Some(rating_for_the_worker.clone());			
+			task.final_worker_rating = Some(rating_for_the_worker.clone());
 			// Updating task status
 			task.status = Status::CustomerRatingPending;
 			// Inserting updated task into storage
@@ -1043,7 +1122,7 @@ pub mod pallet {
 			// Notify event
 			Self::deposit_event(
 				Event::TaskApproved(
-					task_id.clone(), 
+					task_id.clone(),
 					publisher.clone()
 				));
 
@@ -1093,7 +1172,7 @@ pub mod pallet {
 		#[pallet::weight(100)]
 		pub fn close_task(
 			origin: OriginFor<T>,
-			task_id: u128,	
+			task_id: u128,
 		) -> DispatchResult {
 			// User authentication
 			let publisher = ensure_signed(origin)?;
@@ -1124,21 +1203,21 @@ pub mod pallet {
 			)?;
 			// Update the status
 			task_details.status = Status::Completed;
-			
-			// ----- Update overall customer and worker ratings 
+
+			// ----- Update overall customer and worker ratings
 			<AccountDetails<BalanceOf<T>>>::update_rating::<T>(
-				publisher.clone(), 
+				publisher.clone(),
 				task_details.final_customer_rating.clone().unwrap()
 			);
 			<AccountDetails<BalanceOf<T>>>::update_rating::<T>(
-				task_details.worker_id.clone().unwrap(), 
+				task_details.worker_id.clone().unwrap(),
 				task_details.final_worker_rating.clone().unwrap()
 			);
 			// -----
-			
+
 			// Update task storage
 			TaskStorage::<T>::insert(&task_id, task_details);
-			
+
 			// ----- Notify events
 			Self::deposit_event(Event::AmountTransfered(
 				publisher,
@@ -1202,7 +1281,7 @@ pub mod pallet {
 
 			Ok(())
 		}
-		
+
 	}
 
 	// Helper functions
@@ -1225,7 +1304,7 @@ pub mod pallet {
 			// * To keep track of the juror participation in voting
 			// NOTE: Disabling no votes from juror check
 			// let total_votes_cast: u8 = votes_for_customer + votes_for_worker;
-			let final_jurors_details: BTreeMap<T::AccountId, JurorDecisionDetails> = 
+			let final_jurors_details: BTreeMap<T::AccountId, JurorDecisionDetails> =
 				dispute_details.clone().final_jurors.into_iter().filter(|(_, value)| value.voted_for != None).collect();
 			let final_jurors_count: u8 = final_jurors_details.len() as u8;
 			// -----
@@ -1276,7 +1355,7 @@ pub mod pallet {
 				};
 				// -----
 
-				// Accessing the task cost 
+				// Accessing the task cost
 				let task_cost = task_details.cost;
 				// Converting task cost to u128
 				let task_cost_converted = task_cost.saturated_into::<u128>();
@@ -1329,16 +1408,16 @@ pub mod pallet {
 				).ok()?;
 				// Update final worker rating
 				task_details.final_worker_rating = dispute_details.avg_worker_rating.clone();
-				// Update final customer rating 
+				// Update final customer rating
 				task_details.final_customer_rating = dispute_details.avg_publisher_rating.clone();
 
-				// ----- Update overall customer and worker ratings 
+				// ----- Update overall customer and worker ratings
 				<AccountDetails<BalanceOf<T>>>::update_rating::<T>(
-					publisher_id.clone(), 
+					publisher_id.clone(),
 					task_details.final_customer_rating.clone().unwrap()
 				);
 				<AccountDetails<BalanceOf<T>>>::update_rating::<T>(
-					worker_id.clone(), 
+					worker_id.clone(),
 					task_details.final_worker_rating.clone().unwrap()
 				);
 				// -----
@@ -1360,7 +1439,7 @@ pub mod pallet {
 				// ----- Case handover to sudo juror
 				dispute_details.sudo_juror = Some(
 					Self::pick_sudo_juror(
-						task_details.publisher, 
+						task_details.publisher,
 						task_details.worker_id.unwrap()
 					)
 				);
@@ -1368,7 +1447,7 @@ pub mod pallet {
 				is_active = false;
 				// -----
 			}
- 	
+
 			Some(is_active)
 		}
 
@@ -1397,16 +1476,16 @@ pub mod pallet {
 			};
 			// Updating task details structure
 			task_details.dispute = Some(dispute);
-			// Updating the task details storage 
+			// Updating the task details storage
 			<TaskStorage<T>>::insert(task_id, task_details);
 		}
 
-		
+
 		pub fn collect_cases(block_number: BlockNumberOf<T>) {
 			// Getting hearings vector from storage
 			let mut hearings: Vec<Hearing<BlockNumberOf<T>>> = Self::get_hearings();
 			// Only retain those hearings with case ending period >= current block number
-			hearings.retain(|x| x.total_case_period >= block_number || x.is_active); 
+			hearings.retain(|x| x.total_case_period >= block_number || x.is_active);
 
 			// ----- Validating jury acceptance period and total case period
 			for hearing in hearings.iter_mut() {
@@ -1437,7 +1516,7 @@ pub mod pallet {
 						task_details.status = Status::VotingPeriod;
 					}
 					<TaskStorage<T>>::insert(&hearing.task_id, task_details);
-				} 
+				}
 				// * For total case period
 				else if block_number == hearing.total_case_period {
 					let mut task_details = Self::task(hearing.task_id.clone());
@@ -1459,7 +1538,7 @@ pub mod pallet {
 						<TaskStorage<T>>::insert(&hearing.task_id, task_details);
 					} else {
 
-						// * Adjourn court 
+						// * Adjourn court
 						let is_active = Self::adjourn_court(hearing.task_id).unwrap();
 						if !is_active {
 							dispute_details.sudo_juror = Some(Self::pick_sudo_juror(task_details.publisher.clone(), task_details.worker_id.clone().unwrap()));
@@ -1471,7 +1550,7 @@ pub mod pallet {
 				}
 			}
 			// -----
-			
+
 			// Updating the hearings storage
 			<Hearings<T>>::put(hearings);
 		}
@@ -1526,7 +1605,7 @@ pub mod pallet {
 			let length = all_sudo_account_ids.len() as u32;
 			// Calling the shuffling algorithm
 			let random_vector = dot_shuffle::<Item<T>>(all_sudo_account_ids, block_number.saturated_into::<u32>(), length);
-			
+
 			random_vector.first().unwrap().clone()
 		}
 
