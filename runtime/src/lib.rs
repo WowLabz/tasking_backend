@@ -316,6 +316,7 @@ impl pallet_sudo::Config for Runtime {
 
 parameter_types! {
 	pub const MyPalletId: PalletId = PalletId(*b"acescrow");
+	pub const MaxMilestoneLimit: u8 = 5;
 }
 
 /// Configure the pallet-template in pallets/template.
@@ -323,6 +324,7 @@ impl pallet_tasking::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type PalletId = MyPalletId;
+	type MaxMilestoneLimit = MaxMilestoneLimit;
 }
 
 impl pallet_chat::Config for Runtime {

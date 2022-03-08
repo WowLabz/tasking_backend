@@ -1,8 +1,38 @@
 // Random shuffling using Fischer-Yates modern method & Linear Congruential Generator
 
-use parity_scale_codec::alloc::string::ToString;
+use std::fmt::Result;
+
+use sp_runtime::SaturatedConversion;
+// use parity_scale_codec::alloc::string::ToString;
 use sp_std::vec::Vec;
 use num_traits::float::Float;
+
+use codec::alloc::string::{ToString, String};
+
+
+
+pub fn create_milestone_id(project_id: u128, milestone_number: u8) -> Vec<u8> {
+    let mut arr = project_id.to_string();
+    arr.push((97+milestone_number) as char);
+    let arr = arr.as_bytes().to_vec();
+    arr
+}
+
+pub fn get_milestone_and_project_id(milestone_id: &mut Vec<u8>) -> Option<(u8,u128)> {
+    let milestone_number = milestone_id.pop().unwrap() - 97;
+    let project_id: &[u8] = milestone_id;
+    let project_id = String::from_utf8(project_id.to_vec());
+    let project_number: u128;
+    match project_id {
+        Ok(str_project_id) => {
+            project_number = str_project_id.parse::<u128>().unwrap();
+            return Some((milestone_number, project_number));
+        },
+        Err(_) => {
+            return None;
+        }
+    }
+}
 
 pub fn dot_shuffle<T>(
     mut input: Vec<T>, 

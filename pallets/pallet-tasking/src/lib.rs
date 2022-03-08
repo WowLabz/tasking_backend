@@ -15,7 +15,6 @@ mod utils;
 
 #[frame_support::pallet]
 pub mod pallet {
-	
 	use frame_support::pallet_prelude::*;
 	use frame_support::PalletId;
 	use frame_system::pallet_prelude::*;
@@ -32,7 +31,7 @@ pub mod pallet {
 	use codec::{Decode, Encode};
 	use sp_std::collections::btree_map::BTreeMap;
 	use sp_std::vec::Vec;
-	use crate::utils::{dot_shuffle,roundoff};
+	use crate::utils::{dot_shuffle,roundoff, create_milestone_id, get_milestone_and_project_id};
 
 	type Item<T> = <T as frame_system::Config>::AccountId;
 	type BalanceOf<T> =
@@ -73,6 +72,25 @@ pub mod pallet {
 	}
 
 	#[derive(Encode, Decode, PartialEq, Eq, Debug, Clone, TypeInfo)]
+	pub enum ProjectStatus {
+		/// Project has been initiated
+		Initiated,
+		/// Project is ready to be submitted into the marketplace
+		Ready,
+		/// Project is Open
+		Open,
+		/// Project has been completed or closed
+		Closed,
+	}
+
+	impl Default for ProjectStatus {
+		fn default() -> Self {
+			ProjectStatus::Initiated
+		}
+	}
+
+
+	#[derive(Encode, Decode, PartialEq, Eq, Debug, Clone, TypeInfo)]
 	pub enum Reason {
 		DisapproveTask,
 		UnsatisfiedWorkerRating,
@@ -98,6 +116,73 @@ pub mod pallet {
 		pub dispute: Option<CourtDispute<AccountId, BlockNumber>>,
 		pub final_worker_rating: Option<u8>,
 		pub final_customer_rating: Option<u8>,
+	}
+
+	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
+	pub struct ProjectDetails<AccountId, Balance, BlockNumber> {
+		pub project_id: u128,
+		pub publisher: AccountId,
+		pub project_name: Vec<u8>,
+		pub tags: Vec<TaskTypeTags>,
+		pub publisher_name: Option<Vec<u8>>,
+		pub milestones: Option<Vec<Milestone<AccountId, Balance, BlockNumber>>>,
+		pub overall_customer_rating: Option<u8>,
+		pub status: ProjectStatus,
+	}
+
+	impl<AccountId, Balance, BlockNumber> ProjectDetails<AccountId, Balance, BlockNumber> {
+		pub fn new(project_id:u128, project_name: Vec<u8>, tags: Vec<TaskTypeTags>, publisher: AccountId) -> Self {
+			ProjectDetails{
+				project_id: project_id,
+				project_name: project_name,
+				tags: tags,
+				publisher: publisher,
+				publisher_name: None,
+				milestones: None,
+				overall_customer_rating: None,
+				status: Default::default(),
+			}
+		}
+	}
+
+	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
+	pub struct Milestone<AccountId, Balance, BlockNumber> {
+		pub milestone_id: Vec<u8>,
+		pub milestone_name: Vec<u8>,
+		pub tags: Vec<TaskTypeTags>,
+		pub cost: Balance,
+		pub status: Status,
+		pub worker_id: Option<AccountId>,
+		pub worker_name: Option<Vec<u8>>,
+		pub publisher_attachments: Option<Vec<Vec<u8>>>,
+		pub worker_attachments: Option<Vec<Vec<u8>>>,
+		pub dispute: Option<CourtDispute<AccountId, BlockNumber>>,
+		pub final_worker_rating: Option<u8>,
+		pub final_customer_rating: Option<u8>,
+	}
+	impl<AccountId, Balance, BlockNumber> Milestone<AccountId, Balance, BlockNumber>{
+		fn new(
+			milestone_id: Vec<u8>,
+			milestone_name: Vec<u8>,
+			tags: Vec<TaskTypeTags>,
+			cost: Balance,
+			publisher_attachments: Vec<Vec<u8>>,
+		) -> Self {
+			Milestone{
+				milestone_id: milestone_id,
+				milestone_name: milestone_name,
+				tags: tags,
+				cost: cost,
+				status: Default::default(),
+				worker_id: None,
+				worker_name: None,
+				publisher_attachments: Some(publisher_attachments),
+				worker_attachments: None,
+				dispute: None,
+				final_worker_rating: None,
+				final_customer_rating: None
+			}
+		}
 	}
 
 	#[derive(Encode, Decode, PartialEq, Eq, Debug, Clone, TypeInfo)]
@@ -175,7 +260,11 @@ pub mod pallet {
 			}
 			let average = roundoff(total_sum, list_len);
 			average
-		}
+		} // O(1) --> O(n)
+		// length of the arry l
+		// prev rating 
+		// new rating 
+		// prev rating * l + new rating -- 4 
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
@@ -194,6 +283,9 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		type Currency: LockableCurrency<Self::AccountId>;
 		type PalletId: Get<PalletId>;
+
+		#[pallet::constant]
+		type MaxMilestoneLimit: Get<u8>;
 	}
 
 	#[pallet::pallet]
@@ -250,9 +342,18 @@ pub mod pallet {
 	pub type TaskCount<T> = StorageValue<_, u128, ValueQuery>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn get_project_count)]
+	pub type ProjectCount<T> = StorageValue<_, u128, ValueQuery>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn task)]
 	pub(super) type TaskStorage<T: Config> =
 		StorageMap<_, Blake2_128Concat, u128, TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_project)]
+	pub(super) type ProjectStorage<T: Config> = 
+	    StorageMap<_, Blake2_128Concat, u128, ProjectDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>, OptionQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_count)]
@@ -286,7 +387,14 @@ pub mod pallet {
 		VoteRecorded(u128,T::AccountId),
 		CourtAdjourned(u128),
 		CourtReinitiated(u128),
-		CaseClosedBySudoJuror(u128, T::AccountId)
+		CaseClosedBySudoJuror(u128, T::AccountId),
+		// phase 3 events here
+		/// Event showcasing project created. [ProjectId, ProjectName, Publisher].
+		ProjectCreated(u128,Vec<u8>,T::AccountId),
+		/// Event showcasing milestone created. \[MilestoneId, \Cost].
+		MileStoneCreated(Vec<u8>, BalanceOf<T>),
+		/// Event for project being added to the marketplace. \[ProjectId]
+		ProjectAddedToMarketplace(u128),
 	}
 
 	#[pallet::error]
@@ -342,7 +450,21 @@ pub mod pallet {
 		/// To ensure Court is not summoned again for the same task
 		DisputeAlreadyRaised,
 		/// To ensure the correct id for raising a dispute
-		UnauthorisedToRaiseDispute
+		UnauthorisedToRaiseDispute,
+
+		// Phase 3 errors start here
+		/// Maximum limit of u128 hit
+		CannotCreateFurtherProjects,
+		/// To ensure that project exists
+		ProjectDoesNotExist,
+		/// To ensure that project does not have more than 5 milestones
+		MilestoneLimitReached,
+		/// To ensure that project has atleast 1 milestone
+		MilestoneRequired,
+		/// To ensure the publisher is adding the milestone to the project
+		UnauthorisedToAddMilestone,
+		/// To ensure the publisher is add the project to the marketplace
+		UnauthorisedToAddToMarketplace,
 	}
 
 	#[pallet::hooks]
@@ -689,6 +811,117 @@ pub mod pallet {
 			<TaskCount<T>>::put(current_task_count + 1);
 
 			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn create_project(
+			origin: OriginFor<T>,
+			project_name: Vec<u8>,
+			tags: Vec<TaskTypeTags>,
+		) -> DispatchResult {
+			//function body starts here
+			// ensuring that the transaction is signed and getting the account id of the transactor
+			let publisher = ensure_signed(origin)?;
+			let project_id = Self::get_project_count() + 1;
+
+			// <ProjectCount<T>>::try_mutate(|count| {
+			// 	*count = project_id + 1;
+			// 	Ok(())
+			// })?;
+			<ProjectCount<T>>::set(project_id.clone());
+			let project = ProjectDetails::new(project_id.clone(), project_name.clone(), tags, publisher.clone());
+			<ProjectStorage<T>>::insert(&project_id, project);
+			Self::deposit_event(Event::ProjectCreated(project_id, project_name, publisher));
+			Ok(())
+			// function body ends here
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn add_milestone_to_project(
+			origin: OriginFor<T>,
+			project_id: u128,
+			milestone_name: Vec<u8>,
+			cost: BalanceOf<T>,
+			tags: Vec<TaskTypeTags>,
+			publisher_attachments: Vec<Vec<u8>>,
+		) -> DispatchResult {
+			// function body starts here
+
+			// authentication
+			let sender = ensure_signed(origin)?;
+
+			<ProjectStorage<T>>::try_mutate(&project_id, |option| {
+				let mut res = None;
+				match option{
+					Some(project) => {
+						// check if the account adding the milestone is the publisher of the project
+						if project.publisher != sender {
+							res = Some(<Error<T>>::UnauthorisedToAddMilestone);
+						}else{
+							match &mut project.milestones {
+								Some(vector_of_milestones) => {
+									if vector_of_milestones.len() == 5 {
+										res = Some(<Error<T>>::MilestoneLimitReached);
+									} else{
+										let mut mid: Vec<u8> = Vec::new();
+										mid.push(65 + vector_of_milestones.len() as u8);
+										let milestone = Milestone::new(mid.clone(), milestone_name, tags, cost.clone(), publisher_attachments);
+										vector_of_milestones.push(milestone);
+										Self::deposit_event(Event::MileStoneCreated(mid, cost));
+									}
+								},
+								None => {
+									let mut mid = Vec::new();
+									mid.push(65 as u8);
+									let milestone = Milestone::new(mid.clone(), milestone_name, tags, cost.clone(), publisher_attachments);
+									let mut vector_of_milestones = Vec::new();
+									vector_of_milestones.push(milestone);
+									project.milestones = Some(vector_of_milestones);
+									project.status = ProjectStatus::Ready;
+									Self::deposit_event(Event::MileStoneCreated(mid,cost));
+								}
+							}
+						}
+					},
+					// checking if project exists
+					None => res = Some(<Error<T>>::ProjectDoesNotExist)
+				}
+				match res{
+					Some(err) => return Err(err),
+					None => return Ok(())
+				}
+			})?;
+			Ok(())
+			// function body ends here
+		}
+		#[pallet::weight(1000)]
+		pub fn add_project_to_marketplace(
+			origin: OriginFor<T>,
+			project_id: u128,
+		) -> DispatchResult {
+			// function body starts here
+			
+			// authenticating
+			let sender = ensure_signed(origin)?;
+
+			<ProjectStorage<T>>::try_mutate(&project_id, |option| {
+				let mut res = Ok(());
+				match option {
+					Some(project) => {
+						if project.publisher != sender {
+							res = Err(<Error<T>>::UnauthorisedToAddToMarketplace);
+						}else{
+							project.status = ProjectStatus::Open;
+							Self::deposit_event(Event::ProjectAddedToMarketplace(project_id));
+						}
+					},
+					None => res = Err(<Error<T>>::ProjectDoesNotExist)
+				}
+				res
+			})?;
+
+			Ok(())
+			// function body ends here
 		}
 
 		#[pallet::weight(10_000)]
