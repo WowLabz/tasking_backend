@@ -268,11 +268,7 @@ pub mod pallet {
 			}
 			let average = roundoff(total_sum, list_len);
 			average
-		} // O(1) --> O(n)
-		// length of the arry l
-		// prev rating
-		// new rating
-		// prev rating * l + new rating -- 4
+		} 
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
@@ -848,11 +844,6 @@ pub mod pallet {
 			// ensuring that the transaction is signed and getting the account id of the transactor
 			let publisher = ensure_signed(origin)?;
 			let project_id = Self::get_project_count() + 1;
-
-			// <ProjectCount<T>>::try_mutate(|count| {
-			// 	*count = project_id + 1;
-			// 	Ok(())
-			// })?;
 			<ProjectCount<T>>::set(project_id.clone());
 			let project = ProjectDetails::new(project_id.clone(), project_name.clone(), tags, publisher.clone());
 			<ProjectStorage<T>>::insert(&project_id, project);
