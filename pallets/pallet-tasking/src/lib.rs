@@ -431,6 +431,10 @@ pub mod pallet {
 		ProjectAddedToMarketplace(u128),
 		/// Event for a successful bid placed. \[MilestoneId, AccountId]
 		BidSuccessful(Vec<u8>, T::AccountId),
+		/// Event on bid acceptance. \[MilestoneId, BidNumber]
+		BidAccepted(Vec<u8>, u32),
+		/// Event for milestone completion. \[MilestoneId]
+		MilestoneCompleted(Vec<u8>),
 	}
 
 	#[pallet::error]
@@ -513,6 +517,8 @@ pub mod pallet {
 		InvalidBidNumber,
 		/// Something went wrong while transfering from escrow to account id
 		FailedToTransferBack,
+		/// Ensuring that the milestone is in progress
+		MilestoneNotInProgress,
 
 	}
 
@@ -1076,7 +1082,9 @@ pub mod pallet {
 											}else{
 												// changing the status of the milestone to in progress
 												milestone_vector[milestone_number as usize].status = Status::InProgress;
+												// updating the worker id in the milestone
 												milestone_vector[milestone_number as usize].worker_id = Some(bidder_list[bid_number as usize].bidder_id.clone());
+												// updating the worker name in th milestone
 												milestone_vector[milestone_number as usize].worker_name = Some(bidder_list[bid_number as usize].bidder_name.clone());
 												milestone_cost = milestone_vector[milestone_number as usize].cost.clone();
 											}
@@ -1102,7 +1110,9 @@ pub mod pallet {
 				ExistenceRequirement::KeepAlive
 			)?;
 			let milestone_key = T::Hashing::hash_of(&milestone_id);
+			// rejecting all the other bidders
 			Self::reject_all(milestone_key, escrow_id, milestone_cost, bid_number)?;
+			Self::deposit_event(Event::BidAccepted(milestone_id, bid_number));
 			Ok(())
 			// function body ends
 		}
@@ -1164,7 +1174,56 @@ pub mod pallet {
 			// function body ends
 		}
 		
-		
+		#[pallet::weight(10_000)]
+		pub fn milestone_completed(
+			origin: OriginFor<T>,
+			milestone_id: Vec<u8>,
+			worker_attachments: Vec<Vec<u8>>,
+		) -> DispatchResult {
+			// function body starts here
+			// authentication
+			let sender = ensure_signed(origin)?;
+			let mut milestone_id_clone = milestone_id.clone();
+			let (milestone_number, project_id) = get_milestone_and_project_id(&mut milestone_id_clone).map_err(|_| <Error<T>>::InvalidMilestoneId)?;
+			<ProjectStorage<T>>::try_mutate(&project_id, |option_project| {
+				let mut res = Ok(());
+				match option_project{
+					Some(project) => {
+						if project.status != ProjectStatus::Open{
+							res = Err(<Error<T>>::ProjectNotOpenForBidding); // add another error for this but later
+						}else if sender == project.publisher{
+							res = Err(<Error<T>>::PublisherCannotBid); // add another error for this but later
+						}else{
+							// checking the milestones
+							match &mut project.milestones {
+								Some(milestone_vector) => {
+									if milestone_number >= milestone_vector.len() as u8{
+										res = Err(<Error<T>>::InvalidMilestoneId);
+									}else{
+										if milestone_vector[milestone_number as usize].status != Status::InProgress {
+											res = Err(<Error<T>>::MilestoneNotInProgress);
+										}else if milestone_vector[milestone_number as usize].worker_id.clone().unwrap() != sender {
+											res = Err(<Error<T>>::UnauthorisedToComplete);
+										}else{
+											// updating the worker attachments
+											milestone_vector[milestone_number as usize].worker_attachments = Some(worker_attachments);
+											// updating the status to pending approval
+											milestone_vector[milestone_number as usize].status = Status::PendingApproval;
+											Self::deposit_event(Event::MilestoneCompleted(milestone_id));
+										}
+									}
+								},
+								None => res = Err(<Error<T>>::InvalidMilestoneId)
+							}
+						}
+					},
+					None => res = Err(<Error<T>>::ProjectDoesNotExist)
+				};
+				res
+			})?;
+			Ok(())
+			// function body ends here
+		}
 
 		#[pallet::weight(10_000)]
 		pub fn task_completed(
