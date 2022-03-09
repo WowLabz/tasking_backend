@@ -24,6 +24,7 @@ pub mod pallet {
 		traits::{
 			tokens::ExistenceRequirement, Currency, LockableCurrency,
 		},
+		transactional,
 	};
 
 	#[cfg(feature = "std")]
@@ -189,6 +190,31 @@ pub mod pallet {
 				dispute: None,
 				final_worker_rating: None,
 				final_customer_rating: None
+			}
+		}
+	}
+
+	// Bid struct
+	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
+	pub struct Bid<Balance, AccountId>{
+		pub bid_number: u32,
+		pub bidder_id: AccountId,
+		pub bidder_name: Vec<u8>,
+		pub account: AccountDetails<Balance>,
+	}
+
+	impl<Balance, AccountId> Bid<Balance, AccountId> {
+		pub fn new(
+			bid_number: u32, 
+			bidder_id: AccountId,
+			bidder_name: Vec<u8>, 
+			account: AccountDetails<Balance>
+		) -> Self {
+			Bid {
+				bid_number,
+				bidder_id,
+				bidder_name,
+				account
 			}
 		}
 	}
@@ -361,7 +387,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_bidder_list)]
-	pub type BidderList<T: Config> = StorageMap<_, Blake2_128Concat, T::Hash, Vec<AccountDetails<BalanceOf<T>>>, ValueQuery>;
+	pub type BidderList<T: Config> = StorageMap<_, Blake2_128Concat, T::Hash, Vec<Bid<BalanceOf<T>, T::AccountId>>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_count)]
@@ -471,11 +497,9 @@ pub mod pallet {
 		MilestoneLimitReached,
 		/// To ensure that project has atleast 1 milestone
 		MilestoneRequired,
-		/// To ensure the publisher is adding the milestone to the project
-		UnauthorisedToAddMilestone,
-		/// To ensure the publisher is add the project to the marketplace
-		UnauthorisedToAddToMarketplace,
-		/// To ensure that a closed project is not being modified
+		/// To ensure the publisher is making the transaction
+		Unauthorised,
+		/// Ensuring that the project is not closed
 		ProjectClosed,
 		/// Ensuring the milestone id is valid
 		InvalidMilestoneId,
@@ -485,6 +509,10 @@ pub mod pallet {
 		MilestoneNotOpenForBidding,
 		/// Ensuring that the owner do not bid for the milestone
 		PublisherCannotBid,
+		/// Ensuring that the bid number is valid
+		InvalidBidNumber,
+		/// Something went wrong while transfering from escrow to account id
+		FailedToTransferBack,
 
 	}
 
@@ -872,7 +900,7 @@ pub mod pallet {
 					Some(project) => {
 						// check if the account adding the milestone is the publisher of the project
 						if project.publisher != sender {
-							res = Some(<Error<T>>::UnauthorisedToAddMilestone);
+							res = Some(<Error<T>>::Unauthorised);
 						}else if project.status == ProjectStatus::Closed{
 							res = Some(<Error<T>>::ProjectClosed);
 						}else{
@@ -929,7 +957,7 @@ pub mod pallet {
 				match option {
 					Some(project) => {
 						if project.publisher != sender {
-							res = Err(<Error<T>>::UnauthorisedToAddToMarketplace);
+							res = Err(<Error<T>>::Unauthorised);
 						}else{
 							project.status = ProjectStatus::Open;
 							Self::deposit_event(Event::ProjectAddedToMarketplace(project_id));
@@ -955,8 +983,8 @@ pub mod pallet {
 			// authentication
 			let sender = ensure_signed(origin)?;
 			let mut milestone_cost: BalanceOf<T> = 0u8.saturated_into();
-			let mut milestone_id = milestone_id;
-			let (milestone_number, project_id) = get_milestone_and_project_id(&mut milestone_id).map_err(|_| <Error<T>>::InvalidMilestoneId)?;
+			let mut milestone_id_clone = milestone_id.clone();
+			let (milestone_number, project_id) = get_milestone_and_project_id(&mut milestone_id_clone).map_err(|_| <Error<T>>::InvalidMilestoneId)?;
 			// ensure that the project and milestone exists
 			<ProjectStorage<T>>::try_mutate(&project_id, |option_project| {
 				let mut res = Ok(());
@@ -990,7 +1018,9 @@ pub mod pallet {
 			let account = Self::accounts(sender.clone());
 			let milestone_key = T::Hashing::hash_of(&milestone_id);
 			<BidderList<T>>::mutate(&milestone_key, |bidder_vector| {
-				bidder_vector.push(account);
+				let bid_number = bidder_vector.len() as u32 + 1;
+				let bid = Bid::new(bid_number, sender.clone(), worker_name, account);
+				bidder_vector.push(bid);
 			});
 			let escrow_id = Self::get_escrow(milestone_id.clone());
 			T::Currency::transfer(
@@ -1005,11 +1035,85 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
+		#[transactional]
+		pub fn accept_bid(
+			origin: OriginFor<T>,
+			milestone_id: Vec<u8>,
+			bid_number: u32
+		) -> DispatchResult {
+			// function body starts
+			// authentication
+			let sender = ensure_signed(origin)?;
+			let mut milestone_cost: BalanceOf<T> = 0u8.saturated_into();
+			let mut milestone_id_clone = milestone_id.clone();
+			let (milestone_number, project_id) = get_milestone_and_project_id(&mut milestone_id_clone).map_err(|_| <Error<T>>::InvalidMilestoneId)?;
+			let bid_number = bid_number - 1 as u32;
+			<ProjectStorage<T>>::try_mutate(&project_id, |option_project| {
+				let mut res = Ok(());
+				// ensuring that the project exist
+				match option_project {
+					Some(project) => {
+						// ensuring that the project publisher is making the request
+						if project.publisher != sender {
+							res = Err(<Error<T>>::Unauthorised);
+						}else if project.status != ProjectStatus::Open {
+							res = Err(<Error<T>>::ProjectNotOpenForBidding);
+						}else{
+							// ensuring that the project milestone exists and is open for bidding
+							match &mut project.milestones{
+								Some(milestone_vector) => {
+									if milestone_number >= milestone_vector.len() as u8 {
+										res = Err(<Error<T>>::InvalidMilestoneId);
+									}else{
+										if milestone_vector[milestone_number as usize].status != Status::Open{
+											res = Err(<Error<T>>::MilestoneNotOpenForBidding);
+										}else{
+											let milestone_key = T::Hashing::hash_of(&milestone_id);
+											let bidder_list = Self::get_bidder_list(&milestone_key);
+											if bidder_list.len() == 0 as usize || bid_number >= bidder_list.len() as u32{
+												
+												res = Err(<Error<T>>::InvalidBidNumber);
+											}else{
+												// changing the status of the milestone to in progress
+												milestone_vector[milestone_number as usize].status = Status::InProgress;
+												milestone_vector[milestone_number as usize].worker_id = Some(bidder_list[bid_number as usize].bidder_id.clone());
+												milestone_vector[milestone_number as usize].worker_name = Some(bidder_list[bid_number as usize].bidder_name.clone());
+												milestone_cost = milestone_vector[milestone_number as usize].cost.clone();
+											}
+										}
+									}
+								},
+								None => res = Err(<Error<T>>::InvalidMilestoneId)
+							}
+						}
+						
+					},
+					None => res = Err(<Error<T>>::ProjectDoesNotExist),
+				};
+
+				res
+			})?;
+			// locking the tokens of the publisher
+			let escrow_id = Self::get_escrow(milestone_id.clone());
+			T::Currency::transfer(
+				&sender,
+				&escrow_id,
+				milestone_cost.clone(),
+				ExistenceRequirement::KeepAlive
+			)?;
+			let milestone_key = T::Hashing::hash_of(&milestone_id);
+			Self::reject_all(milestone_key, escrow_id, milestone_cost, bid_number)?;
+			Ok(())
+			// function body ends
+		}
+
+		#[pallet::weight(10_000)]
 		pub fn bid_for_task(
 			origin: OriginFor<T>,
 			task_id: u128,
 			worker_name: Vec<u8>,
 		) -> DispatchResult {
+			//function body starts 
 			// User authentication
 			let bidder = ensure_signed(origin)?;
 			// Does task exists?
@@ -1057,7 +1161,10 @@ pub mod pallet {
 			));
 
 			Ok(())
+			// function body ends
 		}
+		
+		
 
 		#[pallet::weight(10_000)]
 		pub fn task_completed(
@@ -1647,5 +1754,29 @@ pub mod pallet {
 			(jury_acceptance_period, total_case_period)
 		}
 
+		// helper function to reject the other biddings and transfer the locked funds back to the bidders
+		pub fn reject_all(
+			milestone_key: T::Hash,
+			escrow_id: T::AccountId,
+			cost: BalanceOf<T>,
+			except: u32
+		)-> Result<(), Error<T>>{
+			let bidder_list = Self::get_bidder_list(milestone_key);
+			for (index, bidder) in bidder_list.iter().enumerate() {
+				if index as u32 == except {
+					continue;
+				}
+				let bidder_id = &bidder.bidder_id;
+				T::Currency::transfer(
+					&escrow_id,
+					bidder_id,
+					cost,
+					ExistenceRequirement::KeepAlive
+				).map_err(|_| <Error<T>>::FailedToTransferBack)?;
+			}
+			<BidderList<T>>::remove(&milestone_key);
+			Ok(())
+		}
 	}
+
 }
