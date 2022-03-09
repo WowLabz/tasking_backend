@@ -435,6 +435,8 @@ pub mod pallet {
 		BidAccepted(Vec<u8>, u32),
 		/// Event for milestone completion. \[MilestoneId]
 		MilestoneCompleted(Vec<u8>),
+		/// Event for milestone approved. \[MilestoneId]
+		MilestoneApproved(Vec<u8>),
 	}
 
 	#[pallet::error]
@@ -1258,6 +1260,54 @@ pub mod pallet {
 			));
 
 			Ok(())
+		}
+
+
+		#[pallet::weight(10_000)]
+		pub fn approve_milestone(
+			origin: OriginFor<T>,
+			milestone_id: Vec<u8>,
+			rating_for_the_worker: u8,
+		) -> DispatchResult {
+			// function body starts here
+			// authentication
+			let sender = ensure_signed(origin)?;
+			let mut milestone_id_clone = milestone_id.clone();
+			let (milestone_number, project_id) = get_milestone_and_project_id(&mut milestone_id_clone).map_err(|_| <Error<T>>::InvalidMilestoneId)?;
+			<ProjectStorage<T>>::try_mutate(&project_id, |option_project| {
+				let mut res = Ok(());
+				match option_project {
+					Some(project) => {
+						if project.publisher != sender {
+							res = Err(<Error<T>>::UnauthorisedToApprove);
+						}else if project.status != ProjectStatus::Open {
+							res = Err(<Error<T>>::ProjectNotOpenForBidding); // create an error for this later
+						}else {
+							// checking for milestones
+							match &mut project.milestones{
+								Some(milestone_vector) => {
+									if milestone_number >= milestone_vector.len() as u8 {
+										res = Err(<Error<T>>::InvalidMilestoneId);
+									}else{
+										if milestone_vector[milestone_number as usize].status != Status::PendingApproval {
+											res = Err(<Error<T>>::TaskIsNotPendingApproval); // create an error for this later
+										}else{
+											milestone_vector[milestone_number as usize].status = Status::CustomerRatingPending;
+											milestone_vector[milestone_number as usize].final_worker_rating = Some(rating_for_the_worker);
+											Self::deposit_event(Event::MilestoneApproved(milestone_id));
+										}
+									}
+								},
+								None => res = Err(<Error<T>>::InvalidMilestoneId)
+							};
+						}
+					},
+					None => res = Err(<Error<T>>::ProjectDoesNotExist)
+				};
+				res
+			})?;
+			Ok(())
+			// function body ends here
 		}
 
 		#[pallet::weight(10_000)]
