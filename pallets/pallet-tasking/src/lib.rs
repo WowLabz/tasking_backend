@@ -417,7 +417,7 @@ pub mod pallet {
 		TransferMoney(T::AccountId, BalanceOf<T>, BalanceOf<T>, T::AccountId, BalanceOf<T>, BalanceOf<T>),
 		CourtSummoned(u128, UserType, Reason, T::AccountId),
 		NewJurorAdded(u128, T::AccountId),
-		CustomerRatingProvided(u128, T::AccountId, u8, T::AccountId),
+		// CustomerRatingProvided(u128, T::AccountId, u8, T::AccountId),
 		VoteRecorded(u128,T::AccountId),
 		CourtAdjourned(u128),
 		CourtReinitiated(u128),
@@ -435,8 +435,12 @@ pub mod pallet {
 		BidAccepted(Vec<u8>, u32),
 		/// Event for milestone completion. \[MilestoneId]
 		MilestoneCompleted(Vec<u8>),
-		/// Event for milestone approved. \[MilestoneId]
-		MilestoneApproved(Vec<u8>),
+		/// Event for milestone approved. \[MilestoneId, rating]
+		MilestoneApproved(Vec<u8>,u8),
+		/// Event for customer rating. \[MilestoneId, rating]
+		CustomerRatingProvided(Vec<u8>,u8),
+		/// Event for milestone accepted. \[MilestoneId]
+		MilestoneClosed(Vec<u8>),
 	}
 
 	#[pallet::error]
@@ -521,6 +525,14 @@ pub mod pallet {
 		FailedToTransferBack,
 		/// Ensuring that the milestone is in progress
 		MilestoneNotInProgress,
+		/// Ensuring that the publisher does not attempt to complete the milestone
+		PublisherCannotCompleteMilestone,
+		/// Ensuring that the project is open before submission of milestone
+		ProjectNotOpenForMilestoneCompletion,
+		/// Project should be open while providing rating
+		ProjectNotOpenToProvideRating,
+		/// Publisher should not rate themself
+		PublisherCannotRateSelf,
 
 	}
 
@@ -813,63 +825,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
-		pub fn create_task(
-			origin: OriginFor<T>,
-			task_duration: u64,
-			task_cost: BalanceOf<T>,
-			task_des: Vec<u8>,
-			publisher_name: Vec<u8>,
-			task_tags: Vec<TaskTypeTags>,
-			publisher_attachments: Option<Vec<Vec<u8>>>,
-		) -> DispatchResult {
-			// User authentication
-			let who = ensure_signed(origin)?;
-			// Fetching the latest task count
-			let current_task_count = Self::get_task_count();
-			let escrow_id = Self::escrow_account_id(current_task_count.clone() as u32);
-			// Locking the amount from the publisher for the task
-			T::Currency::transfer(
-				&who,
-				&escrow_id,
-				task_cost.clone(),
-				ExistenceRequirement::KeepAlive,
-			)?;
-			// Details related to task created for storage
-			let task_details = TaskDetails {
-				task_id: current_task_count.clone(),
-				publisher: who.clone(),
-				worker_id: None,
-				publisher_name: Some(publisher_name.clone()),
-				worker_name: None,
-				task_tags: task_tags.clone(),
-				task_deadline: task_duration.clone(),
-				cost: task_cost.clone(),
-				status: Default::default(),
-				task_description: task_des.clone(),
-				publisher_attachments: publisher_attachments.clone(),
-				worker_attachments: None,
-				dispute: None,
-				final_worker_rating: None,
-				final_customer_rating: None,
-			};
-			// Inserting the new task details to storage
-			<TaskStorage<T>>::insert(current_task_count.clone(), task_details);
-			// Notify event
-			Self::deposit_event(Event::TaskCreated(
-				who,
-				publisher_name.clone(),
-				current_task_count.clone(),
-				task_duration.clone(),
-				task_cost.clone(),
-				task_des.clone(),
-			));
-			// Incrementing the task count in storage
-			<TaskCount<T>>::put(current_task_count + 1);
-
-			Ok(())
-		}
-
 		#[pallet::weight(1000)]
 		pub fn create_project(
 			origin: OriginFor<T>,
@@ -981,6 +936,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
+		#[transactional]
 		pub fn bid_for_milestone(
 			origin: OriginFor<T>,
 			milestone_id: Vec<u8>,
@@ -1120,63 +1076,6 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn bid_for_task(
-			origin: OriginFor<T>,
-			task_id: u128,
-			worker_name: Vec<u8>,
-		) -> DispatchResult {
-			//function body starts 
-			// User authentication
-			let bidder = ensure_signed(origin)?;
-			// Does task exists?
-			ensure!(<TaskStorage<T>>::contains_key(&task_id), <Error<T>>::TaskDoesNotExist);
-			// Getting task details
-			let mut task = Self::task(task_id.clone());
-			// Accessing task cost
-			let task_cost = task.cost.clone();
-			// Is there balance to bid?
-			ensure!(
-				T::Currency::free_balance(&bidder.clone()) > task_cost,
-				<Error<T>>::NotEnoughBalanceToBid
-			);
-			// Accessing publisher
-			let publisher = task.publisher.clone();
-			// Is publisher the bidder?
-			ensure!(publisher != bidder.clone(), <Error<T>>::UnauthorisedToBid);
-			// Accessing task status
-			let status = task.status.clone();
-			// Is task open?
-			ensure!(status == Status::Open, <Error<T>>::TaskIsNotOpen);
-			// Updating worker id
-			task.worker_id = Some(bidder.clone());
-			// Updating worker name
-			task.worker_name = Some(worker_name.clone());
-			// Updating status of task
-			task.status = Status::InProgress;
-			// Inserting updated task in storage
-			<TaskStorage<T>>::insert(&task_id, task.clone());
-			// Getting escrow a/c id
-			let escrow_id = Self::escrow_account_id(task_id.clone() as u32);
-			// Locking the amount from the publisher for the task
-			T::Currency::transfer(
-				&bidder,
-				&escrow_id,
-				// NOTE: Have to add te amount bid by the worker and not task cost
-				task_cost.clone(),
-				ExistenceRequirement::KeepAlive,
-			)?;
-			// Notify event
-			Self::deposit_event(Event::TaskIsBid(
-				task_id.clone(),
-				bidder.clone(),
-				worker_name.clone(),
-			));
-
-			Ok(())
-			// function body ends
-		}
-		
-		#[pallet::weight(10_000)]
 		pub fn milestone_completed(
 			origin: OriginFor<T>,
 			milestone_id: Vec<u8>,
@@ -1192,9 +1091,9 @@ pub mod pallet {
 				match option_project{
 					Some(project) => {
 						if project.status != ProjectStatus::Open{
-							res = Err(<Error<T>>::ProjectNotOpenForBidding); // add another error for this but later
+							res = Err(<Error<T>>::ProjectNotOpenForMilestoneCompletion); 
 						}else if sender == project.publisher{
-							res = Err(<Error<T>>::PublisherCannotBid); // add another error for this but later
+							res = Err(<Error<T>>::PublisherCannotCompleteMilestone);
 						}else{
 							// checking the milestones
 							match &mut project.milestones {
@@ -1227,41 +1126,6 @@ pub mod pallet {
 			// function body ends here
 		}
 
-		#[pallet::weight(10_000)]
-		pub fn task_completed(
-			origin: OriginFor<T>,
-			task_id: u128,
-			worker_attachments: Vec<Vec<u8>>,
-		) -> DispatchResult {
-			// User authentication
-			let bidder = ensure_signed(origin)?;
-			// Does task exist?
-			ensure!(<TaskStorage<T>>::contains_key(task_id.clone()), <Error<T>>::TaskDoesNotExist);
-			// Get task details from storage
-			let mut task = Self::task(task_id.clone());
-			// Accessing task status
-			let status = task.status;
-			// Is task in progress?
-			ensure!(status == Status::InProgress, <Error<T>>::TaskIsNotInProgress);
-			// Checking if worker is set or not
-			let worker = task.worker_id.clone().ok_or(<Error<T>>::WorkerNotSet)?;
-			// Is worker the biider?
-			ensure!(worker == bidder.clone(), <Error<T>>::UnauthorisedToComplete);
-			// Updating the status
-			task.status = Status::PendingApproval;
-			// Attaching the prrof of work from worker
-			task.worker_attachments = Some(worker_attachments);
-			// Inserting the updated task details
-			<TaskStorage<T>>::insert(&task_id, task.clone());
-			// Notify event
-			Self::deposit_event(Event::TaskCompleted(
-				task_id.clone(),
-				worker.clone(),
-			));
-
-			Ok(())
-		}
-
 
 		#[pallet::weight(10_000)]
 		pub fn approve_milestone(
@@ -1281,7 +1145,7 @@ pub mod pallet {
 						if project.publisher != sender {
 							res = Err(<Error<T>>::UnauthorisedToApprove);
 						}else if project.status != ProjectStatus::Open {
-							res = Err(<Error<T>>::ProjectNotOpenForBidding); // create an error for this later
+							res = Err(<Error<T>>::ProjectNotOpenToProvideRating); 
 						}else {
 							// checking for milestones
 							match &mut project.milestones{
@@ -1294,7 +1158,7 @@ pub mod pallet {
 										}else{
 											milestone_vector[milestone_number as usize].status = Status::CustomerRatingPending;
 											milestone_vector[milestone_number as usize].final_worker_rating = Some(rating_for_the_worker);
-											Self::deposit_event(Event::MilestoneApproved(milestone_id));
+											Self::deposit_event(Event::MilestoneApproved(milestone_id,rating_for_the_worker));
 										}
 									}
 								},
@@ -1311,140 +1175,116 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn approve_task(
+		pub fn provide_customer_rating(
 			origin: OriginFor<T>,
-			task_id: u128,
-			rating_for_the_worker: u8,
+			milestone_id: Vec<u8>,
+			rating_for_customer: u8,
 		) -> DispatchResult {
-			// User authentication
-			let publisher = ensure_signed(origin)?;
-			// Does task exist?
-			ensure!(<TaskStorage<T>>::contains_key(task_id.clone()), <Error<T>>::TaskDoesNotExist);
-			// Getting task details from storage
-			let mut task = Self::task(task_id.clone());
-			// Accessing task status
-			let status = task.status;
-			// Is approval pending?
-			ensure!(status == Status::PendingApproval, <Error<T>>::TaskIsNotPendingApproval);
-			// Accessing publisher
-			let approver = task.publisher.clone();
-			// Is publisher the approver?
-			ensure!(publisher == approver.clone(), <Error<T>>::UnauthorisedToApprove);
-			// Update the final rating for the worker
-			task.final_worker_rating = Some(rating_for_the_worker.clone());
-			// Updating task status
-			task.status = Status::CustomerRatingPending;
-			// Inserting updated task into storage
-			<TaskStorage<T>>::insert(&task_id, task.clone());
-			// Notify event
-			Self::deposit_event(
-				Event::TaskApproved(
-					task_id.clone(),
-					publisher.clone()
-				));
-
+			// function body starts here
+			// authentication
+			let sender = ensure_signed(origin)?;
+			let mut milestone_id_clone = milestone_id.clone();
+			let (milestone_number, project_id) = get_milestone_and_project_id(&mut milestone_id_clone).map_err(|_| <Error<T>>::InvalidMilestoneId)?;
+			<ProjectStorage<T>>::try_mutate(&project_id, |option_project| {
+				let mut res = Ok(());
+				match option_project {
+					Some(project) => {
+						if project.publisher == sender {
+							res = Err(<Error<T>>::PublisherCannotRateSelf);
+						}else if project.status != ProjectStatus::Open {
+							res = Err(<Error<T>>::ProjectNotOpenToProvideRating);
+						}else{
+							// checking for milestone
+							match &mut project.milestones {
+								Some(vector_of_milestones) => {
+									if milestone_number >= vector_of_milestones.len() as u8 {
+										res = Err(<Error<T>>::InvalidMilestoneId);
+									}else{
+										if vector_of_milestones[milestone_number as usize].status != Status::CustomerRatingPending {
+											res = Err(<Error<T>>::TaskIsNotPendingRating);
+										}else{
+											if vector_of_milestones[milestone_number as usize].worker_id.clone().unwrap() != sender {
+												res = Err(<Error<T>>::UnauthorisedToProvideCustomerRating);
+											}else{
+												vector_of_milestones[milestone_number as usize].status = Status::CustomerRatingProvided;
+												vector_of_milestones[milestone_number as usize].final_customer_rating = Some(rating_for_customer);
+												Self::deposit_event(Event::CustomerRatingProvided(milestone_id, rating_for_customer));
+											}
+										}
+									}
+								},
+								None => res = Err(<Error<T>>::InvalidMilestoneId)
+							}
+						}
+					},
+					None => res = Err(<Error<T>>::ProjectDoesNotExist)
+				};
+				res
+			})?;
 			Ok(())
+			// function body ends here
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn provide_customer_rating(
+		#[transactional]
+		pub fn close_milestone(
 			origin: OriginFor<T>,
-			task_id: u128,
-			rating_for_customer: u8,
+			milestone_id: Vec<u8>
 		) -> DispatchResult {
-			// User authentication
-			let bidder = ensure_signed(origin)?;
-			// Does task exist?
-			ensure!(<TaskStorage<T>>::contains_key(task_id.clone()), <Error<T>>::TaskDoesNotExist);
-			// Getting task details from storage
-			let mut task = Self::task(task_id.clone());
-			// Accessing status
-			let status = task.status;
-			// Is rating pending from worker to publisher?
-			ensure!(status == Status::CustomerRatingPending, <Error<T>>::TaskIsNotPendingRating);
-			// Get worker id
-			let worker = task.worker_id.clone().ok_or(<Error<T>>::WorkerNotSet)?;
-			// Is worker the bidder?
-			ensure!(worker == bidder.clone(), <Error<T>>::UnauthorisedToProvideCustomerRating);
-			// Accessing reference of the publisher
-			let customer = &task.publisher;
-			// Update final rating for the customer
-			task.final_customer_rating = Some(rating_for_customer.clone());
-			// Update task status
-			task.status = Status::CustomerRatingProvided;
-			// Update task storage
-			<TaskStorage<T>>::insert(&task_id, task.clone());
-			// Notify event
-			Self::deposit_event(
-				Event::CustomerRatingProvided(
-					task_id.clone(),
-					bidder.clone(),
-					rating_for_customer,
-					customer.clone()
-				));
-
-			Ok(())
-		}
-
-		#[pallet::weight(100)]
-		pub fn close_task(
-			origin: OriginFor<T>,
-			task_id: u128,
-		) -> DispatchResult {
-			// User authentication
-			let publisher = ensure_signed(origin)?;
-			// Does task exist?
-			ensure!(<TaskStorage<T>>::contains_key(task_id.clone()), <Error<T>>::TaskDoesNotExist);
-			// Getting task details from storage
-			let mut task_details = Self::task(task_id.clone());
-			// Accessing task status
-			let status = task_details.status;
-			// Is approval pending?
-			ensure!(status == Status::CustomerRatingProvided, <Error<T>>::CustomerRatingNotProvided);
-			// Accessing publisher
-			let approver = task_details.publisher.clone();
-			// Is publisher the approver?
-			ensure!(publisher == approver.clone(), <Error<T>>::UnauthorisedToApprove);
-			// Accessing worker id
-			let worker_id = task_details.worker_id.clone().unwrap();
-			// Fetching escrow a/c id
-			let escrow_id = Self::escrow_account_id(task_id.clone() as u32);
-			// Getting balance from the escrow a/c
+			// function body starts here
+			// authentication
+			let sender = ensure_signed(origin)?;
+			let mut milestone_id_clone = milestone_id.clone();
+			let (milestone_number, project_id) = get_milestone_and_project_id(&mut milestone_id_clone).map_err(|_| <Error<T>>::InvalidMilestoneId)?;
+			let worker_id = <ProjectStorage<T>>::try_mutate(&project_id, |option_project|{
+				let res;
+				match option_project {
+					Some(project) => {
+						if project.publisher != sender {
+							res = Err(<Error<T>>::UnauthorisedToApprove); // perhaps create an error for this later
+						}else if project.status != ProjectStatus::Open {
+							res = Err(<Error<T>>::ProjectNotOpenForBidding); // create an error for this later
+						}else{
+							match &mut project.milestones {
+								Some(vector_of_milestones) => {
+									if milestone_number >= vector_of_milestones.len() as u8 {
+										res = Err(<Error<T>>::InvalidMilestoneId);
+									}else{
+										if vector_of_milestones[milestone_number as usize].status != Status::CustomerRatingProvided {
+											res = Err(<Error<T>>::CustomerRatingNotProvided);
+										}else{
+											vector_of_milestones[milestone_number as usize].status = Status::Completed;
+											let worker_id = vector_of_milestones[milestone_number as usize].worker_id.clone().unwrap();
+											// 	// ----- Update overall customer rating
+											<AccountDetails<BalanceOf<T>>>::update_rating::<T>(
+												worker_id.clone(),
+												vector_of_milestones[milestone_number as usize].final_worker_rating.clone().unwrap()
+											);
+											// -----
+											res = Ok(worker_id);
+										}
+									}
+								},
+								None => res = Err(<Error<T>>::InvalidMilestoneId)
+							}
+						}
+					},
+					None => res = Err(<Error<T>>::ProjectDoesNotExist)
+				}
+				res
+			})?;
+			let escrow_id = Self::get_escrow(milestone_id.clone());
 			let transfer_amount = T::Currency::free_balance(&escrow_id);
-			// Making the transfer to the worker
 			T::Currency::transfer(
 				&escrow_id,
 				&worker_id,
 				transfer_amount,
-				ExistenceRequirement::AllowDeath,
+				ExistenceRequirement::AllowDeath
 			)?;
-			// Update the status
-			task_details.status = Status::Completed;
 
-			// ----- Update overall customer and worker ratings
-			<AccountDetails<BalanceOf<T>>>::update_rating::<T>(
-				publisher.clone(),
-				task_details.final_customer_rating.clone().unwrap()
-			);
-			<AccountDetails<BalanceOf<T>>>::update_rating::<T>(
-				task_details.worker_id.clone().unwrap(),
-				task_details.final_worker_rating.clone().unwrap()
-			);
-			// -----
-
-			// Update task storage
-			TaskStorage::<T>::insert(&task_id, task_details);
-
-			// ----- Notify events
-			Self::deposit_event(Event::AmountTransfered(
-				publisher,
-				worker_id,
-				transfer_amount.clone(),
-			));
-			Self::deposit_event(Event::TaskClosed(task_id.clone()));
-			// -----
-
+			Self::deposit_event(Event::MilestoneClosed(milestone_id));
 			Ok(())
+			// function body ends here
 		}
 
 		#[pallet::weight(10_000)]
