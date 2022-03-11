@@ -535,8 +535,8 @@ pub mod pallet {
 		ProjectNotOpenToProvideRating,
 		/// Publisher should not rate themself
 		PublisherCannotRateSelf,
-		/// The project cannot be closed if someone is working on a milestone
-		ProjectMilestoneIsInProgress,
+		/// The project cannot be closed for the following reasons : One or more milestones are not either open or completed
+		CannotCloseProject,
 
 
 	}
@@ -1301,7 +1301,7 @@ pub mod pallet {
 			// authentication
 			let sender = ensure_signed(origin)?;
 			<ProjectStorage<T>>::try_mutate(&project_id, |option_project| {
-				let res;
+				let mut res = Ok(());
 				match option_project {
 					Some(project) => {
 						if sender != project.publisher {
@@ -1310,18 +1310,31 @@ pub mod pallet {
 							if project.status == ProjectStatus::Open {
 								match &mut project.milestones {
 									Some(vector_of_milestones) => {
-										let mut milestone_is_in_progress = false;
+										let mut flag = false;
 										for milestone in vector_of_milestones {
-											if milestone.status == Status::InProgress {
-												milestone_is_in_progress = true;
+											if milestone.status != Status::Open || milestone.status != Status::Completed {
+												flag = true;
 												break;
+											}else{
+												if milestone.status == Status::Open {
+													// reject all the bidders
+													let milestone_key = T::Hashing::hash_of(&milestone.milestone_id);
+													let escrow_id = Self::get_escrow(milestone.milestone_id.clone());
+													let cost = milestone.cost.clone();
+													let except = u32::MAX;
+													res = Self::reject_all(
+														milestone_key,
+														escrow_id,
+														cost,
+														except
+													);
+												}
 											}
 										}
-										if milestone_is_in_progress {
-											res = Err(<Error<T>>::ProjectMilestoneIsInProgress);
+										if flag {
+											res = Err(<Error<T>>::CannotCloseProject);
 										}else{
 											project.status = ProjectStatus::Closed;
-											res = Ok(());
 										}
 									},
 									None => {
