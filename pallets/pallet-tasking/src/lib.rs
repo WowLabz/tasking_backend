@@ -423,24 +423,26 @@ pub mod pallet {
 		CourtReinitiated(u128),
 		CaseClosedBySudoJuror(u128, T::AccountId),
 		// phase 3 events here
-		/// Event showcasing project created. [ProjectId, ProjectName, Publisher].
+		/// A project has been created. [ProjectId, ProjectName, Publisher].
 		ProjectCreated(u128,Vec<u8>,T::AccountId),
-		/// Event showcasing milestone created. \[MilestoneId, \Cost].
+		/// A milestone has been created for some project. \[MilestoneId, \Cost].
 		MileStoneCreated(Vec<u8>, BalanceOf<T>),
-		/// Event for project being added to the marketplace. \[ProjectId]
+		/// A project has been added to marketplace. \[ProjectId]
 		ProjectAddedToMarketplace(u128),
-		/// Event for a successful bid placed. \[MilestoneId, AccountId]
+		/// A bid has been placed for some milestone. \[MilestoneId, AccountId]
 		BidSuccessful(Vec<u8>, T::AccountId),
-		/// Event on bid acceptance. \[MilestoneId, BidNumber]
+		/// A bid has been accepted for some milestone. \[MilestoneId, BidNumber]
 		BidAccepted(Vec<u8>, u32),
-		/// Event for milestone completion. \[MilestoneId]
+		/// A milestone has been completed. \[MilestoneId]
 		MilestoneCompleted(Vec<u8>),
-		/// Event for milestone approved. \[MilestoneId, rating]
+		/// A milestone has been approved and a worker rating has been provided. \[MilestoneId, rating]
 		MilestoneApproved(Vec<u8>,u8),
-		/// Event for customer rating. \[MilestoneId, rating]
+		/// Customer rating has been provided for a milestone. \[MilestoneId, rating]
 		CustomerRatingProvided(Vec<u8>,u8),
-		/// Event for milestone accepted. \[MilestoneId]
+		/// A milestone has been closed. \[MilestoneId]
 		MilestoneClosed(Vec<u8>),
+		/// A project has been closed. \[ProjectId]
+		ProjectClosed(u128),
 	}
 
 	#[pallet::error]
@@ -533,6 +535,9 @@ pub mod pallet {
 		ProjectNotOpenToProvideRating,
 		/// Publisher should not rate themself
 		PublisherCannotRateSelf,
+		/// The project cannot be closed if someone is working on a milestone
+		ProjectMilestoneIsInProgress,
+
 
 	}
 
@@ -1288,6 +1293,64 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
+		pub fn close_project(
+			origin: OriginFor<T>,
+			project_id: u128,
+		) -> DispatchResult {
+			// function body starts here
+			// authentication
+			let sender = ensure_signed(origin)?;
+			<ProjectStorage<T>>::try_mutate(&project_id, |option_project| {
+				let res;
+				match option_project {
+					Some(project) => {
+						if sender != project.publisher {
+							res = Err(<Error<T>>::Unauthorised);
+						}else{
+							if project.status == ProjectStatus::Open {
+								match &mut project.milestones {
+									Some(vector_of_milestones) => {
+										let mut milestone_is_in_progress = false;
+										for milestone in vector_of_milestones {
+											if milestone.status == Status::InProgress {
+												milestone_is_in_progress = true;
+												break;
+											}
+										}
+										if milestone_is_in_progress {
+											res = Err(<Error<T>>::ProjectMilestoneIsInProgress);
+										}else{
+											project.status = ProjectStatus::Closed;
+											res = Ok(());
+										}
+									},
+									None => {
+										project.status = ProjectStatus::Closed;
+										res = Ok(());
+									}
+								}
+							}else{
+								project.status = ProjectStatus::Closed;
+								res = Ok(());
+							}
+						}
+					},
+					None => res = Err(<Error<T>>::ProjectDoesNotExist)
+				}
+				res
+			})?;
+			let publisher_rating = Self::get_publisher_rating(project_id);
+			// update publisher rating
+			match publisher_rating {
+				Some(rating) => <AccountDetails<BalanceOf<T>>>::update_rating::<T>(sender, rating),
+				None => (),
+			}
+			Self::deposit_event(Event::ProjectClosed(project_id));
+			Ok(())
+			// function body ends here
+		}
+
+		#[pallet::weight(10_000)]
 		pub fn transfer_money(
 			origin: OriginFor<T>,
 			to: T::AccountId,
@@ -1725,6 +1788,37 @@ pub mod pallet {
 			}
 			<BidderList<T>>::remove(&milestone_key);
 			Ok(())
+		}
+
+		// helper function to get publisher rating
+		pub fn get_publisher_rating(
+			project_id: u128
+		) -> Option<u8> {
+			let project = Self::get_project(project_id).unwrap();
+			let res;
+			match project.milestones {
+				Some(vector_of_milestones) => {
+					let mut number_of_rating = 0;
+					let mut total_rating = 0;
+					for milestone in vector_of_milestones {
+						match milestone.final_customer_rating {
+							Some(rating) => {
+								number_of_rating += 1;
+								total_rating += rating;
+							},
+							None => (),
+
+						}
+					}
+					if number_of_rating > 0 {
+						res = Some(roundoff(total_rating, number_of_rating));
+					}else{
+						res = None;
+					}
+				},
+				None => res = None
+			}
+			res
 		}
 	}
 
