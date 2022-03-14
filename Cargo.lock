@@ -3971,6 +3971,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "futures-timer 3.0.2",
+ "log",
  "num-traits",
  "pallet-balances",
  "pallet-membership",

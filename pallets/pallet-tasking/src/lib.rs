@@ -537,6 +537,8 @@ pub mod pallet {
 		PublisherCannotRateSelf,
 		/// The project cannot be closed for the following reasons : One or more milestones are not either open or completed
 		CannotCloseProject,
+		/// Project not open
+		ProjectNotOpen,
 
 
 	}
@@ -610,48 +612,103 @@ pub mod pallet {
 		}
 
 		// Can be called either by publisher or worker
+		// #[pallet::weight(10_000)]
+		// pub fn raise_dispute(
+		// 	origin: OriginFor<T>,
+		// 	task_id:u128,
+		// 	user_type: UserType,
+		// )->DispatchResult {
+		// 	// User authentication
+		// 	let who = ensure_signed(origin)?;
+		// 	// Ensure task exists and is active
+		// 	ensure!(<TaskStorage<T>>::contains_key(&task_id), <Error<T>>::TaskDoesNotExist);
+		// 	// Get task details from storage
+		// 	let task_details = Self::task(task_id.clone());
+		// 	// Accessing status from task details
+		// 	let status = task_details.status.clone();
+
+		// 	// ----- Checking if the signer is the customer / worker
+		// 	if user_type == UserType::Customer {
+		// 		ensure!(task_details.publisher.clone() == who, <Error<T>>::UnauthorisedToRaiseDispute);
+		// 	} else if user_type == UserType::Worker {
+		// 		ensure!(task_details.worker_id.clone().unwrap() == who, <Error<T>>::UnauthorisedToRaiseDispute);
+		// 	}
+		// 	// -----
+
+		// 	// Task should be completed
+		// 	ensure!(status != Status::InProgress, <Error<T>>::TaskInProgress);
+		// 	// Task should be open
+		// 	ensure!(status != Status::Completed, <Error<T>>::TaskIsNotOpen);
+		// 	// Dispute shouldn't already be raised
+		// 	ensure!(status != Status::DisputeRaised, <Error<T>>::DisputeAlreadyRaised);
+		// 	// Cannot raise dispute during voting period
+		// 	ensure!(status != Status::VotingPeriod, <Error<T>>::DisputeAlreadyRaised);
+		// 	// Register the case
+		// 	Self::register_case(task_id.clone(), task_details);
+		// 	// Customer against worker & vice-versa
+		// 	let against = match user_type {
+		// 		UserType::Customer => Reason::AgaisntWorker,
+		// 		UserType::Worker => Reason::AgainstPublisher,
+		// 	};
+		// 	// Notify event
+		// 	Self::deposit_event(Event::CourtSummoned(task_id, user_type, against, who));
+
+		// 	Ok(())
+		// }
+
 		#[pallet::weight(10_000)]
 		pub fn raise_dispute(
 			origin: OriginFor<T>,
-			task_id:u128,
+			milestone_id: Vec<u8>,
 			user_type: UserType,
-		)->DispatchResult {
-			// User authentication
-			let who = ensure_signed(origin)?;
-			// Ensure task exists and is active
-			ensure!(<TaskStorage<T>>::contains_key(&task_id), <Error<T>>::TaskDoesNotExist);
-			// Get task details from storage
-			let task_details = Self::task(task_id.clone());
-			// Accessing status from task details
-			let status = task_details.status.clone();
-
-			// ----- Checking if the signer is the customer / worker
-			if user_type == UserType::Customer {
-				ensure!(task_details.publisher.clone() == who, <Error<T>>::UnauthorisedToRaiseDispute);
-			} else if user_type == UserType::Worker {
-				ensure!(task_details.worker_id.clone().unwrap() == who, <Error<T>>::UnauthorisedToRaiseDispute);
-			}
-			// -----
-
-			// Task should be completed
-			ensure!(status != Status::InProgress, <Error<T>>::TaskInProgress);
-			// Task should be open
-			ensure!(status != Status::Completed, <Error<T>>::TaskIsNotOpen);
-			// Dispute shouldn't already be raised
-			ensure!(status != Status::DisputeRaised, <Error<T>>::DisputeAlreadyRaised);
-			// Cannot raise dispute during voting period
-			ensure!(status != Status::VotingPeriod, <Error<T>>::DisputeAlreadyRaised);
-			// Register the case
-			Self::register_case(task_id.clone(), task_details);
-			// Customer against worker & vice-versa
-			let against = match user_type {
-				UserType::Customer => Reason::AgaisntWorker,
-				UserType::Worker => Reason::AgainstPublisher,
-			};
-			// Notify event
-			Self::deposit_event(Event::CourtSummoned(task_id, user_type, against, who));
-
+		) -> DispatchResult {
+			// function body starts here
+			// user authentication
+			let sender = ensure_signed(origin)?;
+			let mut milestone_id_clone = milestone_id.clone();
+			let (milestone_number, project_id) = get_milestone_and_project_id(&mut milestone_id_clone).map_err(|_| <Error<T>>::InvalidMilestoneId)?;
+			<ProjectStorage<T>>::try_mutate(&project_id, |option_project|{
+				let mut res = Ok(());
+				match option_project {
+					Some(project) => {
+						if project.status != ProjectStatus::Open {
+							res = Err(<Error<T>>::ProjectNotOpen);
+						}else{
+							match &mut project.milestones {
+								Some(vector_of_milestones) => {
+									if milestone_number >= vector_of_milestones.len() as u8{
+										res = Err(<Error<T>>::InvalidMilestoneId);
+									}else{
+										if vector_of_milestones[milestone_number as usize].status == Status::InProgress {
+											res = Err(<Error<T>>::TaskInProgress); // change the error for this later
+										}else if vector_of_milestones[milestone_number as usize].status == Status::Completed {
+											res = Err(<Error<T>>::TaskIsNotOpen); // change the error for this later
+										}else if vector_of_milestones[milestone_number as usize].status == Status::DisputeRaised {
+											res = Err(<Error<T>>::DisputeAlreadyRaised);
+										}else if vector_of_milestones[milestone_number as usize].status == Status::VotingPeriod {
+											res = Err(<Error<T>>::DisputeAlreadyRaised);
+										}else{
+											// register the case
+											// Self::register_case() 
+											let against = match user_type {
+												UserType::Customer => Reason::AgaisntWorker,
+												UserType::Worker => Reason::AgainstPublisher,
+											};
+											// notify event
+											// Self::deposit_event(Event::CourtSummoned())
+										}
+									}
+								},
+								None => res = Err(<Error<T>>::InvalidMilestoneId)
+							}
+						}
+					},
+					None => res = Err(<Error<T>>::ProjectDoesNotExist)
+				}
+				res
+			})?;
 			Ok(())
+			// function body ends here
 		}
 
 		#[pallet::weight(10_000)]
@@ -986,7 +1043,7 @@ pub mod pallet {
 			})?;
 			let account = Self::accounts(sender.clone());
 			let milestone_key = T::Hashing::hash_of(&milestone_id);
-			<BidderList<T>>::mutate(&milestone_key, |bidder_vector| {
+			<BidderList<T>>::mutate(&milestone_key, |bidder_vector| { // bid vector
 				let bid_number = bidder_vector.len() as u32 + 1;
 				let bid = Bid::new(bid_number, sender.clone(), worker_name, account);
 				bidder_vector.push(bid);
@@ -1293,6 +1350,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
+		#[transactional]
 		pub fn close_project(
 			origin: OriginFor<T>,
 			project_id: u128,
@@ -1312,11 +1370,9 @@ pub mod pallet {
 									Some(vector_of_milestones) => {
 										let mut flag = false;
 										for milestone in vector_of_milestones {
-											if milestone.status != Status::Open || milestone.status != Status::Completed {
-												flag = true;
-												break;
-											}else{
-												if milestone.status == Status::Open {
+											match milestone.status {
+												Status::Completed => flag = false,
+												Status::Open => {
 													// reject all the bidders
 													let milestone_key = T::Hashing::hash_of(&milestone.milestone_id);
 													let escrow_id = Self::get_escrow(milestone.milestone_id.clone());
@@ -1328,7 +1384,13 @@ pub mod pallet {
 														cost,
 														except
 													);
+													flag = false;
+												},
+												_ => {
+													flag = true;
+													break;
 												}
+
 											}
 										}
 										if flag {
@@ -1836,3 +1898,4 @@ pub mod pallet {
 	}
 
 }
+
