@@ -8,9 +8,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
-
 mod utils;
 
 #[frame_support::pallet]
@@ -1858,7 +1855,7 @@ pub mod pallet {
 					&escrow_id,
 					bidder_id,
 					cost,
-					ExistenceRequirement::KeepAlive
+					ExistenceRequirement::AllowDeath
 				).map_err(|_| <Error<T>>::FailedToTransferBack)?;
 			}
 			<BidderList<T>>::remove(&milestone_key);
