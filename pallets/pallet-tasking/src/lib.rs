@@ -238,7 +238,7 @@ pub mod pallet {
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
 	pub struct Hearing<BlockNumber> {
 		milestone_id: Vec<u8>,
-		jury_acceptance_period: BlockNumber,
+		start_case_period: BlockNumber,
 		total_case_period: BlockNumber,
 		trial_number: u8,
 		is_active: bool,
@@ -253,7 +253,7 @@ pub mod pallet {
 		votes_for_customer: Option<u8>,
 		avg_worker_rating: Option<u8>,
 		avg_publisher_rating: Option<u8>,
-		jury_acceptance_period: BlockNumber,
+		start_case_period: BlockNumber,
 		total_case_period: BlockNumber,
 		sudo_juror: Option<AccountId>,
 	}
@@ -795,6 +795,9 @@ pub mod pallet {
 		pub fn accept_jury_duty(
 			origin: OriginFor<T>,
 			milestone_id: Vec<u8>,
+			voted_for: UserType,
+			customer_rating: u8,
+			worker_rating: u8,
 		) -> DispatchResult {
 			// authentication
 			let sender = ensure_signed(origin)?;
@@ -809,32 +812,39 @@ pub mod pallet {
 								if milestone_number >= vector_of_milestones.len() as u8 {
 									res = Err(<Error<T>>::InvalidMilestoneId);
 								}else{
-									match &mut vector_of_milestones[milestone_number as usize].dispute {
-										Some(dispute) => {
-											let current_period = <frame_system::Pallet<T>>::block_number();
-											if current_period >= dispute.total_case_period {
-												res = Err(<Error<T>>::JurySelectionPeriodElapsed);
-											}else{
-												if dispute.potential_jurors.contains(&sender) {
-													if dispute.final_jurors.len() >= 2 {
-														res = Err(<Error<T>>::CannotAddMoreJurors);
+									match vector_of_milestones[milestone_number as usize].status {
+										Status::DisputeRaised => {
+											match &mut vector_of_milestones[milestone_number as usize].dispute {
+												Some(dispute) => {
+													let current_period = <frame_system::Pallet<T>>::block_number();
+													if current_period >= dispute.total_case_period {
+														res = Err(<Error<T>>::JurySelectionPeriodElapsed);
 													}else{
-														let juror_details = JurorDecisionDetails {
-															voted_for: None,
-															publisher_rating: None,
-															worker_rating: None,
-														};
-														// inserting juror into final juror
-														dispute.final_jurors.insert(sender.clone(), juror_details);
-														Self::deposit_event(Event::NewJurorAdded(milestone_id, sender));
-														res = Ok(());
+														if dispute.potential_jurors.contains(&sender) {
+															if dispute.final_jurors.len() >= 2 {
+																res = Err(<Error<T>>::CannotAddMoreJurors);
+																// call adjourn court here
+																// Self::adjourn_court();
+															}else{
+																let juror_details = JurorDecisionDetails {
+																	voted_for: Some(voted_for),
+																	publisher_rating: Some(customer_rating),
+																	worker_rating: Some(worker_rating),
+																};
+																// inserting juror into final juror
+																dispute.final_jurors.insert(sender.clone(), juror_details);
+																Self::deposit_event(Event::NewJurorAdded(milestone_id, sender));
+																res = Ok(());
+															}
+														}else{
+															res = Err(<Error<T>>::NotPotentialJuror);
+														}
 													}
-												}else{
-													res = Err(<Error<T>>::NotPotentialJuror);
-												}
+												},
+												None => res = Err(<Error<T>>::DisputeDoesNotExist)
 											}
 										},
-										None => res = Err(<Error<T>>::DisputeDoesNotExist)
+										_ => res = Err(<Error<T>>::CaseClosed)
 									}
 								}
 							},
@@ -916,7 +926,11 @@ pub mod pallet {
 		// 	Ok(())
 		// }
 
-		#[pallet::weight(1000)]
+		// #[pallet::weight(10_000)]
+		// pub fn cast_vote(
+
+		// )
+		#[pallet::weight(10_000)]
 		pub fn create_project(
 			origin: OriginFor<T>,
 			project_name: Vec<u8>,
@@ -1696,7 +1710,7 @@ pub mod pallet {
 				votes_for_customer: None,
 				avg_worker_rating: None,
 				avg_publisher_rating: None,
-				jury_acceptance_period: case_period.0,
+				start_case_period: case_period.0,
 				total_case_period: case_period.1,
 				sudo_juror: None
 			};
@@ -1850,16 +1864,16 @@ pub mod pallet {
 			// One era is one day
 			const ONE_ERA: u32 = 5;
 			// Time span for participant to become jurors
-			let jury_acceptance_period = <frame_system::Pallet<T>>::block_number() + ONE_ERA.into();
+			let start_case_period = <frame_system::Pallet<T>>::block_number();
 			// Total case time
-			let total_case_period = jury_acceptance_period + (ONE_ERA * 2).into();
+			let total_case_period = start_case_period + (ONE_ERA * 2).into();
 			// Initiate trial
 			let trial_number = 1;
 			// Court dispute status
 			let is_active = true;
 			// Structure for time frame storage
 			let dispute_timeframe =
-				Hearing { milestone_id, jury_acceptance_period, total_case_period, trial_number, is_active };
+				Hearing { milestone_id, start_case_period, total_case_period, trial_number, is_active };
 			// Get the time frame storage vector
 			let mut dispute_timeframe_storage = Self::get_hearings();
 			// Updating the timeframe storage vector
@@ -1867,7 +1881,7 @@ pub mod pallet {
 			// Updating the timeframe storage
 			<Hearings<T>>::put(dispute_timeframe_storage);
 
-			(jury_acceptance_period, total_case_period)
+			(start_case_period, total_case_period)
 		}
 
 		// helper function to reject the other biddings and transfer the locked funds back to the bidders
