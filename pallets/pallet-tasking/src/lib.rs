@@ -96,7 +96,7 @@ pub mod pallet {
 		UnsatisfiedWorkerRating,
 		UnsatisfiedPublisherRating,
 		AgainstPublisher,
-		AgaisntWorker,
+		AgainstWorker,
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
@@ -124,7 +124,7 @@ pub mod pallet {
 		pub project_id: u128,
 		pub publisher: AccountId,
 		pub project_name: Vec<u8>,
-		pub tags: Vec<TaskTypeTags>,
+		pub tags: Vec<TaskTypeTags>, // other approach possible
 		pub publisher_name: Option<Vec<u8>>,
 		pub milestones: Option<Vec<Milestone<AccountId, Balance, BlockNumber>>>,
 		pub overall_customer_rating: Option<u8>,
@@ -237,7 +237,7 @@ pub mod pallet {
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
 	pub struct Hearing<BlockNumber> {
-		task_id: u128,
+		milestone_id: Vec<u8>,
 		jury_acceptance_period: BlockNumber,
 		total_case_period: BlockNumber,
 		trial_number: u8,
@@ -412,8 +412,8 @@ pub mod pallet {
 		AccBalance(T::AccountId, BalanceOf<T>),
 		CountIncreased(u128),
 		TransferMoney(T::AccountId, BalanceOf<T>, BalanceOf<T>, T::AccountId, BalanceOf<T>, BalanceOf<T>),
-		CourtSummoned(u128, UserType, Reason, T::AccountId),
-		NewJurorAdded(u128, T::AccountId),
+		// CourtSummoned(u128, UserType, Reason, T::AccountId),
+		// NewJurorAdded(u128, T::AccountId),
 		// CustomerRatingProvided(u128, T::AccountId, u8, T::AccountId),
 		VoteRecorded(u128,T::AccountId),
 		CourtAdjourned(u128),
@@ -440,6 +440,10 @@ pub mod pallet {
 		MilestoneClosed(Vec<u8>),
 		/// A project has been closed. \[ProjectId]
 		ProjectClosed(u128),
+		/// Court has been summoned. \[MilestoneId, UserType, Reason]
+		CourtSummoned(Vec<u8>, UserType, Reason),
+		/// New juror has been added. \[MilestoneId, AccountId]
+		NewJurorAdded(Vec<u8>, T::AccountId),
 	}
 
 	#[pallet::error]
@@ -508,6 +512,8 @@ pub mod pallet {
 		MilestoneRequired,
 		/// To ensure the publisher is making the transaction
 		Unauthorised,
+		/// The project should be ready before adding to the marketplace
+		ProjectNotReady,
 		/// Ensuring that the project is not closed
 		ProjectClosed,
 		/// Ensuring the milestone id is valid
@@ -536,119 +542,77 @@ pub mod pallet {
 		CannotCloseProject,
 		/// Project not open
 		ProjectNotOpen,
+		/// Raising a dispute for a milestone that has just been open
+		MilestoneJustOpened,
+
 
 
 	}
 
-	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-		fn on_initialize(now: T::BlockNumber) -> Weight {
-			let total_weight: Weight = 10;
-			Self::collect_cases(now);
-			total_weight
-		}
-	}
+	// #[pallet::hooks]
+	// impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+	// 	fn on_initialize(now: T::BlockNumber) -> Weight {
+	// 		let total_weight: Weight = 10;
+	// 		Self::collect_cases(now);
+	// 		total_weight
+	// 	}
+	// }
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 
-		#[pallet::weight(10_000)]
-		pub fn sudo_juror_vote(
-			origin: OriginFor<T>,
-			task_id: u128,
-			voted_for: UserType,
-			customer_rating: u8,
-			worker_rating: u8,
-		) -> DispatchResult {
-			// Sudo juror authentication
-			let sudo_juror = ensure_signed(origin)?;
-			// Does task exist?
-			ensure!(<TaskStorage<T>>::contains_key(task_id.clone()), <Error<T>>::TaskDoesNotExist);
-			// Get task details using task id
-			let mut task_details = Self::task(task_id.clone());
-			// Accessing dispute details of the task
-			let mut dispute_details = task_details.dispute.clone().unwrap();
-			// Only the selected sudo juror can complete the case
-			ensure!(dispute_details.sudo_juror.clone().unwrap() == sudo_juror, <Error<T>>::UnauthorisedToComplete);
-			// Creating the sudo juror details structure
-			let juror_details = JurorDecisionDetails {
-				voted_for: Some(voted_for.clone()),
-				publisher_rating: Some(customer_rating),
-				worker_rating: Some(worker_rating),
-			};
-			// Updating the final jurors map
-			dispute_details.final_jurors.insert(sudo_juror.clone(), juror_details);
-			// Accessing number of votes for the publisher
-			let mut votes_for_customer = dispute_details.votes_for_customer.clone().unwrap_or(0);
-			// Accessing number of votes for the worker
-			let mut votes_for_worker = dispute_details.votes_for_worker.clone().unwrap_or(0);
-
-			// ------ Allocating the vote to the respective party
-			match voted_for {
-				UserType::Customer => {
-					votes_for_customer += 1;
-					dispute_details.votes_for_customer = Some(votes_for_customer);
-				},
-				UserType::Worker => {
-					votes_for_worker += 1;
-					dispute_details.votes_for_worker = Some(votes_for_worker);
-				},
-			}
-			// ------
-
-			// Adding the dispute details to task details structure
-			task_details.dispute = Some(dispute_details);
-			// Updating the task details storage
-			<TaskStorage<T>>::insert(task_id.clone(), task_details);
-			// Concluding the case
-			Self::adjourn_court(task_id.clone());
-			// Notify event
-			Self::deposit_event(Event::CaseClosedBySudoJuror(task_id, sudo_juror));
-
-			Ok(())
-		}
-
-		// Can be called either by publisher or worker
 		// #[pallet::weight(10_000)]
-		// pub fn raise_dispute(
+		// pub fn sudo_juror_vote(
 		// 	origin: OriginFor<T>,
-		// 	task_id:u128,
-		// 	user_type: UserType,
-		// )->DispatchResult {
-		// 	// User authentication
-		// 	let who = ensure_signed(origin)?;
-		// 	// Ensure task exists and is active
-		// 	ensure!(<TaskStorage<T>>::contains_key(&task_id), <Error<T>>::TaskDoesNotExist);
-		// 	// Get task details from storage
-		// 	let task_details = Self::task(task_id.clone());
-		// 	// Accessing status from task details
-		// 	let status = task_details.status.clone();
-
-		// 	// ----- Checking if the signer is the customer / worker
-		// 	if user_type == UserType::Customer {
-		// 		ensure!(task_details.publisher.clone() == who, <Error<T>>::UnauthorisedToRaiseDispute);
-		// 	} else if user_type == UserType::Worker {
-		// 		ensure!(task_details.worker_id.clone().unwrap() == who, <Error<T>>::UnauthorisedToRaiseDispute);
-		// 	}
-		// 	// -----
-
-		// 	// Task should be completed
-		// 	ensure!(status != Status::InProgress, <Error<T>>::TaskInProgress);
-		// 	// Task should be open
-		// 	ensure!(status != Status::Completed, <Error<T>>::TaskIsNotOpen);
-		// 	// Dispute shouldn't already be raised
-		// 	ensure!(status != Status::DisputeRaised, <Error<T>>::DisputeAlreadyRaised);
-		// 	// Cannot raise dispute during voting period
-		// 	ensure!(status != Status::VotingPeriod, <Error<T>>::DisputeAlreadyRaised);
-		// 	// Register the case
-		// 	Self::register_case(task_id.clone(), task_details);
-		// 	// Customer against worker & vice-versa
-		// 	let against = match user_type {
-		// 		UserType::Customer => Reason::AgaisntWorker,
-		// 		UserType::Worker => Reason::AgainstPublisher,
+		// 	task_id: u128,
+		// 	voted_for: UserType,
+		// 	customer_rating: u8,
+		// 	worker_rating: u8,
+		// ) -> DispatchResult {
+		// 	// Sudo juror authentication
+		// 	let sudo_juror = ensure_signed(origin)?;
+		// 	// Does task exist?
+		// 	ensure!(<TaskStorage<T>>::contains_key(task_id.clone()), <Error<T>>::TaskDoesNotExist);
+		// 	// Get task details using task id
+		// 	let mut task_details = Self::task(task_id.clone());
+		// 	// Accessing dispute details of the task
+		// 	let mut dispute_details = task_details.dispute.clone().unwrap();
+		// 	// Only the selected sudo juror can complete the case
+		// 	ensure!(dispute_details.sudo_juror.clone().unwrap() == sudo_juror, <Error<T>>::UnauthorisedToComplete);
+		// 	// Creating the sudo juror details structure
+		// 	let juror_details = JurorDecisionDetails {
+		// 		voted_for: Some(voted_for.clone()),
+		// 		publisher_rating: Some(customer_rating),
+		// 		worker_rating: Some(worker_rating),
 		// 	};
+		// 	// Updating the final jurors map
+		// 	dispute_details.final_jurors.insert(sudo_juror.clone(), juror_details);
+		// 	// Accessing number of votes for the publisher
+		// 	let mut votes_for_customer = dispute_details.votes_for_customer.clone().unwrap_or(0);
+		// 	// Accessing number of votes for the worker
+		// 	let mut votes_for_worker = dispute_details.votes_for_worker.clone().unwrap_or(0);
+
+		// 	// ------ Allocating the vote to the respective party
+		// 	match voted_for {
+		// 		UserType::Customer => {
+		// 			votes_for_customer += 1;
+		// 			dispute_details.votes_for_customer = Some(votes_for_customer);
+		// 		},
+		// 		UserType::Worker => {
+		// 			votes_for_worker += 1;
+		// 			dispute_details.votes_for_worker = Some(votes_for_worker);
+		// 		},
+		// 	}
+		// 	// ------
+
+		// 	// Adding the dispute details to task details structure
+		// 	task_details.dispute = Some(dispute_details);
+		// 	// Updating the task details storage
+		// 	<TaskStorage<T>>::insert(task_id.clone(), task_details);
+		// 	// Concluding the case
+		// 	Self::adjourn_court(task_id.clone());
 		// 	// Notify event
-		// 	Self::deposit_event(Event::CourtSummoned(task_id, user_type, against, who));
+		// 	Self::deposit_event(Event::CaseClosedBySudoJuror(task_id, sudo_juror));
 
 		// 	Ok(())
 		// }
@@ -670,29 +634,30 @@ pub mod pallet {
 					Some(project) => {
 						if project.status != ProjectStatus::Open {
 							res = Err(<Error<T>>::ProjectNotOpen);
+						}else if project.publisher != sender{
+							res = Err(<Error<T>>::Unauthorised);
 						}else{
 							match &mut project.milestones {
 								Some(vector_of_milestones) => {
 									if milestone_number >= vector_of_milestones.len() as u8{
 										res = Err(<Error<T>>::InvalidMilestoneId);
 									}else{
-										if vector_of_milestones[milestone_number as usize].status == Status::InProgress {
-											res = Err(<Error<T>>::TaskInProgress); // change the error for this later
-										}else if vector_of_milestones[milestone_number as usize].status == Status::Completed {
-											res = Err(<Error<T>>::TaskIsNotOpen); // change the error for this later
-										}else if vector_of_milestones[milestone_number as usize].status == Status::DisputeRaised {
-											res = Err(<Error<T>>::DisputeAlreadyRaised);
-										}else if vector_of_milestones[milestone_number as usize].status == Status::VotingPeriod {
-											res = Err(<Error<T>>::DisputeAlreadyRaised);
-										}else{
-											// register the case
-											// Self::register_case() 
-											let against = match user_type {
-												UserType::Customer => Reason::AgaisntWorker,
-												UserType::Worker => Reason::AgainstPublisher,
-											};
-											// notify event
-											// Self::deposit_event(Event::CourtSummoned())
+										match vector_of_milestones[milestone_number as usize].status {
+											Status::Open => res = Err(<Error<T>>::MilestoneJustOpened),
+											Status::InProgress => res = Err(<Error<T>>::TaskInProgress),
+											Status::Completed => res = Err(<Error<T>>::TaskIsNotOpen),
+											Status::DisputeRaised => res = Err(<Error<T>>::DisputeAlreadyRaised),
+											Status::VotingPeriod => res = Err(<Error<T>>::DisputeAlreadyRaised),
+											_ => {
+												// register the cse 
+												Self::register_case(milestone_id.clone(), &mut vector_of_milestones[milestone_number as usize]);
+												let against = match user_type {
+													UserType::Customer => Reason::AgainstWorker,
+													UserType::Worker => Reason::AgainstPublisher,
+												};
+												// notify event
+												Self::deposit_event(Event::CourtSummoned(milestone_id, user_type, against));
+											}
 										}
 									}
 								},
@@ -711,178 +676,245 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn disapprove_rating(
 			origin: OriginFor<T>,
-			task_id: u128,
-			user_type: UserType,
+			milestone_id: Vec<u8>,
+			user_type: UserType
 		) -> DispatchResult {
-			// User authentication
-			let who = ensure_signed(origin)?;
-			// Ensure task exists and is active
-			ensure!(<TaskStorage<T>>::contains_key(&task_id), <Error<T>>::TaskDoesNotExist);
-			// Get task details from storage
-			let task_details = Self::task(task_id.clone());
-			// Accessing status from task details
-			let status = task_details.status.clone();
-			// Ensuring if publisher hasn't provided ratings to the worker
-
-			if user_type == UserType::Customer{
-				ensure!(status == Status::CustomerRatingProvided, <Error<T>>::CustomerRatingNotProvided);
-			} else{
-				ensure!(status == Status::CustomerRatingPending, <Error<T>>::TaskIsNotPendingRating);
-			}
-
-			// Regsiter case with the court
-			Self::register_case(task_id.clone(), task_details);
-			// Show reason respective to the caller
-			let reason = match user_type {
-				UserType::Customer => Reason::UnsatisfiedPublisherRating,
-				UserType::Worker => Reason::UnsatisfiedWorkerRating,
-			};
-			// Notify event
-			Self::deposit_event(Event::CourtSummoned(task_id, user_type, reason, who));
-
+			// user authentication
+			let sender = ensure_signed(origin)?;
+			let mut milestone_id_clone = milestone_id.clone();
+			let (milestone_number, project_id) = get_milestone_and_project_id(&mut milestone_id_clone).map_err(|_| <Error<T>>::InvalidMilestoneId)?;
+			<ProjectStorage<T>>::try_mutate(&project_id, |option_project|{
+				let mut res = Ok(());
+				// checking if project exists
+				match option_project{
+					// project exists
+					Some(project) => {
+						// checking the status of the project
+						match project.status{
+							// project should not be closed
+							ProjectStatus::Closed => res = Err(<Error<T>>::ProjectClosed),
+							_ => {
+								// checking whether the milestone exists
+								match &mut project.milestones {
+									// milestone exists
+									Some(vector_of_milestones) => {
+										if milestone_number >= vector_of_milestones.len() as u8{
+											res = Err(<Error<T>>::InvalidMilestoneId);
+										}else{
+											let reason;
+											match user_type{
+												UserType::Customer => {
+													reason = Reason::UnsatisfiedPublisherRating;
+													if project.publisher != sender {
+														res = Err(<Error<T>>::Unauthorised);
+													}else if vector_of_milestones[milestone_number as usize].status != Status::CustomerRatingProvided{
+														res = Err(<Error<T>>::CustomerRatingNotProvided);
+													}
+												},
+												UserType::Worker => {
+													reason = Reason::UnsatisfiedWorkerRating;
+													if vector_of_milestones[milestone_number as usize].worker_id != Some(sender) {
+														res = Err(<Error<T>>::Unauthorised);
+													}else if vector_of_milestones[milestone_number as usize].status != Status::CustomerRatingPending{
+														res = Err(<Error<T>>::TaskIsNotPendingRating);
+													}
+												}
+											}
+											res = match res {
+												Ok(()) => {
+													Self::register_case(milestone_id.clone(), &mut vector_of_milestones[milestone_number as usize]);
+													Self::deposit_event(Event::CourtSummoned(milestone_id, user_type, reason));
+													res
+												},
+												Err(_) => res
+											}
+										}
+									},
+									// milestone does not exist
+									None => res = Err(<Error<T>>::InvalidMilestoneId)
+								}
+							}
+						}
+					},
+					// project does not exist
+					None => res = Err(<Error<T>>::ProjectDoesNotExist)
+				}
+				res
+			})?;
 			Ok(())
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn disapprove_task(origin: OriginFor<T>, task_id: u128) -> DispatchResult {
-			// User authentication
-			let publisher = ensure_signed(origin)?;
-			// Ensure task exists and is active
-			ensure!(<TaskStorage<T>>::contains_key(&task_id), <Error<T>>::TaskDoesNotExist);
-			// Getting task details from storage
-			let task_details = Self::task(task_id.clone());
-			// Accessing status from task details
-			let status = task_details.status.clone();
-			// Accessing publisher id from task details
-			let customer = task_details.publisher.clone();
-			// Ensuring that the customer hasn't approved the task
-			ensure!(status == Status::PendingApproval, <Error<T>>::TaskInProgress);
-			// Ensure the customer is the one disapproving the task
-			ensure!(publisher == customer, <Error<T>>::UnauthorisedToDisapprove);
-			// Register the case in court
-			Self::register_case(task_id.clone(), task_details);
-			// Notify event
-			Self::deposit_event(Event::CourtSummoned(
-				task_id,
-				UserType::Customer,
-				Reason::DisapproveTask,
-				publisher,
-			));
-
-			Ok(())
-		}
-
-		#[pallet::weight(10_000)]
-		pub fn accept_jury_duty(origin: OriginFor<T>, task_id: u128) -> DispatchResult {
-			// User authentication
-			let juror = ensure_signed(origin)?;
-			// Ensure task exists and is active
-			ensure!(<TaskStorage<T>>::contains_key(&task_id), <Error<T>>::TaskDoesNotExist);
-			// Getting task details from storage
-			let mut task_details = Self::task(task_id.clone());
-			// Ensuring if dispute is raised
-			ensure!(task_details.dispute != None, <Error<T>>::DisputeDoesNotExist);
-			// Accessing the dispute details related to the task
-			let mut dispute_details = task_details.dispute.unwrap();
-
-			// ----- To stop accepting participants for jury after elapsed time
-			let current_period = <frame_system::Pallet<T>>::block_number();
-			let jury_acceptance_period = dispute_details.jury_acceptance_period.clone();
-			ensure!(
-				current_period < jury_acceptance_period,
-				<Error<T>>::JurySelectionPeriodElapsed
-			);
-			// -----
-
-			// Ensuring if one is potential juror
-			ensure!(dispute_details.potential_jurors.contains(&juror), <Error<T>>::NotPotentialJuror);
-			// Less than 2 is 2 people as we are ensuring first and then storing
-			ensure!(dispute_details.final_jurors.len() < 2, <Error<T>>::CannotAddMoreJurors);
-			// Creating the initial structure of the final jurors
-			let juror_details = JurorDecisionDetails {
-				voted_for: None,
-				publisher_rating: None,
-				worker_rating: None,
-			};
-			// Updating the final jurors map
-			dispute_details.final_jurors.insert(juror.clone(), juror_details);
-			// Adding the dispute details to task details structure
-			task_details.dispute = Some(dispute_details);
-			// Notify event
-			Self::deposit_event(Event::NewJurorAdded(task_id.clone(), juror));
-			// Updating task details storage
-			<TaskStorage<T>>::insert(&task_id, task_details);
-
-			Ok(())
-		}
-
-		#[pallet::weight(10_000)]
-		pub fn cast_vote(
+		pub fn disapprove_milestone(
 			origin: OriginFor<T>,
-			task_id: u128,
-			voted_for: UserType,
-			customer_rating: u8,
-			worker_rating: u8,
+			milestone_id: Vec<u8>
 		) -> DispatchResult {
-			// User authentication
-			let juror = ensure_signed(origin)?;
-			// Ensure task exists and is active
-			ensure!(<TaskStorage<T>>::contains_key(&task_id), <Error<T>>::TaskDoesNotExist);
-			// Getting task details from storage
-			let mut task_details = Self::task(task_id.clone());
-			// Ensuring if dispute is raised
-			ensure!(task_details.dispute != None, <Error<T>>::DisputeDoesNotExist);
-			// Accessing the dispute details related to the task
-			let mut dispute_details = task_details.dispute.unwrap();
-
-			// ----- To stop jurors to vote before the actual voting period
-			let current_period = <frame_system::Pallet<T>>::block_number();
-			let jury_acceptance_period = dispute_details.jury_acceptance_period.clone();
-			ensure!(current_period > jury_acceptance_period, <Error<T>>::JurySelectionInProcess);
-			// -----
-
-			// Ensure if the voting period is in progress
-			ensure!(task_details.status == Status::VotingPeriod, <Error<T>>::CaseClosed);
-			// Get details of the final juror
-			let mut juror_decision_details = dispute_details.final_jurors.get(&juror).cloned().unwrap();
-			// Ensuring final juror doesn't vote more than once
-			ensure!(juror_decision_details.voted_for == None, <Error<T>>::JurorHasVoted);
-
-			// ----- Updating juror details structure
-			juror_decision_details.voted_for = Some(voted_for.clone());
-			juror_decision_details.publisher_rating = Some(customer_rating);
-			juror_decision_details.worker_rating = Some(worker_rating);
-			// -----
-
-			// Updating decision details in storage
-			dispute_details.final_jurors.insert(juror.clone(), juror_decision_details);
-			// Total votes of customer
-			let mut votes_for_customer = dispute_details.votes_for_customer.unwrap_or(0);
-			// Total votes of worker
-			let mut votes_for_worker = dispute_details.votes_for_worker.unwrap_or(0);
-
-			// ----- Updating vote count
-			match voted_for {
-				UserType::Customer => {
-					votes_for_customer += 1;
-					dispute_details.votes_for_customer = Some(votes_for_customer);
+			// authentication
+			let sender = ensure_signed(origin)?;
+			let mut milestone_id_clone = milestone_id.clone();
+			let (milestone_number, project_id) = get_milestone_and_project_id(&mut milestone_id_clone).map_err(|_| <Error<T>>::InvalidMilestoneId)?;
+			<ProjectStorage<T>>::try_mutate(&project_id, |option_project| {
+				let mut res = Ok(());
+				match option_project {
+					Some(project) => {
+						if project.status != ProjectStatus::Open{
+							res = Err(<Error<T>>::ProjectNotOpen);
+						}else if project.publisher != sender {
+							res = Err(<Error<T>>::Unauthorised);
+						}else{
+							match &mut project.milestones {
+								Some(vector_of_milestones) => {
+									if milestone_number >= vector_of_milestones.len() as u8 {
+										res = Err(<Error<T>>::InvalidMilestoneId);
+									}else{
+										match vector_of_milestones[milestone_number as usize].status {
+											Status::PendingApproval => {
+												Self::register_case(milestone_id.clone(), &mut vector_of_milestones[milestone_number as usize]);
+												Self::deposit_event(Event::CourtSummoned(
+													milestone_id,
+													UserType::Customer,
+													Reason::DisapproveTask
+												));
+											},
+											_ => res = Err(<Error<T>>::TaskIsNotPendingApproval)
+										}
+									}
+								},
+								None => res = Err(<Error<T>>::InvalidMilestoneId)
+							}
+						}
+					},
+					None => res = Err(<Error<T>>::ProjectDoesNotExist)
 				}
-				UserType::Worker => {
-					votes_for_worker += 1;
-					dispute_details.votes_for_worker = Some(votes_for_worker);
-				}
-			}
-			// -----
-
-			// Updating the task details structure
-			task_details.dispute = Some(dispute_details);
-			// Updating the task details storage
-			<TaskStorage<T>>::insert(&task_id, task_details);
-			// Notify event
-			Self::deposit_event(Event::VoteRecorded(task_id.clone(),juror));
-
+				res
+			})?;
 			Ok(())
 		}
+
+		#[pallet::weight(10_000)]
+		pub fn accept_jury_duty(
+			origin: OriginFor<T>,
+			milestone_id: Vec<u8>,
+		) -> DispatchResult {
+			// authentication
+			let sender = ensure_signed(origin)?;
+			let mut milestone_id_clone = milestone_id.clone();
+			let (milestone_number, project_id) = get_milestone_and_project_id(&mut milestone_id_clone).map_err(|_| <Error<T>>::InvalidMilestoneId)?;
+			<ProjectStorage<T>>::try_mutate(&project_id, |option_project|{
+				let res;
+				match option_project {
+					Some(project) => {
+						match &mut project.milestones {
+							Some(vector_of_milestones) => {
+								if milestone_number >= vector_of_milestones.len() as u8 {
+									res = Err(<Error<T>>::InvalidMilestoneId);
+								}else{
+									match &mut vector_of_milestones[milestone_number as usize].dispute {
+										Some(dispute) => {
+											let current_period = <frame_system::Pallet<T>>::block_number();
+											if current_period >= dispute.total_case_period {
+												res = Err(<Error<T>>::JurySelectionPeriodElapsed);
+											}else{
+												if dispute.potential_jurors.contains(&sender) {
+													if dispute.final_jurors.len() >= 2 {
+														res = Err(<Error<T>>::CannotAddMoreJurors);
+													}else{
+														let juror_details = JurorDecisionDetails {
+															voted_for: None,
+															publisher_rating: None,
+															worker_rating: None,
+														};
+														// inserting juror into final juror
+														dispute.final_jurors.insert(sender.clone(), juror_details);
+														Self::deposit_event(Event::NewJurorAdded(milestone_id, sender));
+														res = Ok(());
+													}
+												}else{
+													res = Err(<Error<T>>::NotPotentialJuror);
+												}
+											}
+										},
+										None => res = Err(<Error<T>>::DisputeDoesNotExist)
+									}
+								}
+							},
+							None => res = Err(<Error<T>>::InvalidMilestoneId)
+						}
+					},
+					None => res = Err(<Error<T>>::ProjectDoesNotExist)
+				}
+				res
+			})?;
+			Ok(())
+		}
+
+		// #[pallet::weight(10_000)]
+		// pub fn cast_vote(
+		// 	origin: OriginFor<T>,
+		// 	task_id: u128,
+		// 	voted_for: UserType,
+		// 	customer_rating: u8,
+		// 	worker_rating: u8,
+		// ) -> DispatchResult {
+		// 	// User authentication
+		// 	let juror = ensure_signed(origin)?;
+		// 	// Ensure task exists and is active
+		// 	ensure!(<TaskStorage<T>>::contains_key(&task_id), <Error<T>>::TaskDoesNotExist);
+		// 	// Getting task details from storage
+		// 	let mut task_details = Self::task(task_id.clone());
+		// 	// Ensuring if dispute is raised
+		// 	ensure!(task_details.dispute != None, <Error<T>>::DisputeDoesNotExist);
+		// 	// Accessing the dispute details related to the task
+		// 	let mut dispute_details = task_details.dispute.unwrap();
+
+		// 	// ----- To stop jurors to vote before the actual voting period
+		// 	let current_period = <frame_system::Pallet<T>>::block_number();
+		// 	let jury_acceptance_period = dispute_details.jury_acceptance_period.clone();
+		// 	ensure!(current_period > jury_acceptance_period, <Error<T>>::JurySelectionInProcess);
+		// 	// -----
+
+		// 	// Ensure if the voting period is in progress
+		// 	ensure!(task_details.status == Status::VotingPeriod, <Error<T>>::CaseClosed);
+		// 	// Get details of the final juror
+		// 	let mut juror_decision_details = dispute_details.final_jurors.get(&juror).cloned().unwrap();
+		// 	// Ensuring final juror doesn't vote more than once
+		// 	ensure!(juror_decision_details.voted_for == None, <Error<T>>::JurorHasVoted);
+
+		// 	// ----- Updating juror details structure
+		// 	juror_decision_details.voted_for = Some(voted_for.clone());
+		// 	juror_decision_details.publisher_rating = Some(customer_rating);
+		// 	juror_decision_details.worker_rating = Some(worker_rating);
+		// 	// -----
+
+		// 	// Updating decision details in storage
+		// 	dispute_details.final_jurors.insert(juror.clone(), juror_decision_details);
+		// 	// Total votes of customer
+		// 	let mut votes_for_customer = dispute_details.votes_for_customer.unwrap_or(0);
+		// 	// Total votes of worker
+		// 	let mut votes_for_worker = dispute_details.votes_for_worker.unwrap_or(0);
+
+		// 	// ----- Updating vote count
+		// 	match voted_for {
+		// 		UserType::Customer => {
+		// 			votes_for_customer += 1;
+		// 			dispute_details.votes_for_customer = Some(votes_for_customer);
+		// 		}
+		// 		UserType::Worker => {
+		// 			votes_for_worker += 1;
+		// 			dispute_details.votes_for_worker = Some(votes_for_worker);
+		// 		}
+		// 	}
+		// 	// -----
+
+		// 	// Updating the task details structure
+		// 	task_details.dispute = Some(dispute_details);
+		// 	// Updating the task details storage
+		// 	<TaskStorage<T>>::insert(&task_id, task_details);
+		// 	// Notify event
+		// 	Self::deposit_event(Event::VoteRecorded(task_id.clone(),juror));
+
+		// 	Ok(())
+		// }
 
 		#[pallet::weight(1000)]
 		pub fn create_project(
@@ -980,6 +1012,8 @@ pub mod pallet {
 					Some(project) => {
 						if project.publisher != sender {
 							res = Err(<Error<T>>::Unauthorised);
+						}else if project.status != ProjectStatus::Ready{
+							res = Err(<Error<T>>::ProjectNotReady);
 						}else{
 							project.status = ProjectStatus::Open;
 							Self::deposit_event(Event::ProjectAddedToMarketplace(project_id));
@@ -1644,15 +1678,15 @@ pub mod pallet {
 		}
 
 		pub fn register_case(
-			task_id: u128,
-			mut task_details: TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
+			milestone_id: Vec<u8>,
+			milestone_details: &mut Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
 		) {
 			// Getting the jury acceptance period and total case period
-			let case_period = Self::calculate_case_period(task_details.clone());
+			let case_period = Self::calculate_case_period(milestone_id.clone()); 
 			// Updating the status when dispute is raised
-			task_details.status = Status::DisputeRaised;
+			milestone_details.status = Status::DisputeRaised;
 			// Getting all the potential jurors
-			let potential_jurors = Self::potential_jurors(task_details.clone());
+			let potential_jurors = Self::potential_jurors(milestone_id);
 			// Creating the court dispute structure
 			let dispute = CourtDispute {
 				potential_jurors,
@@ -1667,110 +1701,110 @@ pub mod pallet {
 				sudo_juror: None
 			};
 			// Updating task details structure
-			task_details.dispute = Some(dispute);
-			// Updating the task details storage
-			<TaskStorage<T>>::insert(task_id, task_details);
+			milestone_details.dispute = Some(dispute);
 		}
 
 
-		pub fn collect_cases(block_number: BlockNumberOf<T>) {
-			// Getting hearings vector from storage
-			let mut hearings: Vec<Hearing<BlockNumberOf<T>>> = Self::get_hearings();
-			// Only retain those hearings with case ending period >= current block number
-			hearings.retain(|x| x.total_case_period >= block_number || x.is_active);
+		// pub fn collect_cases(block_number: BlockNumberOf<T>) {
+		// 	// Getting hearings vector from storage
+		// 	let mut hearings: Vec<Hearing<BlockNumberOf<T>>> = Self::get_hearings();
+		// 	// Only retain those hearings with case ending period >= current block number
+		// 	hearings.retain(|x| x.total_case_period >= block_number || x.is_active);
 
-			// ----- Validating jury acceptance period and total case period
-			for hearing in hearings.iter_mut() {
-				// For stopping unlimited court reinitiations
-				if hearing.trial_number >= 3 {
-					let mut task_details = Self::task(hearing.task_id.clone());
-					let mut dispute_details = task_details.dispute.clone().unwrap();
-					dispute_details.sudo_juror = Some(Self::pick_sudo_juror(task_details.publisher.clone(), task_details.worker_id.clone().unwrap()));
-					task_details.dispute = Some(dispute_details);
-					hearing.is_active = false;
-					<TaskStorage<T>>::insert(&hearing.task_id, task_details);
-				}
-				// * For jury acceptance period
-				else if block_number == hearing.jury_acceptance_period {
-					let mut task_details = Self::task(hearing.task_id.clone());
-					let mut dispute_details = task_details.dispute.clone().unwrap();
-					if dispute_details.final_jurors.len() == 0 {
-						hearing.jury_acceptance_period += 5u128.saturated_into();
-						hearing.total_case_period += 5u128.saturated_into();
-						hearing.trial_number += 1;
-						task_details.status = Status::DisputeRaised;
-						dispute_details.jury_acceptance_period = hearing.jury_acceptance_period.clone();
-						dispute_details.total_case_period = hearing.total_case_period.clone();
-						dispute_details.potential_jurors = Self::potential_jurors(task_details.clone());
-						task_details.dispute = Some(dispute_details);
-					} else {
-						// * Change status when atleast 1 final juror accepted jury duty
-						task_details.status = Status::VotingPeriod;
-					}
-					<TaskStorage<T>>::insert(&hearing.task_id, task_details);
-				}
-				// * For total case period
-				else if block_number == hearing.total_case_period {
-					let mut task_details = Self::task(hearing.task_id.clone());
-					let mut dispute_details = task_details.dispute.clone().unwrap();
-					let total_votes = dispute_details.votes_for_worker.unwrap_or(0) + dispute_details.votes_for_customer.unwrap_or(0);
-					if total_votes == 0 {
-						hearing.jury_acceptance_period += 5u128.saturated_into();
-						hearing.total_case_period += 5u128.saturated_into();
-						hearing.trial_number += 1;
-						task_details.status = Status::DisputeRaised;
-						dispute_details.jury_acceptance_period = hearing.jury_acceptance_period.clone();
-						dispute_details.total_case_period = hearing.total_case_period.clone();
-						dispute_details.potential_jurors = Self::potential_jurors(task_details.clone());
-						// * Clearing the list of final jurors as people may have accepted jury duty
-						if dispute_details.final_jurors.len() != 0 {
-							dispute_details.final_jurors.clear();
-						}
-						task_details.dispute = Some(dispute_details);
-						<TaskStorage<T>>::insert(&hearing.task_id, task_details);
-					} else {
+		// 	// ----- Validating jury acceptance period and total case period
+		// 	for hearing in hearings.iter_mut() {
+		// 		// For stopping unlimited court reinitiations
+		// 		if hearing.trial_number >= 3 {
+		// 			let mut task_details = Self::task(hearing.task_id.clone());
+		// 			let mut dispute_details = task_details.dispute.clone().unwrap();
+		// 			dispute_details.sudo_juror = Some(Self::pick_sudo_juror(task_details.publisher.clone(), task_details.worker_id.clone().unwrap()));
+		// 			task_details.dispute = Some(dispute_details);
+		// 			hearing.is_active = false;
+		// 			<TaskStorage<T>>::insert(&hearing.task_id, task_details);
+		// 		}
+		// 		// * For jury acceptance period
+		// 		else if block_number == hearing.jury_acceptance_period {
+		// 			let mut task_details = Self::task(hearing.task_id.clone());
+		// 			let mut dispute_details = task_details.dispute.clone().unwrap();
+		// 			if dispute_details.final_jurors.len() == 0 {
+		// 				hearing.jury_acceptance_period += 5u128.saturated_into();
+		// 				hearing.total_case_period += 5u128.saturated_into();
+		// 				hearing.trial_number += 1;
+		// 				task_details.status = Status::DisputeRaised;
+		// 				dispute_details.jury_acceptance_period = hearing.jury_acceptance_period.clone();
+		// 				dispute_details.total_case_period = hearing.total_case_period.clone();
+		// 				dispute_details.potential_jurors = Self::potential_jurors(task_details.clone());
+		// 				task_details.dispute = Some(dispute_details);
+		// 			} else {
+		// 				// * Change status when atleast 1 final juror accepted jury duty
+		// 				task_details.status = Status::VotingPeriod;
+		// 			}
+		// 			<TaskStorage<T>>::insert(&hearing.task_id, task_details);
+		// 		}
+		// 		// * For total case period
+		// 		else if block_number == hearing.total_case_period {
+		// 			let mut task_details = Self::task(hearing.task_id.clone());
+		// 			let mut dispute_details = task_details.dispute.clone().unwrap();
+		// 			let total_votes = dispute_details.votes_for_worker.unwrap_or(0) + dispute_details.votes_for_customer.unwrap_or(0);
+		// 			if total_votes == 0 {
+		// 				hearing.jury_acceptance_period += 5u128.saturated_into();
+		// 				hearing.total_case_period += 5u128.saturated_into();
+		// 				hearing.trial_number += 1;
+		// 				task_details.status = Status::DisputeRaised;
+		// 				dispute_details.jury_acceptance_period = hearing.jury_acceptance_period.clone();
+		// 				dispute_details.total_case_period = hearing.total_case_period.clone();
+		// 				dispute_details.potential_jurors = Self::potential_jurors(task_details.clone());
+		// 				// * Clearing the list of final jurors as people may have accepted jury duty
+		// 				if dispute_details.final_jurors.len() != 0 {
+		// 					dispute_details.final_jurors.clear();
+		// 				}
+		// 				task_details.dispute = Some(dispute_details);
+		// 				<TaskStorage<T>>::insert(&hearing.task_id, task_details);
+		// 			} else {
 
-						// * Adjourn court
-						let is_active = Self::adjourn_court(hearing.task_id).unwrap();
-						if !is_active {
-							dispute_details.sudo_juror = Some(Self::pick_sudo_juror(task_details.publisher.clone(), task_details.worker_id.clone().unwrap()));
-							task_details.dispute = Some(dispute_details);
-							hearing.is_active = false;
-							<TaskStorage<T>>::insert(&hearing.task_id, task_details);
-						}
-					}
-				}
-			}
-			// -----
+		// 				// * Adjourn court
+		// 				let is_active = Self::adjourn_court(hearing.task_id).unwrap();
+		// 				if !is_active {
+		// 					dispute_details.sudo_juror = Some(Self::pick_sudo_juror(task_details.publisher.clone(), task_details.worker_id.clone().unwrap()));
+		// 					task_details.dispute = Some(dispute_details);
+		// 					hearing.is_active = false;
+		// 					<TaskStorage<T>>::insert(&hearing.task_id, task_details);
+		// 				}
+		// 			}
+		// 		}
+		// 	}
+		// 	// -----
 
-			// Updating the hearings storage
-			<Hearings<T>>::put(hearings);
-		}
-
+		// 	// Updating the hearings storage
+		// 	<Hearings<T>>::put(hearings);
+		// }
 		pub fn potential_jurors(
-			task_details: TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
+			milestone_id: Vec<u8>,
 		) -> Vec<T::AccountId> {
 			// Creating iterator of account map storage
-			let all_account_details = <AccountMap<T>>::iter();
-			// Initializing empty vector for storing potentials jurors
+			let all_account_details: Vec<(T::AccountId, AccountDetails<BalanceOf<T>>)> = <AccountMap<T>>::iter().collect();
+			// Initializing empty vector for storing potential jurors
 			let mut jurors: Vec<T::AccountId> = Vec::new();
-
+			let mut milestone_id_clone = milestone_id.clone();
+			let (milestone_number, project_id) = get_milestone_and_project_id(&mut milestone_id_clone).unwrap();
+			let publisher = Self::get_project(&project_id).unwrap().publisher;
+			let project_details = Self::get_project(project_id).unwrap();
+			let milestones = project_details.milestones.unwrap();
+			let milestone_details = milestones.get(milestone_number as usize).unwrap();
 			// ----- Collecting all potential jurors based on certain conditions
-			for (acc_id, acc_details) in all_account_details {
+			for (acc_id, acc_details) in all_account_details.into_iter() {
 				if acc_details.avg_rating >= Some(4) && !acc_details.sudo {
-					for task_tag in &task_details.task_tags {
-						if acc_details.tags.contains(&task_tag)
-							&& acc_id.clone() != task_details.publisher
-							&& Some(acc_id.clone()) != task_details.worker_id
-						{
-							jurors.push(acc_id.clone());
+					for milestone_tag in milestone_details.clone().tags.iter() {
+						if acc_details.tags.contains(milestone_tag) 
+						&& &acc_id != &publisher
+						&& Some(&acc_id) != milestone_details.worker_id.as_ref() {
+							jurors.push(acc_id);
 							break;
 						}
 					}
 				}
 			}
-			// -----
-
+		// -----
 			jurors
 		}
 
@@ -1811,12 +1845,10 @@ pub mod pallet {
 		}
 
 		pub fn calculate_case_period(
-			task_details: TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
+			milestone_id: Vec<u8>
 		) -> (BlockNumberOf<T>, BlockNumberOf<T>) {
 			// One era is one day
 			const ONE_ERA: u32 = 5;
-			// Retrieving complete task details
-			let task_id = task_details.task_id.clone();
 			// Time span for participant to become jurors
 			let jury_acceptance_period = <frame_system::Pallet<T>>::block_number() + ONE_ERA.into();
 			// Total case time
@@ -1827,7 +1859,7 @@ pub mod pallet {
 			let is_active = true;
 			// Structure for time frame storage
 			let dispute_timeframe =
-				Hearing { task_id, jury_acceptance_period, total_case_period, trial_number, is_active };
+				Hearing { milestone_id, jury_acceptance_period, total_case_period, trial_number, is_active };
 			// Get the time frame storage vector
 			let mut dispute_timeframe_storage = Self::get_hearings();
 			// Updating the timeframe storage vector
