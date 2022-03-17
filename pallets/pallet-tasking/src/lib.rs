@@ -447,6 +447,8 @@ pub mod pallet {
 		CourtSummoned(Vec<u8>, UserType, Reason),
 		/// New juror has been added. \[MilestoneId, AccountId]
 		NewJurorAdded(Vec<u8>, T::AccountId),
+		/// Collect cases has been called
+		CollectCasesCalled,
 	}
 
 	#[pallet::error]
@@ -1516,6 +1518,15 @@ pub mod pallet {
 										if flag {
 											res = Err(<Error<T>>::CannotCloseProject);
 										}else{
+											let publisher_rating = Self::get_publisher_rating(project_id);
+											// update publisher rating
+											match publisher_rating {
+												Some(rating) => {
+													project.overall_customer_rating = Some(rating.clone());
+													<AccountDetails<BalanceOf<T>>>::update_rating::<T>(sender, rating)
+												},
+												None => (),
+											}
 											project.status = ProjectStatus::Closed;
 										}
 									},
@@ -1534,12 +1545,6 @@ pub mod pallet {
 				}
 				res
 			})?;
-			let publisher_rating = Self::get_publisher_rating(project_id);
-			// update publisher rating
-			match publisher_rating {
-				Some(rating) => <AccountDetails<BalanceOf<T>>>::update_rating::<T>(sender, rating),
-				None => (),
-			}
 			Self::deposit_event(Event::ProjectClosed(project_id));
 			Ok(())
 			// function body ends here
@@ -1928,6 +1933,7 @@ pub mod pallet {
 		}
 
 		pub fn collect_cases(block_number: BlockNumberOf<T>) {
+			Self::deposit_event(Event::CollectCasesCalled);
 			// Getting hearings vector from storage
 			let mut hearings = Self::get_hearings();
 			// Only retain those hearings with case ending period >= current block number
