@@ -72,8 +72,6 @@ pub mod pallet {
 	// Enum for the status of the Project
 	#[derive(Encode, Decode, PartialEq, Eq, Debug, Clone, TypeInfo)]
 	pub enum ProjectStatus {
-		/// Project has been initiated
-		Initiated,
 		/// Project is ready to be submitted into the marketplace
 		Ready,
 		/// Project is Open
@@ -85,7 +83,7 @@ pub mod pallet {
 	// Default for the project status
 	impl Default for ProjectStatus {
 		fn default() -> Self {
-			ProjectStatus::Initiated
+			ProjectStatus::Ready
 		}
 	}
 
@@ -97,6 +95,15 @@ pub mod pallet {
 		UnsatisfiedPublisherRating,
 		AgainstPublisher,
 		AgainstWorker,
+	}
+
+	// a struct for the input of milestones
+	#[derive(Encode, Decode, PartialEq, Eq, Debug, Clone, TypeInfo)]
+	pub struct MilestoneHelper<Balance> {
+		name: Vec<u8>,
+		cost: Balance,
+		tags: Vec<TaskTypeTags>,
+		publisher_attachments: Vec<Vec<u8>>
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
@@ -563,62 +570,6 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 
-		// #[pallet::weight(10_000)]
-		// pub fn sudo_juror_vote(
-		// 	origin: OriginFor<T>,
-		// 	task_id: u128,
-		// 	voted_for: UserType,
-		// 	customer_rating: u8,
-		// 	worker_rating: u8,
-		// ) -> DispatchResult {
-		// 	// Sudo juror authentication
-		// 	let sudo_juror = ensure_signed(origin)?;
-		// 	// Does task exist?
-		// 	ensure!(<TaskStorage<T>>::contains_key(task_id.clone()), <Error<T>>::TaskDoesNotExist);
-		// 	// Get task details using task id
-		// 	let mut task_details = Self::task(task_id.clone());
-		// 	// Accessing dispute details of the task
-		// 	let mut dispute_details = task_details.dispute.clone().unwrap();
-		// 	// Only the selected sudo juror can complete the case
-		// 	ensure!(dispute_details.sudo_juror.clone().unwrap() == sudo_juror, <Error<T>>::UnauthorisedToComplete);
-		// 	// Creating the sudo juror details structure
-		// 	let juror_details = JurorDecisionDetails {
-		// 		voted_for: Some(voted_for.clone()),
-		// 		publisher_rating: Some(customer_rating),
-		// 		worker_rating: Some(worker_rating),
-		// 	};
-		// 	// Updating the final jurors map
-		// 	dispute_details.final_jurors.insert(sudo_juror.clone(), juror_details);
-		// 	// Accessing number of votes for the publisher
-		// 	let mut votes_for_customer = dispute_details.votes_for_customer.clone().unwrap_or(0);
-		// 	// Accessing number of votes for the worker
-		// 	let mut votes_for_worker = dispute_details.votes_for_worker.clone().unwrap_or(0);
-
-		// 	// ------ Allocating the vote to the respective party
-		// 	match voted_for {
-		// 		UserType::Customer => {
-		// 			votes_for_customer += 1;
-		// 			dispute_details.votes_for_customer = Some(votes_for_customer);
-		// 		},
-		// 		UserType::Worker => {
-		// 			votes_for_worker += 1;
-		// 			dispute_details.votes_for_worker = Some(votes_for_worker);
-		// 		},
-		// 	}
-		// 	// ------
-
-		// 	// Adding the dispute details to task details structure
-		// 	task_details.dispute = Some(dispute_details);
-		// 	// Updating the task details storage
-		// 	<TaskStorage<T>>::insert(task_id.clone(), task_details);
-		// 	// Concluding the case
-		// 	Self::adjourn_court(task_id.clone());
-		// 	// Notify event
-		// 	Self::deposit_event(Event::CaseClosedBySudoJuror(task_id, sudo_juror));
-
-		// 	Ok(())
-		// }
-
 		#[pallet::weight(10_000)]
 		pub fn sudo_juror_vote(
 			origin: OriginFor<T>,
@@ -938,155 +889,94 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// #[pallet::weight(10_000)]
-		// pub fn cast_vote(
-		// 	origin: OriginFor<T>,
-		// 	task_id: u128,
-		// 	voted_for: UserType,
-		// 	customer_rating: u8,
-		// 	worker_rating: u8,
-		// ) -> DispatchResult {
-		// 	// User authentication
-		// 	let juror = ensure_signed(origin)?;
-		// 	// Ensure task exists and is active
-		// 	ensure!(<TaskStorage<T>>::contains_key(&task_id), <Error<T>>::TaskDoesNotExist);
-		// 	// Getting task details from storage
-		// 	let mut task_details = Self::task(task_id.clone());
-		// 	// Ensuring if dispute is raised
-		// 	ensure!(task_details.dispute != None, <Error<T>>::DisputeDoesNotExist);
-		// 	// Accessing the dispute details related to the task
-		// 	let mut dispute_details = task_details.dispute.unwrap();
-
-		// 	// ----- To stop jurors to vote before the actual voting period
-		// 	let current_period = <frame_system::Pallet<T>>::block_number();
-		// 	let jury_acceptance_period = dispute_details.jury_acceptance_period.clone();
-		// 	ensure!(current_period > jury_acceptance_period, <Error<T>>::JurySelectionInProcess);
-		// 	// -----
-
-		// 	// Ensure if the voting period is in progress
-		// 	ensure!(task_details.status == Status::VotingPeriod, <Error<T>>::CaseClosed);
-		// 	// Get details of the final juror
-		// 	let mut juror_decision_details = dispute_details.final_jurors.get(&juror).cloned().unwrap();
-		// 	// Ensuring final juror doesn't vote more than once
-		// 	ensure!(juror_decision_details.voted_for == None, <Error<T>>::JurorHasVoted);
-
-		// 	// ----- Updating juror details structure
-		// 	juror_decision_details.voted_for = Some(voted_for.clone());
-		// 	juror_decision_details.publisher_rating = Some(customer_rating);
-		// 	juror_decision_details.worker_rating = Some(worker_rating);
-		// 	// -----
-
-		// 	// Updating decision details in storage
-		// 	dispute_details.final_jurors.insert(juror.clone(), juror_decision_details);
-		// 	// Total votes of customer
-		// 	let mut votes_for_customer = dispute_details.votes_for_customer.unwrap_or(0);
-		// 	// Total votes of worker
-		// 	let mut votes_for_worker = dispute_details.votes_for_worker.unwrap_or(0);
-
-		// 	// ----- Updating vote count
-		// 	match voted_for {
-		// 		UserType::Customer => {
-		// 			votes_for_customer += 1;
-		// 			dispute_details.votes_for_customer = Some(votes_for_customer);
-		// 		}
-		// 		UserType::Worker => {
-		// 			votes_for_worker += 1;
-		// 			dispute_details.votes_for_worker = Some(votes_for_worker);
-		// 		}
-		// 	}
-		// 	// -----
-
-		// 	// Updating the task details structure
-		// 	task_details.dispute = Some(dispute_details);
-		// 	// Updating the task details storage
-		// 	<TaskStorage<T>>::insert(&task_id, task_details);
-		// 	// Notify event
-		// 	Self::deposit_event(Event::VoteRecorded(task_id.clone(),juror));
-
-		// 	Ok(())
-		// }
-
 		#[pallet::weight(10_000)]
 		pub fn create_project(
 			origin: OriginFor<T>,
 			publisher_name: Vec<u8>,
 			project_name: Vec<u8>,
 			tags: Vec<TaskTypeTags>,
+			milestone_one: MilestoneHelper<BalanceOf<T>>,
+			add_milestones: Vec<MilestoneHelper<BalanceOf<T>>>
 		) -> DispatchResult {
 			//function body starts here
 			// ensuring that the transaction is signed and getting the account id of the transactor
 			let publisher = ensure_signed(origin)?;
+			ensure!(add_milestones.len() < 5, <Error<T>>::MilestoneLimitReached);
 			let project_id = Self::get_project_count() + 1;
 			<ProjectCount<T>>::set(project_id.clone());
-			let project = ProjectDetails::new(project_id.clone(), project_name.clone(), tags, publisher.clone(), publisher_name);
+			let mut project = ProjectDetails::new(project_id.clone(), project_name.clone(), tags, publisher.clone(), publisher_name);
+			let mid = create_milestone_id(project_id, 0);
+			let milestone1: Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>> = Milestone::new(mid, milestone_one.name, milestone_one.tags, milestone_one.cost, milestone_one.publisher_attachments);
+			let mut vector_of_milestones = Vec::new();
+			vector_of_milestones.push(milestone1);
+			for milestone_helper in add_milestones {
+				let mid = create_milestone_id(project_id, vector_of_milestones.len() as u8);
+				let milestone: Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>> = Milestone::new(mid.clone(), milestone_helper.name, milestone_helper.tags, milestone_helper.cost, milestone_helper.publisher_attachments);
+				vector_of_milestones.push(milestone);
+				Self::deposit_event(Event::MileStoneCreated(mid,milestone_helper.cost));
+			}
+			project.milestones = Some(vector_of_milestones);
 			<ProjectStorage<T>>::insert(&project_id, project);
 			Self::deposit_event(Event::ProjectCreated(project_id, project_name, publisher));
 			Ok(())
 			// function body ends here
 		}
 
-		#[pallet::weight(1000)]
-		pub fn add_milestone_to_project(
+		#[pallet::weight(10_000)]
+		pub fn add_milestones_to_project(
 			origin: OriginFor<T>,
 			project_id: u128,
-			milestone_name: Vec<u8>,
-			cost: BalanceOf<T>,
-			tags: Vec<TaskTypeTags>,
-			publisher_attachments: Vec<Vec<u8>>,
+			milestones: Vec<MilestoneHelper<BalanceOf<T>>>
 		) -> DispatchResult {
 			// function body starts here
 
-			// authentication
+			//authentication
 			let sender = ensure_signed(origin)?;
-
-			<ProjectStorage<T>>::try_mutate(&project_id, |option| {
-				let mut res = None;
-				match option{
+			<ProjectStorage<T>>::try_mutate(&project_id, |option_project| {
+				let mut res = Ok(());
+				match option_project {
+					None => res = Err(<Error<T>>::ProjectDoesNotExist),
 					Some(project) => {
-						// check if the account adding the milestone is the publisher of the project
 						if project.publisher != sender {
-							res = Some(<Error<T>>::Unauthorised);
-						}else if project.status == ProjectStatus::Closed{
-							res = Some(<Error<T>>::ProjectClosed);
+							res = Err(<Error<T>>::Unauthorised);
 						}else{
-							match &mut project.milestones {
-								Some(vector_of_milestones) => {
-									if vector_of_milestones.len() == 5 {
-										res = Some(<Error<T>>::MilestoneLimitReached);
-									} else{
-										// let mut mid: Vec<u8> = Vec::new();
-										// mid.push(65 + vector_of_milestones.len() as u8);
-										let mid = create_milestone_id(project_id, vector_of_milestones.len() as u8);
-										let milestone = Milestone::new(mid.clone(), milestone_name, tags, cost.clone(), publisher_attachments);
-										vector_of_milestones.push(milestone);
-										Self::deposit_event(Event::MileStoneCreated(mid, cost));
+							match project.status {
+								ProjectStatus::Closed => res = Err(<Error<T>>::ProjectClosed),
+								_ => {
+									match &mut project.milestones {
+										None => {
+											let mut vector_of_milestones = Vec::new();
+											for milestone_helper in milestones {
+												let mid = create_milestone_id(project_id, vector_of_milestones.len() as u8);
+												let milestone: Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>> = Milestone::new(mid.clone(), milestone_helper.name, milestone_helper.tags, milestone_helper.cost, milestone_helper.publisher_attachments);
+												vector_of_milestones.push(milestone);
+												Self::deposit_event(Event::MileStoneCreated(mid,milestone_helper.cost));
+											}
+											project.milestones = Some(vector_of_milestones);
+										},
+										Some(vector_of_milestones) => {
+											if milestones.len() + vector_of_milestones.len() > 5{
+												res = Err(<Error<T>>::MilestoneLimitReached);
+											}else{
+												for milestone_helper in milestones {
+													let mid = create_milestone_id(project_id, vector_of_milestones.len() as u8);
+													let milestone: Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>> = Milestone::new(mid.clone(), milestone_helper.name, milestone_helper.tags, milestone_helper.cost.clone(), milestone_helper.publisher_attachments);
+													vector_of_milestones.push(milestone);
+													Self::deposit_event(Event::MileStoneCreated(mid,milestone_helper.cost));
+												}	
+											}
+										}
 									}
-								},
-								None => {
-									// let mut mid = Vec::new();
-									// mid.push(65 as u8);
-									let mid = create_milestone_id(project_id, 0);
-									let milestone = Milestone::new(mid.clone(), milestone_name, tags, cost.clone(), publisher_attachments);
-									let mut vector_of_milestones = Vec::new();
-									vector_of_milestones.push(milestone);
-									project.milestones = Some(vector_of_milestones);
-									project.status = ProjectStatus::Ready;
-									Self::deposit_event(Event::MileStoneCreated(mid,cost));
 								}
 							}
 						}
-					},
-					// checking if project exists
-					None => res = Some(<Error<T>>::ProjectDoesNotExist)
+					}
 				}
-				match res{
-					Some(err) => return Err(err),
-					None => return Ok(())
-				}
+				res
 			})?;
 			Ok(())
-			// function body ends here
 		}
+
 		#[pallet::weight(1000)]
 		pub fn add_project_to_marketplace(
 			origin: OriginFor<T>,
