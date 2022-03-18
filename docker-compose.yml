@@ -1,17 +1,33 @@
+# version: "3.2"
+
+# services:
+#   dev:
+#     container_name: node-template
+#     image: paritytech/ci-linux:974ba3ac-20201006
+#     working_dir: /var/www/node-template
+#     ports:
+#       - "9944:9944"
+#     environment:
+#       - CARGO_HOME=/var/www/node-template/.cargo
+#     volumes:
+#       - .:/var/www/node-template
+#       - type: bind
+#         source: ./.local
+#         target: /root/.local
+#     command: bash -c "cargo build --release && ./target/release/node-template --dev --ws-external"
+
 version: "3.2"
 
 services:
-  dev:
-    container_name: node-template
-    image: paritytech/ci-linux:974ba3ac-20201006
-    working_dir: /var/www/node-template
+  dot_marketplace_node:
+    image: dot_marketplace_node
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "9944:9944"
     environment:
-      - CARGO_HOME=/var/www/node-template/.cargo
+      - CARGO_HOME=/var/www/dot_marketplace_node/.cargo
     volumes:
-      - .:/var/www/node-template
-      - type: bind
-        source: ./.local
-        target: /root/.local
+      - .:/var/www/dot_marketplace_node
     command: bash -c "cargo build --release && ./target/release/node-template --dev --ws-external"
