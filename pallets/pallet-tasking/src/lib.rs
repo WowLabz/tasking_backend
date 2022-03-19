@@ -106,25 +106,6 @@ pub mod pallet {
 		publisher_attachments: Vec<Vec<u8>>
 	}
 
-	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
-	pub struct TaskDetails<AccountId, Balance, BlockNumber> {
-		pub task_id: u128,
-		pub publisher: AccountId,
-		pub worker_id: Option<AccountId>,
-		pub publisher_name: Option<Vec<u8>>,
-		pub worker_name: Option<Vec<u8>>,
-		pub task_tags: Vec<TaskTypeTags>,
-		pub task_deadline: u64,
-		pub cost: Balance,
-		pub status: Status,
-		pub task_description: Vec<u8>,
-		pub publisher_attachments: Option<Vec<Vec<u8>>>,
-		pub worker_attachments: Option<Vec<Vec<u8>>>,
-		pub dispute: Option<CourtDispute<AccountId, BlockNumber>>,
-		pub final_worker_rating: Option<u8>,
-		pub final_customer_rating: Option<u8>,
-	}
-
 	// Struct for Project Description
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
 	pub struct ProjectDetails<AccountId, Balance, BlockNumber> {
@@ -372,17 +353,8 @@ pub mod pallet {
 	}
 
 	#[pallet::storage]
-	#[pallet::getter(fn get_task_count)]
-	pub type TaskCount<T> = StorageValue<_, u128, ValueQuery>;
-
-	#[pallet::storage]
 	#[pallet::getter(fn get_project_count)]
 	pub type ProjectCount<T> = StorageValue<_, u128, ValueQuery>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn task)]
-	pub(super) type TaskStorage<T: Config> =
-		StorageMap<_, Blake2_128Concat, u128, TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_project)]
@@ -587,11 +559,13 @@ pub mod pallet {
 				match option_project {
 					None => res = Err(<Error<T>>::ProjectDoesNotExist),
 					Some(project) => {
+						let publisher_id = project.publisher.clone();
 						match project.status {
 							ProjectStatus::Open => {
 								match &mut project.milestones {
 									None => res = Err(<Error<T>>::InvalidMilestoneId),
 									Some(vector_of_milestones) => {
+										let mut call_adjourn_court = false;
 										if milestone_number >= vector_of_milestones.len() as u8 {
 											res = Err(<Error<T>>::InvalidMilestoneId);
 										}else{
@@ -625,6 +599,7 @@ pub mod pallet {
 																			}
 																		}
 																		// Self::adjourn_court();
+																		call_adjourn_court = true;
 																		res = Ok(());
 																		Self::deposit_event(Event::CaseClosedBySudoJuror(milestone_id, sender));
 																	}
@@ -635,6 +610,9 @@ pub mod pallet {
 												},
 												_ => res = Err(<Error<T>>::CaseClosed)
 											}
+										}
+										if call_adjourn_court {
+											Self::adjourn_court(publisher_id, &mut vector_of_milestones[milestone_number as usize]);
 										}
 									}
 								}
@@ -858,12 +836,25 @@ pub mod pallet {
 																// Self::adjourn_court();
 															}else{
 																let juror_details = JurorDecisionDetails {
-																	voted_for: Some(voted_for),
+																	voted_for: Some(voted_for.clone()),
 																	publisher_rating: Some(customer_rating),
 																	worker_rating: Some(worker_rating),
 																};
 																// inserting juror into final juror
 																dispute.final_jurors.insert(sender.clone(), juror_details);
+																// updating the vote count
+																let mut votes_for_customer = dispute.votes_for_customer.unwrap_or(0);
+																let mut votes_for_worker = dispute.votes_for_worker.unwrap_or(0);
+																match voted_for {
+																	UserType::Customer => {
+																		votes_for_customer += 1;
+																		dispute.votes_for_customer = Some(votes_for_customer);
+																	},
+																	UserType::Worker => {
+																		votes_for_worker += 1;
+																		dispute.votes_for_worker = Some(votes_for_worker);
+																	}
+																}
 																Self::deposit_event(Event::NewJurorAdded(milestone_id, sender));
 																res = Ok(());
 															}
@@ -1497,304 +1488,147 @@ pub mod pallet {
 	// Helper functions
 
 	impl<T: Config> Pallet<T> {
-
-		pub fn adjourn_court(milestone_id: Vec<u8>) -> Option<bool> {
-			// -------- Initializations
-			let mut total_publisher_rating: u8 = 0;
+		pub fn adjourn_court(
+			publisher_id: T::AccountId,
+			milestone: &mut Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>
+		) -> Option<bool> {
+			// ------------- Initializations
+			let mut total_publisher_rating : u8 = 0;
 			let mut total_worker_rating: u8 = 0;
 			let mut winner_account_id: Vec<T::AccountId> = Vec::new();
-			let mut milestone_id_clone = milestone_id.clone();
-			let (milestone_number, project_id) = get_milestone_and_project_id(&mut milestone_id_clone).unwrap();
-			let result = match <ProjectStorage<T>>::try_mutate(&project_id, |option_project| {
-				let res;
-				match option_project {
-					None => res = Err(<Error<T>>::ProjectDoesNotExist),
-					Some(project) => {
-						match &mut project.milestones {
-							None => res = Err(<Error<T>>::InvalidMilestoneId),
-							Some(vector_of_milestones) => {
-								let worker_id = vector_of_milestones[milestone_number as usize].clone().worker_id.unwrap();
-								let publisher_id = project.publisher.clone();
-								let escrow_id = Self::get_escrow(milestone_id.clone());
-								match &mut vector_of_milestones[milestone_number as usize].dispute {
-									None => res = Err(<Error<T>>::DisputeDoesNotExist),
-									Some(dispute) => {
-										let votes_for_customer: u8 = dispute.votes_for_customer.unwrap_or(0);
-										let votes_for_worker: u8 = dispute.votes_for_worker.unwrap_or(0);
-										let mut is_active = true;
-										let total_votes_cast = votes_for_customer + votes_for_worker;
-										let final_juror_details: BTreeMap<T::AccountId, JurorDecisionDetails> = dispute.final_jurors.clone().into_iter().filter(|(_, value)| value.voted_for != None).collect();
-										let final_juror_count = final_juror_details.len() as u8;
-										if final_juror_count > 0 && votes_for_customer != votes_for_worker {
-											// ----- Calculating total rating for publisher and worker from jurors
-											for juror_decision in final_juror_details.values() {
-												total_publisher_rating += juror_decision.publisher_rating.unwrap_or(0);
-												total_worker_rating += juror_decision.worker_rating.unwrap_or(0);
-											}
-											let avg_publisher_rating = roundoff(total_publisher_rating, final_juror_count.clone());	
-											dispute.avg_publisher_rating = Some(avg_publisher_rating);
-											let avg_worker_rating = roundoff(total_worker_rating, final_juror_count.clone());
-											dispute.avg_worker_rating = Some(avg_worker_rating);
-											
-											if votes_for_customer >= votes_for_worker {
-												dispute.winner = Some(UserType::Customer);
-												winner_account_id.push(worker_id.clone());
-												winner_account_id.push(publisher_id.clone());
-											}else{
-												dispute.winner = Some(UserType::Worker);
-												winner_account_id.push(worker_id.clone());
-											}
+			let worker_id = milestone.worker_id.clone().unwrap();
+			let milestone_id = milestone.milestone_id.clone();
+			let escrow_id = Self::get_escrow(milestone_id.clone());
+			let mut is_active = true;
+			let task_cost = milestone.cost.clone();
+			match &mut milestone.dispute {
+				None => (),
+				Some(dispute) => {
+					let votes_for_customer: u8 = dispute.votes_for_customer.unwrap_or(0);
+					let votes_for_worker: u8 = dispute.votes_for_worker.unwrap_or(0);
+					let final_juror_details: BTreeMap<T::AccountId, JurorDecisionDetails> = dispute.final_jurors.clone().into_iter().filter(|(_, value)| value.voted_for != None).collect();
+					let final_juror_count = final_juror_details.len() as u8;
+					if final_juror_count > 0 && votes_for_customer != votes_for_worker {
 
-											let milestone_cost = vector_of_milestones[milestone_number as usize].cost.clone();
-											let milestone_cost_converted = milestone_cost.saturated_into::<u128>();
-											let remaining_amount;
+						// ---------------- Calculating total rating for publisher and worker from jurors	
+						for juror_decision in final_juror_details.values() {
+							total_publisher_rating += juror_decision.publisher_rating.unwrap_or(0);
+							total_worker_rating += juror_decision.worker_rating.unwrap_or(0);
+						}
 
-											// Court commision calculation
-											let court_fee = (milestone_cost_converted * 60) / 100 as u128;
-											// Individual juror fee calculation
-											let juror_fee = (court_fee as u32)/(final_juror_count as u32);
-											// collecting juror accounts 
-											let juror_account_ids: Vec<_> = final_juror_details.keys().cloned().collect();
-											// Transfer to all jurors their respective fees
-											for juror_account_id in juror_account_ids {
-												T::Currency::transfer(
-													&escrow_id,
-													&juror_account_id,
-													juror_fee.into(),
-													ExistenceRequirement::KeepAlive,
-												).ok();
-											}
+						// --------------- Calculating avg ratings
+						let avg_publisher_rating = roundoff(total_publisher_rating, final_juror_count);
+						dispute.avg_publisher_rating = Some(avg_publisher_rating);
+						let avg_worker_rating = roundoff(total_worker_rating, final_juror_count);
+						dispute.avg_worker_rating = Some(avg_worker_rating);
 
-											// Total amount excluding court fees
-											remaining_amount = (milestone_cost_converted * 140) / 100 as u128;
-											// Convert remaining amount to u32
-											let remaining_amount_converted = remaining_amount as u32;
-											
-											// ------ Checking if winner is customer or no one
-											if votes_for_customer >= votes_for_worker {
-												let remaining_amount_for_customer = remaining_amount / 2;
-												let remaining_amount_converted_for_customer = remaining_amount_for_customer as u32;
-												// * Transferring to winner account
-												T::Currency::transfer(
-													&escrow_id,
-													&winner_account_id[1],
-													remaining_amount_converted_for_customer.into(),
-													ExistenceRequirement::KeepAlive,
-												).ok();
-											}
+						// --------------- Deciding the winner based on votes
+						if votes_for_customer > votes_for_worker {
+							dispute.winner = Some(UserType::Customer);
+						}else if votes_for_customer < votes_for_worker {
+							dispute.winner = Some(UserType::Worker);
+						}else {
+							dispute.winner = None
+						}
 
-											// Transferring to winner account
-											T::Currency::transfer(
-												&escrow_id,
-												&winner_account_id[0],
-												remaining_amount_converted.into(),
-												ExistenceRequirement::AllowDeath,
-											).ok();
-
-											// ------- Update overall customer and worker ratings
-											<AccountDetails<BalanceOf<T>>>::update_rating::<T>(
-												publisher_id.clone(),
-												vector_of_milestones[milestone_number as usize].final_customer_rating.clone().unwrap()
-											);
-											<AccountDetails<BalanceOf<T>>>::update_rating::<T>(
-												worker_id.clone(),
-												vector_of_milestones[milestone_number as usize].final_worker_rating.clone().unwrap()
-											);
-											// updating the status of the milestone
-											vector_of_milestones[milestone_number as usize].status = Status::Completed;
-											// notify event 
-											Self::deposit_event(
-												Event::CourtAdjourned(
-													milestone_id.clone()
-												)
-											);
-										}else {
-											// -------Case handover to sudo juror
-											dispute.sudo_juror = Some(
-												Self::pick_sudo_juror(
-													publisher_id,
-													worker_id.clone()
-												)
-											);
-											is_active = false;
-										}
-										res = Ok(is_active);
-									}
-								}
+						// ----- Updating the winner a/c id vector with respective publisher & worker ids
+						match dispute.winner.clone() {
+							Some(UserType::Customer) => {
+								winner_account_id.push(worker_id.clone());
+								winner_account_id.push(publisher_id.clone());
+							},
+							Some(UserType::Worker) => {
+								winner_account_id.push(worker_id.clone());
+							},
+							// * If no one wins, publisher and worker should get half
+							None => {
+								winner_account_id.push(worker_id.clone());
+								winner_account_id.push(publisher_id.clone());
 							}
 						}
+
+						// Converting the task cost to u128
+						let task_cost_converted = task_cost.saturated_into::<u128>();
+						// Initializing the placeholder
+						let remaining_amount;
+
+						// Court commision calculation
+						let court_fee = (task_cost_converted * 60) / 100 as u128;
+						// Individual juror fee calculation
+						let juror_fee = (court_fee as u32) / (final_juror_count as u32);
+						// Collecting juror accounts
+						let juror_account_ids : Vec<_> = final_juror_details.keys().cloned().collect();
+						// Transfer to all jurors their respective fees
+						for juror_account_id in juror_account_ids {
+							T::Currency::transfer(
+								&escrow_id,
+								&juror_account_id,
+								juror_fee.into(),
+								ExistenceRequirement::KeepAlive,
+							).ok();
+						}
+						// Total amount excluding court fees
+						remaining_amount = task_cost_converted - court_fee;
+						// Convert remaining amount to u32
+						let mut remaining_amount_converted = remaining_amount as u32;
+						// ---------- Checking if winner is customer or no one
+						if dispute.winner == Some(UserType::Customer) || dispute.winner == None {
+							let remaining_amount_for_customer = remaining_amount / 2;
+							let remaining_amount_converted_for_customer = remaining_amount_for_customer as u32;
+							// * Transferring to winner account 
+							T::Currency::transfer(
+								&escrow_id,
+								&winner_account_id[1],
+								remaining_amount_converted_for_customer.into(),
+								ExistenceRequirement::KeepAlive,
+							).ok();
+						}
+
+						// Transferring to winner account
+						T::Currency::transfer(
+							&escrow_id,
+							&winner_account_id[0],
+							remaining_amount_converted.into(),
+							ExistenceRequirement::AllowDeath,
+						).ok();
+
+						// Update final worker rating
+						milestone.final_worker_rating = dispute.avg_worker_rating.clone();
+						// Update final customer rating
+						milestone.final_customer_rating = dispute.avg_publisher_rating.clone();
+
+						// ------- Update overall customer and worker ratings
+						<AccountDetails<BalanceOf<T>>>::update_rating::<T>(
+							publisher_id.clone(),
+							milestone.final_customer_rating.clone().unwrap()
+						);
+						<AccountDetails<BalanceOf<T>>>::update_rating::<T>(
+							worker_id.clone(),
+							milestone.final_worker_rating.clone().unwrap()
+						);
+						// Updating the status
+						milestone.status = Status::Completed;
+						// Notify event
+						Self::deposit_event(
+							Event::CourtAdjourned(
+								milestone_id
+							)
+						);
+					}else {
+						// -------- Case handover to sudo juror
+						dispute.sudo_juror = Some(
+							Self::pick_sudo_juror(
+								publisher_id.clone(),
+								worker_id.clone(),
+							)
+						);
+						is_active = false;
 					}
 				}
-				res
-			}) {
-				Ok(res) => Some(res),
-				Err(_) => None
 			};
-			result
-		}
-
-		// pub fn adjourn_court(task_id: u128) -> Option<bool> {
-		// 	// ----- Initializations
-		// 	let mut total_publisher_rating: u8 = 0;
-		// 	let mut total_worker_rating: u8 = 0;
-		// 	let mut winner_account_id: Vec<T::AccountId> = Vec::new();
-		// 	let mut task_details = Self::task(task_id.clone());
-		// 	let mut dispute_details = task_details.dispute.clone().unwrap();
-		// 	let worker_id = task_details.worker_id.clone().unwrap();
-		// 	let publisher_id = task_details.publisher.clone();
-		// 	let escrow_id = Self::escrow_account_id(task_id.clone() as u32);
-		// 	let votes_for_customer: u8 = dispute_details.votes_for_customer.unwrap_or(0);
-		// 	let votes_for_worker: u8 = dispute_details.votes_for_worker.unwrap_or(0);
-		// 	let mut is_active = true;
-		// 	// * To keep track of the juror participation in voting
-		// 	// NOTE: Disabling no votes from juror check
-		// 	// let total_votes_cast: u8 = votes_for_customer + votes_for_worker;
-		// 	let final_jurors_details: BTreeMap<T::AccountId, JurorDecisionDetails> =
-		// 		dispute_details.clone().final_jurors.into_iter().filter(|(_, value)| value.voted_for != None).collect();
-		// 	let final_jurors_count: u8 = final_jurors_details.len() as u8;
-		// 	// -----
-
-		// 	if final_jurors_count > 0 && votes_for_customer != votes_for_worker {
-
-				// // ----- Calculating total rating for publisher and worker from jurors
-				// for juror_decision in final_jurors_details.values() {
-				// 	total_publisher_rating += juror_decision.publisher_rating.unwrap_or(0);
-				// 	total_worker_rating += juror_decision.worker_rating.unwrap_or(0);
-				// }
-		// 		// -----
-
-		// 		// Calculating average publisher rating
-		// 		let avg_publisher_rating = roundoff(total_publisher_rating, final_jurors_count.clone());
-		// 		// Updating average publisher rating
-		// 		dispute_details.avg_publisher_rating = Some(avg_publisher_rating);
-		// 		// Calculating average worker rating
-		// 		let avg_worker_rating = roundoff(total_worker_rating, final_jurors_count.clone());
-		// 		// Updating average worker rating
-		// 		dispute_details.avg_worker_rating = Some(avg_worker_rating);
-
-		// 		// ----- Deciding the winner based on votes
-		// 		if votes_for_customer > votes_for_worker {
-		// 			dispute_details.winner = Some(UserType::Customer);
-		// 		} else if votes_for_customer < votes_for_worker {
-		// 			dispute_details.winner = Some(UserType::Worker);
-		// 		} else {
-		// 			// * If votes are even and if no one votes
-		// 			dispute_details.winner = None;
-		// 		}
-		// 		// -----
-
-		// 		// ----- Updating the winner a/c id vector with respective publisher & worker ids
-		// 		match dispute_details.winner.clone() {
-		// 			Some(UserType::Customer) => {
-		// 				winner_account_id.push(worker_id.clone());
-		// 				winner_account_id.push(publisher_id.clone());
-		// 			}
-		// 			Some(UserType::Worker) => {
-		// 				winner_account_id.push(worker_id.clone());
-		// 			}
-		// 			// * If no one wins, publisher and worker should get half
-		// 			None => {
-		// 				winner_account_id.push(worker_id.clone());
-		// 				winner_account_id.push(publisher_id.clone());
-		// 			}
-		// 		};
-		// 		// -----
-
-		// 		// Accessing the task cost
-		// 		let task_cost = task_details.cost;
-		// 		// Converting task cost to u128
-		// 		let task_cost_converted = task_cost.saturated_into::<u128>();
-		// 		// Initializing placeholder
-		// 		let remaining_amount;
-
-		// 		// Court commision calculation
-		// 		let court_fee = (task_cost_converted * 60) / 100 as u128;
-		// 		// Individial juror fee calculation
-		// 		let juror_fee: u32 = (court_fee as u32) / (final_jurors_count as u32);
-		// 		// Collecting juror accounts
-		// 		let juror_account_ids: Vec<_> = final_jurors_details.keys().cloned().collect();
-		// 		// Transfer to all jurors their respective fees
-		// 		for juror_account_id in juror_account_ids {
-		// 			T::Currency::transfer(
-		// 				&escrow_id,
-		// 				&juror_account_id,
-		// 				juror_fee.into(),
-		// 				ExistenceRequirement::KeepAlive,
-		// 			).ok()?;
-		// 		}
-		// 		// Total amount excluding court fees
-		// 		remaining_amount = (task_cost_converted * 140) / 100 as u128;
-		// 		// Convert remaining amount to u32
-		// 		let mut remaining_amount_converted = remaining_amount as u32;
-
-		// 		// ----- Checking if winner is customer or no one
-		// 		if dispute_details.winner == Some(UserType::Customer) || dispute_details.winner == None
-		// 		{
-		// 			// NOTE: AccountMap value should ideally be task cost & bidder cost and not remaining amount/2
-		// 			let remaining_amount_for_customer = remaining_amount / 2;
-		// 			let remaining_amount_converted_for_customer = remaining_amount_for_customer as u32;
-		// 			remaining_amount_converted = remaining_amount_converted_for_customer;
-		// 			// * Transfering to winner account
-		// 			T::Currency::transfer(
-		// 				&escrow_id,
-		// 				&winner_account_id[1],
-		// 				remaining_amount_converted_for_customer.into(),
-		// 				ExistenceRequirement::KeepAlive,
-		// 			).ok()?;
-		// 		}
-		// 		// -----
-
-		// 		// Transfering to winner account
-		// 		T::Currency::transfer(
-		// 			&escrow_id,
-		// 			&winner_account_id[0],
-		// 			remaining_amount_converted.into(),
-		// 			ExistenceRequirement::AllowDeath,
-		// 		).ok()?;
-		// 		// Update final worker rating
-		// 		task_details.final_worker_rating = dispute_details.avg_worker_rating.clone();
-		// 		// Update final customer rating
-		// 		task_details.final_customer_rating = dispute_details.avg_publisher_rating.clone();
-
-		// 		// ----- Update overall customer and worker ratings
-		// 		<AccountDetails<BalanceOf<T>>>::update_rating::<T>(
-		// 			publisher_id.clone(),
-		// 			task_details.final_customer_rating.clone().unwrap()
-		// 		);
-		// 		<AccountDetails<BalanceOf<T>>>::update_rating::<T>(
-		// 			worker_id.clone(),
-		// 			task_details.final_worker_rating.clone().unwrap()
-		// 		);
-		// 		// -----
-
-		// 		// Updating the dispute
-		// 		task_details.dispute = Some(dispute_details);
-		// 		// Updating the status
-		// 		task_details.status = Status::Completed;
-		// 		// Updating the task details storage
-		// 		<TaskStorage<T>>::insert(&task_id, task_details);
-		// 		// Notofy event
-		// 		Self::deposit_event(
-		// 			Event::CourtAdjourned(
-		// 				task_id.clone()
-		// 			)
-		// 		);
-
-		// 	} else {
-		// 		// ----- Case handover to sudo juror
-		// 		dispute_details.sudo_juror = Some(
-		// 			Self::pick_sudo_juror(
-		// 				task_details.publisher,
-		// 				task_details.worker_id.unwrap()
-		// 			)
-		// 		);
-		// 		task_details.dispute = Some(dispute_details);
-		// 		is_active = false;
-		// 		// -----
-		// 	}
-
-		// 	Some(is_active)
-		// }
+			Some(is_active)
+		}	
+		
 		pub fn register_case(
 			milestone_id: Vec<u8>,
 			milestone_details: &mut Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
@@ -1818,7 +1652,7 @@ pub mod pallet {
 				total_case_period: case_period.1,
 				sudo_juror: None
 			};
-			// Updating task details structure
+			// Updating milestone details structure
 			milestone_details.dispute = Some(dispute);
 		}
 
@@ -1827,8 +1661,7 @@ pub mod pallet {
 			// Getting hearings vector from storage
 			let mut hearings = Self::get_hearings();
 			// Only retain those hearings with case ending period >= current block number
-			hearings.retain(|x| x.total_case_period >= block_number || x.is_active);
-
+			hearings.retain(|x| x.total_case_period >= block_number && x.is_active); // this
 			// ---------- Validating jury acceptance period and total case period
 			for hearing in hearings.iter_mut() {
 				// For stopping unlimited court reinitiations
@@ -1872,12 +1705,13 @@ pub mod pallet {
 									None => res = Err(<Error<T>>::InvalidMilestoneId),
 									Some(vector_of_milestones) => {
 										let worker_id = vector_of_milestones[milestone_number as usize].worker_id.clone().unwrap();
+										let mut call_adjourn_court = false;
 										match &mut vector_of_milestones[milestone_number as usize].dispute {
 											None => res = Err(<Error<T>>::DisputeDoesNotExist),
 											Some(dispute) => {
 												let total_votes = dispute.votes_for_worker.clone().unwrap_or(0) + dispute.votes_for_customer.clone().unwrap_or(0);
 												if total_votes == 0 {
-													hearing.total_case_period = 5u128.saturated_into();
+													hearing.total_case_period += 5u128.saturated_into();
 													hearing.trial_number += 1;
 													//vector_of_milestones[milestone_number as usize].status = Status::DisputeRaised;
 													dispute.total_case_period = hearing.total_case_period.clone();
@@ -1885,15 +1719,23 @@ pub mod pallet {
 													if dispute.final_jurors.len() != 0 {
 														dispute.final_jurors.clear();
 													}
+													call_adjourn_court = false;
 												}else {
 													// Adjourn court 
-													let is_active = Self::adjourn_court(hearing.milestone_id.clone()).unwrap();
-													if !is_active {
+													call_adjourn_court = true;
+												}
+											}
+										}
+										if call_adjourn_court {
+											let is_active = Self::adjourn_court(publisher_id.clone(), &mut vector_of_milestones[milestone_number as usize]).unwrap();
+											if !is_active {
+												match &mut vector_of_milestones[milestone_number as usize].dispute{
+													None => (),
+													Some(dispute) => {
 														dispute.sudo_juror = Some(Self::pick_sudo_juror(
 															publisher_id.clone(),
 															worker_id.clone()
-														));
-														hearing.is_active = false;
+														))
 													}
 												}
 											}
@@ -1906,64 +1748,10 @@ pub mod pallet {
 					}).ok();
 				}
 			}
+			<Hearings<T>>::put(hearings);
 		}
 
 
-		// pub fn collect_cases(block_number: BlockNumberOf<T>) {
-		// 	// Getting hearings vector from storage
-		// 	let mut hearings: Vec<Hearing<BlockNumberOf<T>>> = Self::get_hearings();
-		// 	// Only retain those hearings with case ending period >= current block number
-		// 	hearings.retain(|x| x.total_case_period >= block_number || x.is_active);
-
-		// 	// ----- Validating jury acceptance period and total case period
-		// 	for hearing in hearings.iter_mut() {
-		// 		// For stopping unlimited court reinitiations
-		// 		if hearing.trial_number >= 3 {
-		// 			let mut task_details = Self::task(hearing.task_id.clone());
-		// 			let mut dispute_details = task_details.dispute.clone().unwrap();
-		// 			dispute_details.sudo_juror = Some(Self::pick_sudo_juror(task_details.publisher.clone(), task_details.worker_id.clone().unwrap()));
-		// 			task_details.dispute = Some(dispute_details);
-		// 			hearing.is_active = false;
-		// 			<TaskStorage<T>>::insert(&hearing.task_id, task_details);
-		// 		}
-		// 		
-		// 		// * For total case period
-		// 		else if block_number == hearing.total_case_period {
-		// 			let mut task_details = Self::task(hearing.task_id.clone());
-		// 			let mut dispute_details = task_details.dispute.clone().unwrap();
-		// 			let total_votes = dispute_details.votes_for_worker.unwrap_or(0) + dispute_details.votes_for_customer.unwrap_or(0);
-		// 			if total_votes == 0 {
-		// 				hearing.jury_acceptance_period += 5u128.saturated_into();
-		// 				hearing.total_case_period += 5u128.saturated_into();
-		// 				hearing.trial_number += 1;
-		// 				task_details.status = Status::DisputeRaised;
-		// 				dispute_details.jury_acceptance_period = hearing.jury_acceptance_period.clone();
-		// 				dispute_details.total_case_period = hearing.total_case_period.clone();
-		// 				dispute_details.potential_jurors = Self::potential_jurors(task_details.clone());
-		// 				// * Clearing the list of final jurors as people may have accepted jury duty
-		// 				if dispute_details.final_jurors.len() != 0 {
-		// 					dispute_details.final_jurors.clear();
-		// 				}
-		// 				task_details.dispute = Some(dispute_details);
-		// 				<TaskStorage<T>>::insert(&hearing.task_id, task_details);
-		// 			} else {
-
-		// 				// * Adjourn court
-		// 				let is_active = Self::adjourn_court(hearing.task_id).unwrap();
-		// 				if !is_active {
-		// 					dispute_details.sudo_juror = Some(Self::pick_sudo_juror(task_details.publisher.clone(), task_details.worker_id.clone().unwrap()));
-		// 					task_details.dispute = Some(dispute_details);
-		// 					hearing.is_active = false;
-		// 					<TaskStorage<T>>::insert(&hearing.task_id, task_details);
-		// 				}
-		// 			}
-		// 		}
-		// 	}
-		// 	// -----
-
-		// 	// Updating the hearings storage
-		// 	<Hearings<T>>::put(hearings);
-		// }
 		pub fn potential_jurors(
 			milestone_id: Vec<u8>,
 		) -> Vec<T::AccountId> {
