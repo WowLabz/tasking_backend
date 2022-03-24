@@ -14,7 +14,7 @@ mod utils;
 pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_support::PalletId;
-	use frame_system::pallet_prelude::*;
+    use frame_system::pallet_prelude::*;
 	use frame_support::{
 		sp_runtime,
 		sp_runtime::traits::{AccountIdConversion, SaturatedConversion, Hash},
@@ -870,6 +870,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
+		#[transactional]
 		pub fn create_project(
 			origin: OriginFor<T>,
 			publisher_name: Vec<u8>,
@@ -895,14 +896,16 @@ pub mod pallet {
 				vector_of_milestones.push(milestone);
 				Self::deposit_event(Event::MileStoneCreated(mid,milestone_helper.cost));
 			}
-			project.milestones = Some(vector_of_milestones);
+			project.milestones = Some(vector_of_milestones.clone());
 			<ProjectStorage<T>>::insert(&project_id, project);
+			Self::collect_publisher_tokens(publisher.clone(), vector_of_milestones)?;
 			Self::deposit_event(Event::ProjectCreated(project_id, project_name, publisher));
 			Ok(())
 			// function body ends here
 		}
 
 		#[pallet::weight(10_000)]
+		#[transactional]
 		pub fn add_milestones_to_project(
 			origin: OriginFor<T>,
 			project_id: u128,
@@ -938,12 +941,15 @@ pub mod pallet {
 											if milestones.len() + vector_of_milestones.len() > 5{
 												res = Err(<Error<T>>::MilestoneLimitReached);
 											}else{
+												let mut vector_of_milestones_for_transfer = Vec::new();
 												for milestone_helper in milestones {
 													let mid = create_milestone_id(project_id, vector_of_milestones.len() as u8);
 													let milestone: Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>> = Milestone::new(mid.clone(), milestone_helper.name, milestone_helper.tags, milestone_helper.cost.clone(), milestone_helper.publisher_attachments);
-													vector_of_milestones.push(milestone);
+													vector_of_milestones.push(milestone.clone());
+													vector_of_milestones_for_transfer.push(milestone);
 													Self::deposit_event(Event::MileStoneCreated(mid,milestone_helper.cost));
 												}	
+												Self::collect_publisher_tokens(sender.clone(), vector_of_milestones_for_transfer)?;
 											}
 										}
 									}
@@ -1116,12 +1122,12 @@ pub mod pallet {
 			})?;
 			// locking the tokens of the publisher
 			let escrow_id = Self::get_escrow(milestone_id.clone());
-			T::Currency::transfer(
-				&sender,
-				&escrow_id,
-				milestone_cost.clone(),
-				ExistenceRequirement::KeepAlive
-			)?;
+			// T::Currency::transfer(
+			// 	&sender,
+			// 	&escrow_id,
+			// 	milestone_cost.clone(),
+			// 	ExistenceRequirement::KeepAlive
+			// )?;
 			let milestone_key = T::Hashing::hash_of(&milestone_id);
 			// rejecting all the other bidders
 			Self::reject_all(milestone_key, escrow_id, milestone_cost, bid_number)?;
@@ -1358,57 +1364,61 @@ pub mod pallet {
 						if sender != project.publisher {
 							res = Err(<Error<T>>::Unauthorised);
 						}else{
-							if project.status == ProjectStatus::Open {
-								match &mut project.milestones {
-									Some(vector_of_milestones) => {
-										let mut flag = false;
-										for milestone in vector_of_milestones {
-											match milestone.status {
-												Status::Completed => flag = false,
-												Status::Open => {
-													// reject all the bidders
-													let milestone_key = T::Hashing::hash_of(&milestone.milestone_id);
-													let escrow_id = Self::get_escrow(milestone.milestone_id.clone());
-													let cost = milestone.cost.clone();
-													let except = u32::MAX;
-													res = Self::reject_all(
-														milestone_key,
-														escrow_id,
-														cost,
-														except
-													);
-													flag = false;
-												},
-												_ => {
-													flag = true;
-													break;
-												}
+							
+							match &mut project.milestones {
+								Some(vector_of_milestones) => {
+									let mut flag = false;
+									for milestone in vector_of_milestones {
+										match milestone.status {
+											Status::Completed => flag = false,
+											Status::Open => {
+												// reject all the bidders
+												let milestone_key = T::Hashing::hash_of(&milestone.milestone_id);
+												let escrow_id = Self::get_escrow(milestone.milestone_id.clone());
+												let cost = milestone.cost.clone();
+												let except = u32::MAX;
+												// transferring publisher's token back to the publisher
+												T::Currency::transfer(
+													&escrow_id,
+													&sender,
+													cost.clone(),
+													ExistenceRequirement::AllowDeath,
+												).ok();
+												// rejecting all the bidder
+												res = Self::reject_all(
+													milestone_key,
+													escrow_id,
+													cost,
+													except
+												);
+												flag = false;
+											},
+											_ => {
+												flag = true;
+												break;
+											}
 
-											}
 										}
-										if flag {
-											res = Err(<Error<T>>::CannotCloseProject);
-										}else{
-											let publisher_rating = Self::get_publisher_rating(project_id);
-											// update publisher rating
-											match publisher_rating {
-												Some(rating) => {
-													project.overall_customer_rating = Some(rating.clone());
-													<AccountDetails<BalanceOf<T>>>::update_rating::<T>(sender, rating)
-												},
-												None => (),
-											}
-											project.status = ProjectStatus::Closed;
-										}
-									},
-									None => {
-										project.status = ProjectStatus::Closed;
-										res = Ok(());
 									}
+									if flag {
+										res = Err(<Error<T>>::CannotCloseProject);
+									}else{
+										let publisher_rating = Self::get_publisher_rating(project_id);
+										// update publisher rating
+										match publisher_rating {
+											Some(rating) => {
+												project.overall_customer_rating = Some(rating.clone());
+												<AccountDetails<BalanceOf<T>>>::update_rating::<T>(sender, rating)
+											},
+											None => (),
+										}
+										project.status = ProjectStatus::Closed;
+									}
+								},
+								None => {
+									project.status = ProjectStatus::Closed;
+									res = Ok(());
 								}
-							}else{
-								project.status = ProjectStatus::Closed;
-								res = Ok(());
 							}
 						}
 					},
@@ -1797,11 +1807,31 @@ pub mod pallet {
 
 			random_vector.first().unwrap().clone()
 		}
-
-		pub fn escrow_account_id(id: u32) -> T::AccountId {
-			// Creating and calling sub account
-			T::PalletId::get().into_sub_account(id)
+		pub fn collect_publisher_tokens(
+			publisher: T::AccountId, 
+			vector_of_milestone: Vec<Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>>
+		)-> Result<(), Error<T>> {
+			let mut total_cost: u32 = 0;
+			let mut escrow_list = Vec::new();
+			for milestone in vector_of_milestone {
+				total_cost += milestone.cost.clone().saturated_into::<u32>();
+				let escrow_id = Self::get_escrow(milestone.milestone_id.clone());
+				escrow_list.push((milestone.cost.clone(), escrow_id));
+			}
+			if T::Currency::free_balance(&publisher) < total_cost.into() {
+				return Err(<Error<T>>::NotEnoughBalance);
+			}
+			for (cost, escrow_id) in escrow_list {
+				T::Currency::transfer(
+					&publisher,
+					&escrow_id,
+					cost.clone(),
+					ExistenceRequirement::KeepAlive
+				).map_err(|_| <Error<T>>::NotEnoughBalance)?;
+			}
+			Ok(())
 		}
+
 
 		pub fn get_escrow(id: Vec<u8>) -> T::AccountId {
 			T::PalletId::get().into_sub_account(id)
