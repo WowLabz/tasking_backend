@@ -1,5 +1,5 @@
 use crate::mock::ExtBuilder;
-use crate::{mock::*, Error, Status, TaskDetails, TaskTypeTags, UserType};
+use crate::{mock::*, Error, Status, TaskDetails, TaskTypeTags, UserType, AccountDetails};
 use frame_support::{assert_noop, assert_ok, dispatch::DispatchError};
 use frame_system::{ensure_signed};
 
