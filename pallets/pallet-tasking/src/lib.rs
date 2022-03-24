@@ -382,12 +382,7 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		TaskCreated(T::AccountId, Vec<u8>, u128, u64, BalanceOf<T>, Vec<u8>),
-		TaskIsBid(u128, T::AccountId, Vec<u8>),
-		TaskCompleted(u128, T::AccountId),
-		TaskApproved(u128, T::AccountId),
 		AmountTransfered(T::AccountId, T::AccountId, BalanceOf<T>),
-		TaskClosed(u128),
 		AccBalance(T::AccountId, BalanceOf<T>),
 		CountIncreased(u128),
 		TransferMoney(T::AccountId, BalanceOf<T>, BalanceOf<T>, T::AccountId, BalanceOf<T>, BalanceOf<T>),
@@ -426,8 +421,6 @@ pub mod pallet {
 		CourtSummoned(Vec<u8>, UserType, Reason),
 		/// New juror has been added. \[MilestoneId, AccountId]
 		NewJurorAdded(Vec<u8>, T::AccountId),
-		/// Collect cases has been called
-		CollectCasesCalled,
 	}
 
 	#[pallet::error]
@@ -436,10 +429,8 @@ pub mod pallet {
 		NoneValue,
 		/// Errors should have helpful documentation associated with them.
 		StorageOverflow,
-		/// To ensure that the  task exists
-		TaskDoesNotExist,
 		/// To check the status and availibility of the task
-		TaskIsNotOpen,
+		MilestoneNotOpen,
 		/// To check balance of bidder for ability to stake amount
 		NotEnoughBalanceToBid,
 		/// To ensure publisher does not bid for the same task posted
@@ -450,12 +441,12 @@ pub mod pallet {
 		WorkerNotSet,
 		/// To ensure only the assigned worker completes the task
 		UnauthorisedToComplete,
-		/// To ensure task status is completed and is waiting for approval from the publisher
-		TaskIsNotPendingApproval,
+		/// To ensure milestone status is completed and is waiting for approval from the publisher
+		MilestoneNotPendingApproval,
 		/// To ensure only the publisher approves the task
 		UnauthorisedToApprove,
-		/// To ensure task is approved by the publisher
-		TaskIsNotPendingRating,
+		/// To ensure milestone is approved by the publisher
+		MilestoneNotPendingRating,
 		/// To ensure the worker only provides the publisher rating
 		UnauthorisedToProvideCustomerRating,
 		/// To check if the sender has sufficient balance for a transfer
@@ -467,7 +458,7 @@ pub mod pallet {
 		/// To ensure if the dispute exists in storage
 		DisputeDoesNotExist,
 		/// To ensure approval is pending
-		TaskInProgress,
+		MilestoneInProgress,
 		/// To ensure publisher is the one disapproving
 		UnauthorisedToDisapprove,
 		/// To ensure if the juror hasn't already voted
@@ -492,8 +483,6 @@ pub mod pallet {
 		ProjectDoesNotExist,
 		/// To ensure that project does not have more than 5 milestones
 		MilestoneLimitReached,
-		/// To ensure that project has atleast 1 milestone
-		MilestoneRequired,
 		/// To ensure the publisher is making the transaction
 		Unauthorised,
 		/// The project should be ready before adding to the marketplace
@@ -653,8 +642,8 @@ pub mod pallet {
 									}else{
 										match vector_of_milestones[milestone_number as usize].status {
 											Status::Open => res = Err(<Error<T>>::MilestoneJustOpened),
-											Status::InProgress => res = Err(<Error<T>>::TaskInProgress),
-											Status::Completed => res = Err(<Error<T>>::TaskIsNotOpen),
+											Status::InProgress => res = Err(<Error<T>>::MilestoneInProgress),
+											Status::Completed => res = Err(<Error<T>>::MilestoneNotOpen),
 											Status::DisputeRaised => res = Err(<Error<T>>::DisputeAlreadyRaised),
 											Status::VotingPeriod => res = Err(<Error<T>>::DisputeAlreadyRaised),
 											_ => {
@@ -725,7 +714,7 @@ pub mod pallet {
 													if vector_of_milestones[milestone_number as usize].worker_id != Some(sender) {
 														res = Err(<Error<T>>::Unauthorised);
 													}else if vector_of_milestones[milestone_number as usize].status != Status::CustomerRatingPending{
-														res = Err(<Error<T>>::TaskIsNotPendingRating);
+														res = Err(<Error<T>>::MilestoneNotPendingRating);
 													}
 												}
 											}
@@ -785,7 +774,7 @@ pub mod pallet {
 													Reason::DisapproveTask
 												));
 											},
-											_ => res = Err(<Error<T>>::TaskIsNotPendingApproval)
+											_ => res = Err(<Error<T>>::MilestoneNotPendingApproval)
 										}
 									}
 								},
@@ -832,8 +821,8 @@ pub mod pallet {
 														if dispute.potential_jurors.contains(&sender) {
 															if dispute.final_jurors.len() >= 2 {
 																res = Err(<Error<T>>::CannotAddMoreJurors);
-																// call adjourn court here
-																// Self::adjourn_court();
+															}else if dispute.final_jurors.contains_key(&sender){
+																res = Err(<Error<T>>::JurorHasVoted);
 															}else{
 																let juror_details = JurorDecisionDetails {
 																	voted_for: Some(voted_for.clone()),
@@ -1044,6 +1033,7 @@ pub mod pallet {
 				}
 				res
 			})?;
+			ensure!(T::Currency::free_balance(&sender) > milestone_cost, <Error<T>>::NotEnoughBalanceToBid);
 			let account = Self::accounts(sender.clone());
 			let milestone_key = T::Hashing::hash_of(&milestone_id);
 			<BidderList<T>>::mutate(&milestone_key, |bidder_vector| { // bid vector
@@ -1219,7 +1209,7 @@ pub mod pallet {
 										res = Err(<Error<T>>::InvalidMilestoneId);
 									}else{
 										if milestone_vector[milestone_number as usize].status != Status::PendingApproval {
-											res = Err(<Error<T>>::TaskIsNotPendingApproval); // create an error for this later
+											res = Err(<Error<T>>::MilestoneNotPendingApproval); 
 										}else{
 											milestone_vector[milestone_number as usize].status = Status::CustomerRatingPending;
 											milestone_vector[milestone_number as usize].final_worker_rating = Some(rating_for_the_worker);
@@ -1266,7 +1256,7 @@ pub mod pallet {
 										res = Err(<Error<T>>::InvalidMilestoneId);
 									}else{
 										if vector_of_milestones[milestone_number as usize].status != Status::CustomerRatingPending {
-											res = Err(<Error<T>>::TaskIsNotPendingRating);
+											res = Err(<Error<T>>::MilestoneNotPendingRating);
 										}else{
 											if vector_of_milestones[milestone_number as usize].worker_id.clone().unwrap() != sender {
 												res = Err(<Error<T>>::UnauthorisedToProvideCustomerRating);
@@ -1306,9 +1296,9 @@ pub mod pallet {
 				match option_project {
 					Some(project) => {
 						if project.publisher != sender {
-							res = Err(<Error<T>>::UnauthorisedToApprove); // perhaps create an error for this later
+							res = Err(<Error<T>>::Unauthorised); 
 						}else if project.status != ProjectStatus::Open {
-							res = Err(<Error<T>>::ProjectNotOpenForBidding); // create an error for this later
+							res = Err(<Error<T>>::ProjectNotOpen); 
 						}else{
 							match &mut project.milestones {
 								Some(vector_of_milestones) => {
@@ -1657,11 +1647,10 @@ pub mod pallet {
 		}
 
 		pub fn collect_cases(block_number: BlockNumberOf<T>) {
-			Self::deposit_event(Event::CollectCasesCalled);
 			// Getting hearings vector from storage
 			let mut hearings = Self::get_hearings();
 			// Only retain those hearings with case ending period >= current block number
-			hearings.retain(|x| x.total_case_period >= block_number && x.is_active); // this
+			hearings.retain(|x| x.total_case_period >= block_number || x.is_active); // this
 			// ---------- Validating jury acceptance period and total case period
 			for hearing in hearings.iter_mut() {
 				// For stopping unlimited court reinitiations
@@ -1897,6 +1886,21 @@ pub mod pallet {
 				None => res = None
 			}
 			res
+		}
+
+		//This is for testing only
+		pub fn get_milestone_helper() -> MilestoneHelper<BalanceOf<T>>{
+			let some_cost : BalanceOf<T> = 100000u32.saturated_into();
+		    let mut tags = Vec::new();
+			let mut publisher_attachments = Vec::new();
+		    tags.push(TaskTypeTags::WebDevelopment);
+			publisher_attachments.push(b"http://aws/publisher.png".to_vec());
+			MilestoneHelper{
+				name: b"milestone".to_vec(),
+				cost: some_cost,
+				tags: tags,
+				publisher_attachments: publisher_attachments
+			}
 		}
 	}
 

@@ -1,4 +1,4 @@
-# Dot Marketplace v2
+# Dot Marketplace v3
 
 - **Status:** Open
 - **Project Name:** Dot Marketplace
@@ -10,7 +10,7 @@
 
 ### **Overview**
 
-This is phase 2 of Dot Marketplace, which is a general-purpose decentralized marketplace created as a Substrate pallet.
+This is phase 3 of Dot Marketplace, which is a general-purpose decentralized marketplace created as a Substrate pallet.
 - Here's a link to the [approved grant proposal for the first phase.](https://github.com/w3f/Grants-Program/blob/master/applications/dot_marketplace.md)
 
 - Dot Marketplace can be used by any decentralized project to float tasks and invite their community members to execute them for a reward. Its POC was developed during the Polkadot India Buildathon (2021).
