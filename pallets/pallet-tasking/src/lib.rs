@@ -140,6 +140,7 @@ pub mod pallet {
 		jury_acceptance_period: BlockNumber,
 		total_case_period: BlockNumber,
 		sudo_juror: Option<AccountId>,
+		trial_number: u8,
 	}
 
 	#[derive(Encode, Decode, Default, Debug, PartialEq, Clone, Eq, TypeInfo)]
@@ -1160,7 +1161,8 @@ pub mod pallet {
 				avg_publisher_rating: None,
 				jury_acceptance_period: case_period.0,
 				total_case_period: case_period.1,
-				sudo_juror: None
+				sudo_juror: None,
+				trial_number: 1,
 			};
 			// Updating task details structure
 			task_details.dispute = Some(dispute);
@@ -1194,6 +1196,7 @@ pub mod pallet {
 						hearing.jury_acceptance_period += 5u128.saturated_into();
 						hearing.total_case_period += 5u128.saturated_into();
 						hearing.trial_number += 1;
+						dispute_details.trial_number += 1;
 						task_details.status = Status::DisputeRaised;
 						dispute_details.jury_acceptance_period = hearing.jury_acceptance_period.clone();
 						dispute_details.total_case_period = hearing.total_case_period.clone();
@@ -1214,6 +1217,7 @@ pub mod pallet {
 						hearing.jury_acceptance_period += 5u128.saturated_into();
 						hearing.total_case_period += 5u128.saturated_into();
 						hearing.trial_number += 1;
+						dispute_details.trial_number += 1;
 						task_details.status = Status::DisputeRaised;
 						dispute_details.jury_acceptance_period = hearing.jury_acceptance_period.clone();
 						dispute_details.total_case_period = hearing.total_case_period.clone();
@@ -1227,13 +1231,14 @@ pub mod pallet {
 					} else {
 
 						// * Adjourn court 
-						let is_active = Self::adjourn_court(hearing.task_id).unwrap();
+						let is_active = Self::adjourn_court(hearing.task_id).unwrap();		
 						if !is_active {
 							dispute_details.sudo_juror = Some(Self::pick_sudo_juror(task_details.publisher.clone(), task_details.worker_id.clone().unwrap()));
-							task_details.dispute = Some(dispute_details);
-							hearing.is_active = false;
+							task_details.dispute = Some(dispute_details);							
 							<TaskStorage<T>>::insert(&hearing.task_id, task_details);
 						}
+						// Ensure is_active is false irrespective because case is passed to sudo juror
+						hearing.is_active = false;
 					}
 				}
 			}
