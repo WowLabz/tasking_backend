@@ -1920,7 +1920,7 @@ pub mod pallet {
 
 		//This is for testing only
 		pub fn get_milestone_helper() -> MilestoneHelper<BalanceOf<T>>{
-			let some_cost : BalanceOf<T> = 100000u32.saturated_into();
+			let some_cost : BalanceOf<T> = 1000u32.saturated_into();
 		    let mut tags = Vec::new();
 			let mut publisher_attachments = Vec::new();
 		    tags.push(TaskTypeTags::WebDevelopment);
