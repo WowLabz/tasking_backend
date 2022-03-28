@@ -81,12 +81,14 @@ impl system::Config for Test {
 
 parameter_types! {
 	pub const MyPalletId: PalletId = PalletId(*b"acescrow");
+    pub const MaxMilestoneLimit: u8 = 5;
 }
 
 impl pallet_tasking::Config for Test {
     type Event = Event;
     type Currency = Balances;
     type PalletId = MyPalletId;
+    type MaxMilestoneLimit = MaxMilestoneLimit;
 }
 
 // Implementing the ExtBuilder to initialize balances 

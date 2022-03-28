@@ -1,4 +1,4 @@
-# Dot Marketplace v2
+# Dot Marketplace v3
 
 - **Status:** Open
 - **Project Name:** Dot Marketplace
@@ -10,7 +10,7 @@
 
 ### **Overview**
 
-This is phase 2 of Dot Marketplace, which is a general-purpose decentralized marketplace created as a Substrate pallet.
+This is phase 3 of Dot Marketplace, which is a general-purpose decentralized marketplace created as a Substrate pallet.
 - Here's a link to the [approved grant proposal for the first phase.](https://github.com/w3f/Grants-Program/blob/master/applications/dot_marketplace.md)
 
 - Dot Marketplace can be used by any decentralized project to float tasks and invite their community members to execute them for a reward. Its POC was developed during the Polkadot India Buildathon (2021).
@@ -19,22 +19,19 @@ This is phase 2 of Dot Marketplace, which is a general-purpose decentralized mar
 
 ### **Project Details**
 
-The current scope of work involves implementing a **decentralized court system** to resolve disputes in the marketplace and a **chat feature** between two users.
+The current scope of work involves **milestone based submissions** in which a project is divided into multiple configurable milestones(min 1 and max 5) to allow parallel or sequential execution.
 
-- The court is a functionality that delivers unbiased decisions and is driven by a jury.
-- The jury is the participants already present on the chain
-- The jury is selected based on some criteria
-- The potential jurors are collected from the chain based on their past ratings and whether they have the expertise of the task in question
-- Then the final jurors can nominate themselves to be part of the jury for a specific job after accepting the proposal
-- All court cases are time-bound and are given 3 days (43,000 slots) in total
-- The 3 days are divided into 2 parts:
-    - Jury acceptance period (14,400 slots) - This is the period for the potential jurors to accept the jury duty
-    - Voting period (28,800 slots) - This is the time for the jurors to cast their vote. One juror gets only one vote which can be in favor of the customer or service provider (worker)
-- After concluding, all the jurors who participated in the case get a commission, which is based on the total cost of the entire task.
-- In case of a tie or if no juror votes, the voting is carried out by the super juror, who will cast a vote based on the work submitted.
-- A user can call the court on the unsatisfactory rating provided by either the customer or the worker.
+- This version of the marketplace handles the project by breaking it into several milestones
+- Each project must have atleast one milestone and can have maximum of five milestones
+- Each milestone has its own independent bidding system where multiple workers can place their bids
+- The publisher can select a bid as per the requirement and ratings of the worker
+- A worker can bid for multiple milestones of a single project based on their expertise
+- Since all milestones are independent they can be completed and approved by the publisher irrespective of the overall project status
+- Based on the requirements a publisher can add more milestones to a project even after it is pushed to the market provided total number of milestones does not exceed 5
+- The [decentralised court](https://github.com/WowLabz/dot-marketplace-v2) implemented in phase 2 is functional for each milestone of a project
 
-The flow of tasking pallet with decentralized court implementation
+
+The flow of tasking pallet with milestone based submission 
 
 
 ![Tasking-Court-Flow4 drawio](https://user-images.githubusercontent.com/58659064/154290137-741e7fb6-5aea-40dc-8b3b-71304e08ba79.svg)
@@ -68,11 +65,6 @@ pallets
 │       ├── lib.rs
 │       ├── mock.rs
 │       └── tests.rs
-├── pallet-court
-│   ├── Cargo.toml
-│   ├── README.md
-│   └── src
-│       └── lib.rs
 └── pallet-tasking
     ├── Cargo.toml
     ├── README.md
@@ -80,6 +72,7 @@ pallets
         ├── benchmarking.rs
         ├── lib.rs
         ├── mock.rs
+        ├── utils.rs 
         └── tests.rs
 runtime
 ├── build.rs
@@ -95,6 +88,7 @@ The current focus is to enhance the existing Substrate pallet and allied code ba
 We believe this work could be helpful for any Polkadot para-chains/ para-threads interested in including a marketplace with an on-chain dispute resolution mechanism.
 
 - Almost all para-chains/ para-threads would find motivation in encouraging their community members to contribute meaningfully to their roadmap. This can be achieved by utilizing a marketplace like Dot Marketplace where technical, marketing or governance-centric tasks can be published as bounties. And community members are invited to bid for and execute them.
+- Milestone based submission will enhance the functionality of the marketplace and provide a more comprehensive user experience for both the worker and the publisher.
 - The on chain court will act as an dispute resolution mechanism between users involved in a task. A set of community members meeting a certain criteria get to be a part of the jury for the dispute and cast votes, based on which a decision is reached.
 - To facilitate easier communication between a customer and a worker, a one-to-one chat feature is created as well.
 
@@ -108,6 +102,7 @@ We believe this work could be helpful for any Polkadot para-chains/ para-threads
 - [**Loakesh Indiran**](https://www.linkedin.com/in/loakesh-indiran-8a2282140) [ Full Stack Developer ]
 - [**Tejas Gaware**](http://www.linkedin.com/in/tejas-vijay-1430a3190) [ Backend Developer ]
 - [**Praneeth Ratnagiri**](https://www.linkedin.com/in/praneeth-ratnagiri-772a43174/) [ Backend Developer ]
+- [**Rajat Petwal**](https://www.linkedin.com/in/rajat-petwal-947440197/) [ Backend Developer ]
 
 ### **Contact**
 
@@ -133,6 +128,7 @@ A list of centralized apps published can be found [here](https://www.wowlabz.co
 - [https://github.com/WowLabz/tasking_backend](https://github.com/WowLabz/tasking_backend)
 - [https://github.com/WowLabz/tasking_frontend](https://github.com/WowLabz/tasking_frontend)
 - [https://github.com/WowLabz/yoda_creator_economy_node](https://github.com/WowLabz/yoda_creator_economy_node)
+- [https://github.com/WowLabz/dot-marketplace-v2](https://github.com/WowLabz/dot-marketplace-v2)
 
 ## **Development Status 📖**
 
@@ -145,19 +141,19 @@ Dot Marketplace POC was conceptualized and developed during the Polkadot India h
 
 ****Overview****
 
-* **Total Estimated Duration:** 5 Weeks
+* **Total Estimated Duration:** 4 Weeks
 * **Full-Time Equivalent (FTE):**  3.36
 * **Total Costs:** 40,275 USD
 
 
 ### **Milestone 1**
 
-* **Estimated duration:** 1 week
+* **Estimated duration:** 1.5 weeks
 * **FTE:**  2
 * **PTE:**  2
 * **Costs:**  8,325 USD  
 
-The main deiverable for this milestone will be to migrate the existing application to substrate frame v2 and include the chat feature for communication between a customer and worker.
+The main deiverable for this milestone is to facilitate creation of a project which can accomodate multiple milestones that may or may not be dependent on each other.
 
 | Sr no. | Deliverable | Description |
 | --- | --- | --- |
@@ -165,19 +161,20 @@ The main deiverable for this milestone will be to migrate the existing applicati
 | 0b | Documentation | We will provide both inline documentation of the code and a tutorial that explains how a user can use DOT Marketplace and understand the flow of tasking pallet. |
 | 0c | Testing Guide | Functions will be covered by unit tests, the documentation will describe how to run these tests. We will also provide scripts to help deploy, run and test the build. |
 | 0d | Docker Image | Docker image of the build |
-| 1 | Migration from frame v1 to frame v2 | The existing application backend will be migrated to frme v2 to account for the new features provided by the framework |
-| 2 | User Chat | Chat functionality to be exposed and consumed between two users to ease communication |
-|  |  |  |
+| 1 | Project Structure | The existing application only allow one task per project. Phase 3 modifies it to allow a publisher to add multiple tasks under the same project |
+| 2 | Multiple Bidders| Multiple bidders can now bid for the same task and the publisher can choose one worker based on the bidder ratings |
+| 3 | Escrow  | Multiple sub accounts are created for a project to account for each milestone and make it easier to store all funds for transfer/exchange. |
+
 
 ### **Milestone 2**
 
-* **Estimated duration:** 2 weeks
+* **Estimated duration:** 2.5 weeks
 * **FTE:**  2
 * **PTE:**  2
 * **Costs:**  15,900 USD  
 
 
-In continuation to previous work, this milestone involves creation of a on chain decentralized court to handle dispute resolution. Being a juror is one of the user incentives that can be achieved thanks to the rating module mentioned in the first phase of dot marketplace.
+In continuation to previous work, this milestone involves creation of a on chain decentralized court to handle dispute resolution. Each milestone can go to dispute in the same slope as mentioned in the second phase of dot marketplace. The other milestones in a project are not affected by the dispute of one of the milestones.
 
 | Sr no. | Deliverable | Description |
 | --- | --- | --- |
@@ -186,34 +183,15 @@ In continuation to previous work, this milestone involves creation of a on chain
 | 0c | Testing Guide | Functions will be covered by unit tests, the documentation will describe how to run these tests. We will also provide scripts to help deploy, run and test the build. |
 | 0d | Docker Image | Docker image of the build |
 | 1 | Decentralized Court Module | An on chain decentralized court for dispute resolution within the ecosystem. |
-| 1a | Disapprove Task  | In the case of a customer not being satisfied by the work submitted by the service provider (worker). A set of jurors is formed (court-summon) to resolve the dispute and pass a verdict. |
+| 1a | Disapprove Milestone  | In the case of a customer not being satisfied by the work submitted by the service provider (worker). A set of jurors is formed (court-summon) to resolve the dispute and pass a verdict. |
 | 1b | Disapprove Rating | The customer or the service provider, once they have received their rating for a particular task and are not satisfied by it. |
 | 1c | General Dispute | A general dispute function for cases that do not fall under the categories mentioned in 1a and 1b. |
-| 2 | Jury | The chain specification of the testnet is modified to include more users with necessary specifications to be a part of the jury. The specifications include having average user rating above a certain threshold and being an expert in the field of the task. A list of potential jurors are notified and they have a period of one day to accept jury duty, with the maximum number of juors capped to 5 per dispute. |
-| 3 | Voting module | Each juror can review the dispute and cast their vote which also includes their rating for both the customer and the worker. After a period of two days all the juror votes are counted and a winner is identified. |
-| 4 | Escrow  | Single account for storing all the funds for transfer/exchange. Account for creating task, bidding for the task, transferring juror fees (if the court is summoned), transferring winner fees. |
-| 5 | Scheduler | Custom event scheduler built based on block number to facilitate the waiting periods for jury acceptance and juror voting. |
+| 2 | Voting module | Each juror can review the dispute and cast their vote which also includes their rating for both the customer and the worker. After a period of two days all the juror votes are counted and a winner is identified. |
+| 3 | Frontend App  | Supporting frontend UI to test the aforementioned functionality. |
+| 4 | Website  | Dedicated one page website for Dot Marketplace. |
+| 5 | Article | Website article showing motivation behind phase 3 of dot marketplace and how to make the best use of it. |
 
-### **Milestone 3**
 
-* **Estimated duration:** 2 weeks
-* **FTE:**  2
-* **PTE:**  2
-* **Costs:**  16,050 USD    
-
-Dot Marketplace will also include frontend UI including the court and chat functionality built on top of the `substrate-front-end-template`
-
-| Sr no. | Deliverable | Description |
-| --- | --- | --- |
-| 0a | License | Apache 2.0 |
-| 0b | Documentation | We will provide both inline documentation of the code and a tutorial that explains how a user can use DOT Marketplace and understand the flow of tasking pallet. |
-| 0c | Testing Guide | Functions will be covered by unit tests, the documentation will describe how to run these tests. We will also provide scripts to help deploy, run and test the build. |
-| 0d | Docker Image | Docker image of the build |
-| 1 | Frontend App | Supporting frontend UI to test the aforementioned functionality |
-| 1a | Chat  | UI and supporting functionality fro the user chat feature |
-| 1b  | Court | UI and supporting functionality for the decentralized court module |
-| 2 | Website | Dedicated one page website for Dot Marketplace |
-| 3 | Article | Website article sharing the motivation behind phase 2 of Dot Marketplace and how to make best use of it |
 
 ### **Additional Project Details**
 
@@ -225,7 +203,6 @@ Future releases of the Dot Marketplace include:
 
 | Phase | Feature | Description |
 | --- | --- | --- |
-| 3 | Milestone based submissions | Making provisions to breakdown a project into multiple configurable milestones to allow parallel or sequential execution |
 | 4 | Decentralized Storage | Integration with IPFS or another decentralized storage platform |
 
 ###
