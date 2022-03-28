@@ -34,7 +34,8 @@ The current scope of work involves **milestone based submissions** in which a pr
 The flow of tasking pallet with milestone based submission 
 
 
-![Tasking-Court-Flow4 drawio](https://user-images.githubusercontent.com/58659064/154290137-741e7fb6-5aea-40dc-8b3b-71304e08ba79.svg)
+![Tasking-Court-Flow4 drawio](https://user-images.githubusercontent.com/43837760/160392143-5ce00b53-3bb6-4c87-8fb9-d7fe8c2f0ca1.jpeg)
+
 
 
 Dot Marketplace is being built as a Substrate pallet. It would include boilerplate code that para-chain teams can customize as per their requirements. We believe this project has the potential to transform community participation, engagement, and governance in decentralized projects.
@@ -142,16 +143,16 @@ Dot Marketplace POC was conceptualized and developed during the Polkadot India h
 ****Overview****
 
 * **Total Estimated Duration:** 4 Weeks
-* **Full-Time Equivalent (FTE):**  3.36
-* **Total Costs:** 40,275 USD
+* **Full-Time Equivalent (FTE):**  
+* **Total Costs:**  USD
 
 
 ### **Milestone 1**
 
 * **Estimated duration:** 1.5 weeks
-* **FTE:**  2
-* **PTE:**  2
-* **Costs:**  8,325 USD  
+* **FTE:**  
+* **PTE:**  
+* **Costs:**   USD  
 
 The main deiverable for this milestone is to facilitate creation of a project which can accomodate multiple milestones that may or may not be dependent on each other.
 
@@ -169,9 +170,9 @@ The main deiverable for this milestone is to facilitate creation of a project wh
 ### **Milestone 2**
 
 * **Estimated duration:** 2.5 weeks
-* **FTE:**  2
-* **PTE:**  2
-* **Costs:**  15,900 USD  
+* **FTE:**  
+* **PTE:**  
+* **Costs:**  USD  
 
 
 In continuation to previous work, this milestone involves creation of a on chain decentralized court to handle dispute resolution. Each milestone can go to dispute in the same slope as mentioned in the second phase of dot marketplace. The other milestones in a project are not affected by the dispute of one of the milestones.
