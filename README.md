@@ -164,7 +164,7 @@ The main deiverable for this milestone is to facilitate creation of a project wh
 | 1 | Project Structure | The existing application only allow one task per project. Phase 3 modifies it to allow a publisher to add multiple tasks under the same project |
 | 2 | Multiple Bidders| Multiple bidders can now bid for the same task and the publisher can choose one worker based on the bidder ratings |
 | 3 | Escrow  | Multiple sub accounts are created for a project to account for each milestone and make it easier to store all funds for transfer/exchange. |
-|  |  |  |
+
 
 ### **Milestone 2**
 
