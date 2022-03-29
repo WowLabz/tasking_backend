@@ -265,6 +265,7 @@ pub mod pallet {
 			let avg_rating = Some(Self::get_list_average(all_ratings.clone()));
 			account_details.avg_rating = avg_rating;
 			account_details.ratings = all_ratings.clone();
+			
 			<AccountMap<T>>::insert(account_id, account_details);
 		}
 

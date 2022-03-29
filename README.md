@@ -149,9 +149,9 @@ Dot Marketplace POC was conceptualized and developed during the Polkadot India h
 ### **Milestone 1**
 
 * **Estimated duration:** 1.5 weeks
-* **FTE:**  2
-* **PTE:**  2
-* **Costs:**  8,325 USD  
+* **FTE:**  
+* **PTE:**  
+* **Costs:**  
 
 The main deiverable for this milestone is to facilitate creation of a project which can accomodate multiple milestones that may or may not be dependent on each other.
 
@@ -169,9 +169,9 @@ The main deiverable for this milestone is to facilitate creation of a project wh
 ### **Milestone 2**
 
 * **Estimated duration:** 2.5 weeks
-* **FTE:**  2
-* **PTE:**  2
-* **Costs:**  15,900 USD  
+* **FTE:**  
+* **PTE:**  
+* **Costs:**    
 
 
 In continuation to previous work, this milestone involves creation of a on chain decentralized court to handle dispute resolution. Each milestone can go to dispute in the same slope as mentioned in the second phase of dot marketplace. The other milestones in a project are not affected by the dispute of one of the milestones.
