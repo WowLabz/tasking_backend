@@ -11,24 +11,25 @@
 ### **Overview**
 
 This is phase 3 of Dot Marketplace, which is a general-purpose decentralized marketplace created as a Substrate pallet.
-- Here's a link to the [approved grant proposal for the first phase.](https://github.com/w3f/Grants-Program/blob/master/applications/dot_marketplace.md)
+- Here's a link to the [approved grant proposal for the first phase](https://github.com/w3f/Grants-Program/blob/master/applications/dot_marketplace.md) and [the second phase](https://github.com/w3f/Grants-Program/blob/master/applications/dot_marketplace-phase2.md)
 
-- Dot Marketplace can be used by any decentralized project to float tasks and invite their community members to execute them for a reward. Its POC was developed during the Polkadot India Buildathon (2021).
-- It would be directly integrated into Polkadot JS Apps, where such marketplaces could create bounties and tasks that community members could fulfill.
+- Dot Marketplace can be used by any decentralized project to float projects and invite their community members to execute them for a reward. Its POC was developed during the Polkadot India Buildathon (2021).
+- It would be directly integrated into Polkadot JS Apps, where such marketplaces could create bounties and projects that community members could fulfill.
 - The inspiration for Dot Marketplace emerged from our own needs while building Yoda - a protocol that facilitates decentralized app development leveraging open data. Dot Marketplace would be used to create data, services, and app marketplaces on Yoda, which would motivate us to maintain this project in the long run.
 
 ### **Project Details**
 
-The current scope of work involves **milestone based submissions** in which a project is divided into multiple configurable milestones(min 1 and max 5) to allow parallel or sequential execution.
+The current scope of work involves **milestone-based submissions** in which a project is divided into multiple configurable milestones(min 1 and max 5) to allow parallel or sequential execution.
 
 - This version of the marketplace handles the project by breaking it into several milestones
-- Each project must have atleast one milestone and can have maximum of five milestones
-- Each milestone has its own independent bidding system where multiple workers can place their bids
-- The publisher can select a bid as per the requirement and ratings of the worker
-- A worker can bid for multiple milestones of a single project based on their expertise
-- Since all milestones are independent they can be completed and approved by the publisher irrespective of the overall project status
-- Based on the requirements a publisher can add more milestones to a project even after it is pushed to the market provided total number of milestones does not exceed 5
-- The [decentralised court](https://github.com/WowLabz/dot-marketplace-v2) implemented in phase 2 is functional for each milestone of a project
+- Each project must have at least one milestone and can have a maximum of five milestones (configurable)
+- Each milestone has its independent bidding system where multiple workers can place their bids
+- The publisher can select a bid as per the requirement and ratings of the worker and other criteria that can be added to a user account.
+- A worker can bid for multiple milestones of a single project based on their expertise.
+- 
+- Since all milestones are independent, they can be completed and approved by the publisher irrespective of the overall project status.
+- Based on the requirements, a publisher can add more milestones to a project even after it is pushed to the market, provided the total number of milestones does not exceed 5 (configurable)
+- The [decentralized court](https://github.com/WowLabz/dot-marketplace-v2) implemented in phase 2 is functional for each milestone of a project
 
 
 The flow of tasking pallet with milestone based submission 
@@ -38,7 +39,7 @@ The flow of tasking pallet with milestone based submission
 
 
 
-Dot Marketplace is being built as a Substrate pallet. It would include boilerplate code that para-chain teams can customize as per their requirements. We believe this project has the potential to transform community participation, engagement, and governance in decentralized projects.
+Dot Marketplace is being built as a Substrate pallet. It would include boilerplate code that teams can customize as per their requirements. We believe this project has the potential to transform community participation, engagement, and governance in decentralized projects.
 
 ### **Repository Hierarchy**
 
@@ -88,10 +89,10 @@ The current focus is to enhance the existing Substrate pallet and allied code ba
 
 We believe this work could be helpful for any Polkadot para-chains/ para-threads interested in including a marketplace with an on-chain dispute resolution mechanism.
 
-- Almost all para-chains/ para-threads would find motivation in encouraging their community members to contribute meaningfully to their roadmap. This can be achieved by utilizing a marketplace like Dot Marketplace where technical, marketing or governance-centric tasks can be published as bounties. And community members are invited to bid for and execute them.
-- Milestone based submission will enhance the functionality of the marketplace and provide a more comprehensive user experience for both the worker and the publisher.
-- The on chain court will act as an dispute resolution mechanism between users involved in a task. A set of community members meeting a certain criteria get to be a part of the jury for the dispute and cast votes, based on which a decision is reached.
-- To facilitate easier communication between a customer and a worker, a one-to-one chat feature is created as well.
+- Almost all para-chains/ para-threads would find motivation in encouraging their community members to contribute meaningfully to their roadmap. This can be achieved by utilizing a marketplace like Dot Marketplace, where technical, marketing, or governance-centric projects can be published as bounties. And community members are invited to bid for and execute them.
+- A milestone-based submission will enhance the functionality of the marketplace and provide a more comprehensive user experience for both the worker and the publisher.
+- The on-chain court will act as a dispute resolution mechanism between users involved in a project. A set of community members meeting specific criteria get to be a part of the jury for the dispute and cast votes, based on which a decision is reached.
+- To facilitate easier communication between a customer and a worker, a one-to-one chat feature is also created.
 
 ## **Team 👥**
 
@@ -133,9 +134,9 @@ A list of centralized apps published can be found [here](https://www.wowlabz.co
 
 ## **Development Status 📖**
 
-Dot Marketplace POC was conceptualized and developed during the Polkadot India hackathon. The roadmap listed below comprises new features that would help take the POC to a minimum viable product (MVP).  The first stage of the project involved creating user registration and marketplace based on a bidding system.
+Dot Marketplace POC was conceptualized and developed during the Polkadot India hackathon. The roadmap listed below comprises new features that would help take the POC to a minimum viable product (MVP). The first stage of the project involved creating a user registration and marketplace based on a bidding system.
 
-- Here's a link to the [approved grant proposal for the first phase.](https://github.com/w3f/Grants-Program/blob/master/applications/dot_marketplace.md)
+- Here's a link to the [approved grant proposal for the first phase](https://github.com/w3f/Grants-Program/blob/master/applications/dot_marketplace.md) and [second phase](https://github.com/w3f/Grants-Program/blob/master/applications/dot_marketplace-phase2.md)
 - We are in touch with Marcin and Raul from the Web 3 Grants and Treasuries team, respectively.
 
 ## **Development Roadmap** 🔩
@@ -143,18 +144,18 @@ Dot Marketplace POC was conceptualized and developed during the Polkadot India h
 ****Overview****
 
 * **Total Estimated Duration:** 4 Weeks
-* **Full-Time Equivalent (FTE):**  
+* **Full-Time Equivalent (FTE): 1.5**  
 * **Total Costs:**  USD
 
 
 ### **Milestone 1**
 
 * **Estimated duration:** 1.5 weeks
-* **FTE:**  
-* **PTE:**  
+* **FTE: 1**  
+* **PTE: 2**  
 * **Costs:**   USD  
 
-The main deiverable for this milestone is to facilitate creation of a project which can accomodate multiple milestones that may or may not be dependent on each other.
+The main deliverable for this milestone is to facilitate the creation of a project that can accommodate multiple milestones that may or may not depend on each other.
 
 | Sr no. | Deliverable | Description |
 | --- | --- | --- |
@@ -162,20 +163,20 @@ The main deiverable for this milestone is to facilitate creation of a project wh
 | 0b | Documentation | We will provide both inline documentation of the code and a tutorial that explains how a user can use DOT Marketplace and understand the flow of tasking pallet. |
 | 0c | Testing Guide | Functions will be covered by unit tests, the documentation will describe how to run these tests. We will also provide scripts to help deploy, run and test the build. |
 | 0d | Docker Image | Docker image of the build |
-| 1 | Project Structure | The existing application only allow one task per project. Phase 3 modifies it to allow a publisher to add multiple tasks under the same project |
-| 2 | Multiple Bidders| Multiple bidders can now bid for the same task and the publisher can choose one worker based on the bidder ratings |
-| 3 | Escrow  | Multiple sub accounts are created for a project to account for each milestone and make it easier to store all funds for transfer/exchange. |
+| 1 | Project Structure | The existing application only allows one milestone per project. Phase 3 modifies it to allow a publisher to add multiple milestones under the same project |
+| 2 | Multiple Bidders| Multiple bidders can now bid for the same milestone, and the publisher can choose one worker based on the bidder ratings |
+| 3 | Escrow  | Multiple subaccounts are created for a project to account for each milestone and make it easier to store all funds for transfer/exchange. |
 
 
 ### **Milestone 2**
 
 * **Estimated duration:** 2.5 weeks
-* **FTE:**  
-* **PTE:**  
+* **FTE:** 2  
+* **PTE:** 0
 * **Costs:**  USD  
 
 
-In continuation to previous work, this milestone involves creation of a on chain decentralized court to handle dispute resolution. Each milestone can go to dispute in the same slope as mentioned in the second phase of dot marketplace. The other milestones in a project are not affected by the dispute of one of the milestones.
+In continuation to previous work, this milestone involves the creation of an on-chain decentralized court to handle dispute resolution. Each milestone can go into a dispute on the same scope as mentioned in the second phase of dot marketplace. The other milestones in a project are not affected by the dispute of one of the milestones.
 
 | Sr no. | Deliverable | Description |
 | --- | --- | --- |
@@ -183,13 +184,13 @@ In continuation to previous work, this milestone involves creation of a on chain
 | 0b | Documentation | We will provide both inline documentation of the code and a tutorial that explains how a user can use DOT Marketplace and understand the flow of tasking pallet. |
 | 0c | Testing Guide | Functions will be covered by unit tests, the documentation will describe how to run these tests. We will also provide scripts to help deploy, run and test the build. |
 | 0d | Docker Image | Docker image of the build |
-| 1 | Decentralized Court Module | An on chain decentralized court for dispute resolution within the ecosystem. |
-| 1a | Disapprove Milestone  | In the case of a customer not being satisfied by the work submitted by the service provider (worker). A set of jurors is formed (court-summon) to resolve the dispute and pass a verdict. |
-| 1b | Disapprove Rating | The customer or the service provider, once they have received their rating for a particular task and are not satisfied by it. |
+| 1 | Decentralized Court Module | An on-chain decentralized court for dispute resolution within the ecosystem. |
+| 1a | Disapprove Milestone  | In the case of a customer not being satisfied with the work submitted by the service provider (worker). A set of jurors is shortlisted (court summon) to resolve the dispute and pass a verdict. |
+| 1b | Disapprove Rating | The customer or the service provider, once they have received their rating for a particular milestone and are not satisfied with it. |
 | 1c | General Dispute | A general dispute function for cases that do not fall under the categories mentioned in 1a and 1b. |
-| 2 | Voting module | Each juror can review the dispute and cast their vote which also includes their rating for both the customer and the worker. After a period of two days all the juror votes are counted and a winner is identified. |
+| 2 | Voting module | Each juror can review the dispute and cast their vote, which also includes their rating for both the customer and the worker. After two days, all the juror votes are counted, and a winner is identified. |
 | 3 | Frontend App  | Supporting frontend UI to test the aforementioned functionality. |
-| 4 | Website  | Dedicated one page website for Dot Marketplace. |
+| 4 | Website  | Dedicated one-page website for Dot Marketplace. |
 | 5 | Article | Website article showing motivation behind phase 3 of dot marketplace and how to make the best use of it. |
 
 
@@ -197,14 +198,14 @@ In continuation to previous work, this milestone involves creation of a on chain
 ### **Additional Project Details**
 
 * Technology stack being used
-  * Rust, Substrate, React, Python, centralised cloud storage
+  * Rust, Substrate, React, Python, centralized cloud storage
 
 ### **Future Plans** 
 Future releases of the Dot Marketplace include:
 
 | Phase | Feature | Description |
 | --- | --- | --- |
-| 4 | Decentralized Storage | Integration with IPFS or another decentralized storage platform |
+| 4 | Decentralized Storage and Advanced Search| Integration with IPFS or another decentralized storage platform. The Advanced search provides a way to filter projects and milestones based on status (open/in progress/closed) and also based on your tags|
 
 ###
 
