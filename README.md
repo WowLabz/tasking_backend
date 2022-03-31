@@ -26,7 +26,7 @@ The current scope of work involves **milestone-based submissions** in which a pr
 - Each milestone has its independent bidding system where multiple workers can place their bids
 - The publisher can select a bid as per the requirement and ratings of the worker and other criteria that can be added to a user account.
 - A worker can bid for multiple milestones of a single project based on their expertise.
-- 
+- A project reaches completion only if all milestones in the project are completed and approved by the publisher.
 - Since all milestones are independent, they can be completed and approved by the publisher irrespective of the overall project status.
 - Based on the requirements, a publisher can add more milestones to a project even after it is pushed to the market, provided the total number of milestones does not exceed 5 (configurable)
 - The [decentralized court](https://github.com/WowLabz/dot-marketplace-v2) implemented in phase 2 is functional for each milestone of a project
