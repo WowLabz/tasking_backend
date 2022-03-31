@@ -1311,7 +1311,7 @@ pub mod pallet {
 			task_details: TaskDetails<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
 		) -> (BlockNumberOf<T>, BlockNumberOf<T>) {
 			// One era is one day
-			const ONE_ERA: u32 = 5;
+			const ONE_ERA: u32 = 15;
 			// Retrieving complete task details
 			let task_id = task_details.task_id.clone();
 			// Time span for participant to become jurors
