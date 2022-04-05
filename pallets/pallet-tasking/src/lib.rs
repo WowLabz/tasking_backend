@@ -99,9 +99,13 @@ pub mod pallet {
 
 	// a struct for advance search
 	#[derive(Encode, Decode, PartialEq, Eq, Debug, Clone, TypeInfo)]
-	pub struct SearchDetails {
+	pub struct SearchDetails <Balance>{
 		tags: Vec<TaskTypeTags>,
-		status: Status
+		status: Status,
+		minimum_cost: Option<Balance>,
+		maximum_cost: Option<Balance>,
+		minimum_deadline: Option<u8>,
+		maximum_deadline: Option<u8>
 	}
 
 	// a struct for the input of milestones
@@ -1516,7 +1520,7 @@ pub mod pallet {
 		#[pallet::weight(10_000)] // add db weight 
 		pub fn search_milestones(
 			origin: OriginFor<T>,
-			query: SearchDetails
+			query: SearchDetails<BalanceOf<T>>
 		) -> DispatchResult {
 			// function body starts
 
@@ -1530,7 +1534,7 @@ pub mod pallet {
 					None => {},
 					Some(vector_of_milestones) => {
 						for milestone in vector_of_milestones {
-							if Self::compare_status(milestone.clone(), &status) && Self::compare_tags(milestone.clone(), &all_tags) {
+							if Self::compare_status(&milestone, &status) && Self::compare_tags(&milestone, &all_tags) && Self::compare_cost(&milestone, query.minimum_cost, query.maximum_cost) && Self::compare_deadline(&milestone, query.minimum_deadline, query.maximum_deadline) {
 								search_result.push(milestone.clone())
 							}
 						}
@@ -1558,14 +1562,14 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 
 		pub fn compare_status(
-			milestone: Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
+			milestone: &Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
 			status: &Status
 		) -> bool{
 			milestone.status == *status
 		}
 
 		pub fn compare_tags(
-			milestone: Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
+			milestone: &Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
 			all_tags: &Vec<TaskTypeTags>
 		) -> bool {
 			if all_tags.len() == 0 {
@@ -1585,6 +1589,50 @@ pub mod pallet {
 				}
 			}
 			true
+		}
+
+		pub fn compare_deadline(
+			milestone: &Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
+			minimum_deadline: Option<u8>,
+			maximum_deadline: Option<u8>
+		) -> bool {
+			let flag_for_minimum;
+			let flag_for_maximum;
+			match minimum_deadline {
+				Some(deadline) => {
+					flag_for_minimum = milestone.deadline >= deadline;
+				},
+				None => flag_for_minimum = true
+			};
+			match maximum_deadline {
+				Some(deadline) => {
+					flag_for_maximum = milestone.deadline <= deadline;
+				},
+				None => flag_for_maximum = true
+			};
+			flag_for_maximum && flag_for_minimum
+		}
+
+		pub fn compare_cost(
+			milestone: &Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
+			minimum_cost: Option<BalanceOf<T>>,
+			maximum_cost: Option<BalanceOf<T>>
+		) -> bool {
+			let flag_for_minimum;
+			let flag_for_maximum;
+			match minimum_cost {
+				Some(cost) => {
+					flag_for_minimum = milestone.cost >= cost;
+				},
+				None => flag_for_minimum = true
+			};
+			match maximum_cost {
+				Some(cost) => {
+					flag_for_maximum = milestone.cost <= cost;
+				},
+				None => flag_for_maximum = true
+			}
+			flag_for_minimum && flag_for_maximum
 		}
 
 
@@ -1670,7 +1718,7 @@ pub mod pallet {
 						// Total amount excluding court fees
 						remaining_amount = task_cost_converted - court_fee;
 						// Convert remaining amount to u32
-						let mut remaining_amount_converted = remaining_amount as u32;
+						let remaining_amount_converted = remaining_amount as u32;
 						// ---------- Checking if winner is customer or no one
 						if dispute.winner == Some(UserType::Customer) || dispute.winner == None {
 							let remaining_amount_for_customer = remaining_amount / 2;
