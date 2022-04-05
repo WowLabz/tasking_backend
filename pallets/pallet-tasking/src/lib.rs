@@ -97,6 +97,13 @@ pub mod pallet {
 		AgainstWorker,
 	}
 
+	// a struct for advance search
+	#[derive(Encode, Decode, PartialEq, Eq, Debug, Clone, TypeInfo)]
+	pub struct SearchDetails {
+		tags: Vec<TaskTypeTags>,
+		status: Status
+	}
+
 	// a struct for the input of milestones
 	#[derive(Encode, Decode, PartialEq, Eq, Debug, Clone, TypeInfo)]
 	pub struct MilestoneHelper<Balance> {
@@ -356,6 +363,9 @@ pub mod pallet {
 		}
 	}
 
+
+	// *********************** Substrate Storage **********************
+
 	#[pallet::storage]
 	#[pallet::getter(fn get_project_count)]
 	pub type ProjectCount<T> = StorageValue<_, u128, ValueQuery>;
@@ -383,6 +393,16 @@ pub mod pallet {
 	pub(super) type Hearings<T: Config> =
 		StorageValue<_, Vec<Hearing<BlockNumberOf<T>>>, ValueQuery>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn get_search_item)]
+	pub(super) type Searches<T: Config> = StorageMap<_, Blake2_128Concat, u128, Vec<Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>>, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_search_number)]
+	pub(super) type SearchCount<T: Config> = StorageValue<_, u128, ValueQuery>;
+
+
+    // ******************* Substrate Events ******************************
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -425,8 +445,14 @@ pub mod pallet {
 		CourtSummoned(Vec<u8>, UserType, Reason),
 		/// New juror has been added. \[MilestoneId, AccountId]
 		NewJurorAdded(Vec<u8>, T::AccountId),
+		/// Results were found in search. \[SearchNumber, NumberOfResults]
+		SearchSuccessful(u128, u128),
+		/// No results were found in a search.
+		NoResultFound,
 	}
 
+	// ************************* Substrate Errors **************************
+	
 	#[pallet::error]
 	pub enum Error<T> {
 		/// Error names should be descriptive.
@@ -1487,11 +1513,81 @@ pub mod pallet {
 			Ok(())
 		}
 
+		#[pallet::weight(10_000)] // add db weight 
+		pub fn search_milestones(
+			origin: OriginFor<T>,
+			query: SearchDetails
+		) -> DispatchResult {
+			// function body starts
+
+			// authentication
+			let _sender = ensure_signed(origin)?;
+			let all_tags = query.tags;
+			let status = query.status;
+			let mut search_result = Vec::new();
+			for (_, project) in <ProjectStorage<T>>::iter() {
+				match project.milestones {
+					None => {},
+					Some(vector_of_milestones) => {
+						for milestone in vector_of_milestones {
+							if Self::compare_status(milestone.clone(), &status) && Self::compare_tags(milestone.clone(), &all_tags) {
+								search_result.push(milestone.clone())
+							}
+						}
+					}
+				}
+			}
+			if search_result.len() > 0 {
+				let mut search_number = Self::get_search_number();
+				let length = search_result.len() as u128;
+				<Searches<T>>::insert(search_number, search_result);
+				search_number+=1;
+				<SearchCount<T>>::put(search_number);
+				Self::deposit_event(Event::SearchSuccessful(search_number-1, length));
+			}else{
+				Self::deposit_event(Event::NoResultFound);
+			}
+			Ok(())
+			// function body ends
+		}
+
 	}
 
 	// Helper functions
 
 	impl<T: Config> Pallet<T> {
+
+		pub fn compare_status(
+			milestone: Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
+			status: &Status
+		) -> bool{
+			milestone.status == *status
+		}
+
+		pub fn compare_tags(
+			milestone: Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>,
+			all_tags: &Vec<TaskTypeTags>
+		) -> bool {
+			if all_tags.len() == 0 {
+				return true;
+			}
+
+			for tag_to_search in all_tags {
+				let mut value = false;
+				for tag in &milestone.tags {
+					if tag_to_search == tag {
+						value = true;
+						break;
+					}
+				} 
+				if value == false {
+					return false;
+				}
+			}
+			true
+		}
+
+
 		pub fn adjourn_court(
 			publisher_id: T::AccountId,
 			milestone: &mut Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>
