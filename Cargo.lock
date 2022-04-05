@@ -3855,10 +3855,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-court"
-version = "4.0.0-dev"
-
-[[package]]
 name = "pallet-grandpa"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate.git?tag=monthly-2021-12#b6c1c1bcfa5d831bfd1f278064d7af757f9b38f5"

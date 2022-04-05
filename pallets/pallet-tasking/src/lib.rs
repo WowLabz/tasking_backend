@@ -103,6 +103,7 @@ pub mod pallet {
 		name: Vec<u8>,
 		cost: Balance,
 		tags: Vec<TaskTypeTags>,
+		deadline: u8,
 		publisher_attachments: Vec<Vec<u8>>
 	}
 
@@ -144,6 +145,7 @@ pub mod pallet {
 		pub tags: Vec<TaskTypeTags>,
 		pub cost: Balance,
 		pub status: Status,
+		pub deadline: u8,
 		pub worker_id: Option<AccountId>,
 		pub worker_name: Option<Vec<u8>>,
 		pub publisher_attachments: Option<Vec<Vec<u8>>>,
@@ -160,6 +162,7 @@ pub mod pallet {
 			milestone_name: Vec<u8>,
 			tags: Vec<TaskTypeTags>,
 			cost: Balance,
+			deadline: u8,
 			publisher_attachments: Vec<Vec<u8>>,
 		) -> Self {
 			Milestone{
@@ -168,6 +171,7 @@ pub mod pallet {
 				tags: tags,
 				cost: cost,
 				status: Default::default(),
+				deadline: deadline,
 				worker_id: None,
 				worker_name: None,
 				publisher_attachments: Some(publisher_attachments),
@@ -887,12 +891,12 @@ pub mod pallet {
 			<ProjectCount<T>>::set(project_id.clone());
 			let mut project = ProjectDetails::new(project_id.clone(), project_name.clone(), tags, publisher.clone(), publisher_name);
 			let mid = create_milestone_id(project_id, 0);
-			let milestone1: Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>> = Milestone::new(mid, milestone_one.name, milestone_one.tags, milestone_one.cost, milestone_one.publisher_attachments);
+			let milestone1: Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>> = Milestone::new(mid, milestone_one.name, milestone_one.tags, milestone_one.cost, milestone_one.deadline, milestone_one.publisher_attachments);
 			let mut vector_of_milestones = Vec::new();
 			vector_of_milestones.push(milestone1);
 			for milestone_helper in add_milestones {
 				let mid = create_milestone_id(project_id, vector_of_milestones.len() as u8);
-				let milestone: Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>> = Milestone::new(mid.clone(), milestone_helper.name, milestone_helper.tags, milestone_helper.cost, milestone_helper.publisher_attachments);
+				let milestone: Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>> = Milestone::new(mid.clone(), milestone_helper.name, milestone_helper.tags, milestone_helper.cost, milestone_helper.deadline, milestone_helper.publisher_attachments);
 				vector_of_milestones.push(milestone);
 				Self::deposit_event(Event::MileStoneCreated(mid,milestone_helper.cost));
 			}
@@ -931,7 +935,7 @@ pub mod pallet {
 											let mut vector_of_milestones = Vec::new();
 											for milestone_helper in milestones {
 												let mid = create_milestone_id(project_id, vector_of_milestones.len() as u8);
-												let milestone: Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>> = Milestone::new(mid.clone(), milestone_helper.name, milestone_helper.tags, milestone_helper.cost, milestone_helper.publisher_attachments);
+												let milestone: Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>> = Milestone::new(mid.clone(), milestone_helper.name, milestone_helper.tags, milestone_helper.cost, milestone_helper.deadline, milestone_helper.publisher_attachments);
 												vector_of_milestones.push(milestone);
 												Self::deposit_event(Event::MileStoneCreated(mid,milestone_helper.cost));
 											}
@@ -944,7 +948,7 @@ pub mod pallet {
 												let mut vector_of_milestones_for_transfer = Vec::new();
 												for milestone_helper in milestones {
 													let mid = create_milestone_id(project_id, vector_of_milestones.len() as u8);
-													let milestone: Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>> = Milestone::new(mid.clone(), milestone_helper.name, milestone_helper.tags, milestone_helper.cost.clone(), milestone_helper.publisher_attachments);
+													let milestone: Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>> = Milestone::new(mid.clone(), milestone_helper.name, milestone_helper.tags, milestone_helper.cost.clone(), milestone_helper.deadline, milestone_helper.publisher_attachments);
 													vector_of_milestones.push(milestone.clone());
 													vector_of_milestones_for_transfer.push(milestone);
 													Self::deposit_event(Event::MileStoneCreated(mid,milestone_helper.cost));
@@ -1923,12 +1927,14 @@ pub mod pallet {
 			let some_cost : BalanceOf<T> = 1000u32.saturated_into();
 		    let mut tags = Vec::new();
 			let mut publisher_attachments = Vec::new();
+			let deadline: u8 = 5;
 		    tags.push(TaskTypeTags::WebDevelopment);
 			publisher_attachments.push(b"http://aws/publisher.png".to_vec());
 			MilestoneHelper{
 				name: b"milestone".to_vec(),
 				cost: some_cost,
 				tags: tags,
+				deadline: deadline,
 				publisher_attachments: publisher_attachments
 			}
 		}
