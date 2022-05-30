@@ -399,12 +399,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_search_item)]
-	pub(super) type Searches<T: Config> = StorageMap<_, Blake2_128Concat, u128, Vec<Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>>, ValueQuery>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn get_search_number)]
-	pub(super) type SearchCount<T: Config> = StorageValue<_, u128, ValueQuery>;
-
+	pub(super) type Searches<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, Vec<Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>>, OptionQuery>;
 
     // ******************* Substrate Events ******************************
 	#[pallet::event]
@@ -449,8 +444,8 @@ pub mod pallet {
 		CourtSummoned(Vec<u8>, UserType, Reason),
 		/// New juror has been added. \[MilestoneId, AccountId]
 		NewJurorAdded(Vec<u8>, T::AccountId),
-		/// Results were found in search. \[SearchNumber, NumberOfResults]
-		SearchSuccessful(u128, u128),
+		/// Results were found in search. \[User, NumberOfResults]
+		SearchSuccessful(T::AccountId, u128),
 		/// No results were found in a search.
 		NoResultFound,
 	}
@@ -1543,12 +1538,9 @@ pub mod pallet {
 				}
 			}
 			if search_result.len() > 0 {
-				let mut search_number = Self::get_search_number();
 				let length = search_result.len() as u128;
-				<Searches<T>>::insert(search_number, search_result);
-				search_number+=1;
-				<SearchCount<T>>::put(search_number);
-				Self::deposit_event(Event::SearchSuccessful(search_number-1, length));
+				<Searches<T>>::insert(&_sender, search_result);
+				Self::deposit_event(Event::SearchSuccessful(_sender, length));
 			}else{
 				Self::deposit_event(Event::NoResultFound);
 			}
