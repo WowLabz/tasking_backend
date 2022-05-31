@@ -1541,7 +1541,9 @@ pub mod pallet {
 				let length = search_result.len() as u128;
 				<Searches<T>>::insert(&_sender, search_result);
 				Self::deposit_event(Event::SearchSuccessful(_sender, length));
-			}else{
+			}else{ 
+				let empty_result: Vec<Milestone<T::AccountId, BalanceOf<T>, BlockNumberOf<T>>> = Vec::new();
+				<Searches<T>>::insert(&_sender, empty_result);
 				Self::deposit_event(Event::NoResultFound);
 			}
 			Ok(())
@@ -1982,7 +1984,7 @@ pub mod pallet {
 			milestone_id: Vec<u8>
 		) -> (BlockNumberOf<T>, BlockNumberOf<T>) {
 			// One era is one day
-			const ONE_ERA: u32 = 5;
+			const ONE_ERA: u32 = 15;
 			// Time span for participant to become jurors
 			let start_case_period = <frame_system::Pallet<T>>::block_number();
 			// Total case time
