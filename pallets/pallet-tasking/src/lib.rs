@@ -17,7 +17,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 	use frame_support::{
 		sp_runtime,
-		sp_runtime::traits::{AccountIdConversion, SaturatedConversion, Hash},
+		sp_runtime::traits::{AccountIdConversion, SaturatedConversion},
 		traits::{
 			tokens::ExistenceRequirement, Currency, LockableCurrency,
 		},
@@ -367,7 +367,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_bidder_list)]
-	pub type BidderList<T: Config> = StorageMap<_, Blake2_128Concat, T::Hash, Vec<Bid<BalanceOf<T>, T::AccountId>>, ValueQuery>;
+	pub type BidderList<T: Config> = StorageMap<_, Blake2_128Concat, Vec<u8>, Vec<Bid<BalanceOf<T>, T::AccountId>>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_count)]
@@ -1045,8 +1045,8 @@ pub mod pallet {
 			})?;
 			ensure!(T::Currency::free_balance(&sender) > milestone_cost, <Error<T>>::NotEnoughBalanceToBid);
 			let account = Self::accounts(sender.clone());
-			let milestone_key = T::Hashing::hash_of(&milestone_id);
-			<BidderList<T>>::mutate(&milestone_key, |bidder_vector| { // bid vector
+			// let milestone_key = T::Hashing::hash_of(&milestone_id);
+			<BidderList<T>>::mutate(&milestone_id, |bidder_vector| { // bid vector
 				let bid_number = bidder_vector.len() as u32 + 1;
 				let bid = Bid::new(bid_number, sender.clone(), worker_name, account);
 				bidder_vector.push(bid);
@@ -1097,8 +1097,8 @@ pub mod pallet {
 										if milestone_vector[milestone_number as usize].status != Status::Open{
 											res = Err(<Error<T>>::MilestoneNotOpenForBidding);
 										}else{
-											let milestone_key = T::Hashing::hash_of(&milestone_id);
-											let bidder_list = Self::get_bidder_list(&milestone_key);
+											// let milestone_key = T::Hashing::hash_of(&milestone_id);
+											let bidder_list = Self::get_bidder_list(&milestone_id);
 											if bidder_list.len() == 0 as usize || bid_number >= bidder_list.len() as u32{
 												
 												res = Err(<Error<T>>::InvalidBidNumber);
@@ -1132,9 +1132,9 @@ pub mod pallet {
 			// 	milestone_cost.clone(),
 			// 	ExistenceRequirement::KeepAlive
 			// )?;
-			let milestone_key = T::Hashing::hash_of(&milestone_id);
+			// let milestone_key = T::Hashing::hash_of(&milestone_id);
 			// rejecting all the other bidders
-			Self::reject_all(milestone_key, escrow_id, milestone_cost, bid_number)?;
+			Self::reject_all(milestone_id.clone(), escrow_id, milestone_cost, bid_number)?;
 			Self::deposit_event(Event::BidAccepted(milestone_id, bid_number));
 			Ok(())
 			// function body ends
@@ -1377,7 +1377,8 @@ pub mod pallet {
 											Status::Completed => flag = false,
 											Status::Open => {
 												// reject all the bidders
-												let milestone_key = T::Hashing::hash_of(&milestone.milestone_id);
+												// let milestone_key = T::Hashing::hash_of(&milestone.milestone_id);
+												let milestone_id = milestone.milestone_id.clone();
 												let escrow_id = Self::get_escrow(milestone.milestone_id.clone());
 												let cost = milestone.cost.clone();
 												let except = u32::MAX;
@@ -1390,7 +1391,7 @@ pub mod pallet {
 												).ok();
 												// rejecting all the bidder
 												res = Self::reject_all(
-													milestone_key,
+													milestone_id,
 													escrow_id,
 													cost,
 													except
@@ -1574,7 +1575,7 @@ pub mod pallet {
 						// Total amount excluding court fees
 						remaining_amount = task_cost_converted - court_fee;
 						// Convert remaining amount to u32
-						let mut remaining_amount_converted = remaining_amount as u32;
+						let remaining_amount_converted = remaining_amount as u32;
 						// ---------- Checking if winner is customer or no one
 						if dispute.winner == Some(UserType::Customer) || dispute.winner == None {
 							let remaining_amount_for_customer = remaining_amount / 2;
@@ -1869,12 +1870,12 @@ pub mod pallet {
 
 		// helper function to reject the other biddings and transfer the locked funds back to the bidders
 		pub fn reject_all(
-			milestone_key: T::Hash,
+			milestone_key: Vec<u8>,
 			escrow_id: T::AccountId,
 			cost: BalanceOf<T>,
 			except: u32
 		)-> Result<(), Error<T>>{
-			let bidder_list = Self::get_bidder_list(milestone_key);
+			let bidder_list = Self::get_bidder_list(milestone_key.clone());
 			for (index, bidder) in bidder_list.iter().enumerate() {
 				if index as u32 == except {
 					continue;
