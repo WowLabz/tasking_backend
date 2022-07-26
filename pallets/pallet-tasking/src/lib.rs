@@ -1775,7 +1775,7 @@ pub mod pallet {
 				if acc_details.avg_rating >= Some(4) && !acc_details.sudo {
 					for milestone_tag in milestone_details.clone().tags.iter() {
 						if acc_details.tags.contains(milestone_tag) 
-						&& &acc_id != &publisher
+						&& acc_id != publisher
 						&& Some(&acc_id) != milestone_details.worker_id.as_ref() {
 							jurors.push(acc_id);
 							break;
