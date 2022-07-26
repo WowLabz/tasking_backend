@@ -1212,12 +1212,12 @@ pub mod pallet {
 										res = Err(<Error<T>>::InvalidMilestoneId);
 									}else{
 										match milestone_vector[milestone_number as usize].status {
-											Status::PendingApproval => res = Err(<Error<T>>::MilestoneNotPendingApproval),
-											_ => {
+											Status::PendingApproval => {
 												milestone_vector[milestone_number as usize].status = Status::CustomerRatingPending;
 												milestone_vector[milestone_number as usize].final_worker_rating = Some(rating_for_the_worker);
 												Self::deposit_event(<Event<T>>::MilestoneApproved(milestone_id,rating_for_the_worker));
-											}
+											},
+											_ => res = Err(<Error<T>>::MilestoneNotPendingApproval),
 										}
 									}
 									// }else if milestone_vector[milestone_number as usize].status != Status::PendingApproval {

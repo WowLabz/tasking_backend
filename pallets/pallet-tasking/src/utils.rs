@@ -4,6 +4,7 @@
 
 // use parity_scale_codec::alloc::string::ToString;
 use sp_std::vec::Vec;
+#[allow(unused_imports)]
 use num_traits::float::Float;
 
 use codec::alloc::string::{ToString, String, FromUtf8Error};
