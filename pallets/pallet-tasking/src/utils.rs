@@ -39,8 +39,32 @@ pub fn dot_shuffle<T>(
     // -----
     
     // ----- Executing the Fischer-Yates algorithm
-    loop {
-        // * Function for adding individual numbers
+    // loop {
+    //     // * Function for adding individual numbers
+    //     random_number_idx = get_sum(
+    //         // * Linear congruential generator
+    //         lcg(
+    //             seed as u128, 
+    //             length as u128
+    //         ), 
+    //         length
+    //     );
+    //     // * Index should be less than the length of the vector
+    //     if random_number_idx > input.len() as u32 - 1 {
+    //         random_number_idx = random_number_idx - 1;
+    //     }
+    //     // * As input will decrease along with it the length should too
+    //     length -= 1;
+    //     // The removed element is swaped with the last element
+    //     random_element = input.swap_remove(random_number_idx as usize);
+    //     // Updating the vector
+    //     result.push(random_element);
+    //     // Break the loop if there are no elements
+    //     if input.len() <= 0 {
+    //         break;
+    //     }
+    // }
+    while input.len() > 0 {
         random_number_idx = get_sum(
             // * Linear congruential generator
             lcg(
@@ -59,10 +83,6 @@ pub fn dot_shuffle<T>(
         random_element = input.swap_remove(random_number_idx as usize);
         // Updating the vector
         result.push(random_element);
-        // Break the loop if there are no elements
-        if input.len() <= 0 {
-            break;
-        }
     }
     // -----
     
