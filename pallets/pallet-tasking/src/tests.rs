@@ -1,7 +1,7 @@
 use crate::mock::ExtBuilder;
-use crate::{mock::*, Error, Status, AccountDetails, ProjectDetails, MilestoneHelper, TaskTypeTags, UserType};
+use crate::{mock::*, Error, AccountDetails, TaskTypeTags, UserType};
 use frame_support::{assert_noop, assert_ok, dispatch::DispatchError};
-use frame_system::{ensure_signed};
+
 
 #[test]
 fn it_works_for_creating_a_project_with_correct_details(){

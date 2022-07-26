@@ -22,9 +22,9 @@ pub fn get_milestone_and_project_id(milestone_id: &mut Vec<u8>) -> Result<(u8,u1
     let milestone_number = milestone_id.pop().unwrap() - 97;
     let project_id: &[u8] = milestone_id;
     let project_id = String::from_utf8(project_id.to_vec())?;
-    let project_number: u128;
-    project_number = project_id.parse::<u128>().unwrap();
-    return Ok((milestone_number, project_number));
+    
+    let project_number: u128 = project_id.parse::<u128>().unwrap();
+    Ok((milestone_number, project_number))
 }
 
 pub fn dot_shuffle<T>(
@@ -64,7 +64,7 @@ pub fn dot_shuffle<T>(
     //         break;
     //     }
     // }
-    while input.len() > 0 {
+    while !input.is_empty() {
         random_number_idx = get_sum(
             // * Linear congruential generator
             lcg(
@@ -75,7 +75,7 @@ pub fn dot_shuffle<T>(
         );
         // * Index should be less than the length of the vector
         if random_number_idx > input.len() as u32 - 1 {
-            random_number_idx = random_number_idx - 1;
+            random_number_idx -= 1;
         }
         // * As input will decrease along with it the length should too
         length -= 1;

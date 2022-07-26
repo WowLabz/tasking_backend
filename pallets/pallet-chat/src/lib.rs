@@ -36,7 +36,7 @@ pub mod pallet {
 	}
 
 	impl<AccountId> Message<AccountId>{
-		fn new(self) -> Self {
+		fn from(self) -> Self {
 			Self {
 				message_id: self.message_id,
 				sender_id: self.sender_id,
@@ -130,12 +130,12 @@ pub mod pallet {
 				message_id: message_count,
 				sender_id: sender.clone(),
 				receiver_id: receiver.clone(),
-				message: message,
+				message,
 				reply: None,
 				status: Status::Active
 			};
 				
-			<MsgStorage<T>>::insert(&message_count,msg.new());
+			<MsgStorage<T>>::insert(&message_count,msg.from());
 			
 			<MessageCount<T>>::put(message_count + 1);
 
@@ -151,7 +151,7 @@ pub mod pallet {
 			//ensure message id exists
 			ensure! (<MsgStorage<T>>::contains_key(&message_id),<Error<T>>::MessageDoesNotExist);
 
-			let mut msg = Self::get_message(message_id.clone());
+			let mut msg = Self::get_message(message_id);
 
 			// ensure the recipient only replies
 			ensure! (receiver == msg.receiver_id,<Error<T>>::UnauthorisedToReply);
@@ -179,7 +179,7 @@ pub mod pallet {
 
 			ensure! (<MsgStorage<T>>::contains_key(&message_id),<Error<T>>::MessageDoesNotExist);
 
-			let mut msg = Self::get_message(message_id.clone());
+			let mut msg = Self::get_message(message_id);
 
 			ensure! (sender == msg.sender_id,<Error<T>>::UnauthorisedToClose);
 
